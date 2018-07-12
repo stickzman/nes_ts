@@ -27,6 +27,10 @@ class CPU {
         negative: false //Result of last op had bit 7 set to 1
     }
 
+    constructor(memory: Uint8Array) {
+        this.mem = memory;
+    }
+
     public step() {
         //Check interrupt lines
         if (this.NMI) {
@@ -41,9 +45,11 @@ class CPU {
 
         let op = opTable[opCode];       //Decode
         if (op === undefined) {
-            throw Error(`Encountered unknown opCode: [0x${
+            let e = new Error(`Encountered unknown opCode: [0x${
                 opCode.toString(16).toUpperCase()}] at PC: 0x${
                 this.PC.toString(16).padStart(4, "0").toUpperCase()}`);
+            e.name = "Unexpected OpCode";
+            throw e;
         }
 
         if (this.debug) {
