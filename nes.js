@@ -1789,14 +1789,41 @@ class NES {
             }
         }
         else {
-            this.loadNESFile(nesPath);
+            this.rom = new iNESFile(nesPath);
         }
         this.cpu = new CPU(this.mainMemory);
     }
-    //Parse the iNES file and load it into memory
-    loadNESFile(nesPath) {
+    boot() {
+        this.running = true;
+        while (this.running) {
+            try {
+                this.cpu.step();
+            }
+            catch (e) {
+                if (e.name == "Unexpected OpCode") {
+                    console.log(e.message);
+                    break;
+                }
+                throw e;
+            }
+        }
+        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
+    }
+}
+let nes = new NES("../nestest.nes");
+nes.boot();
+class iNESFile {
+    constructor(filePath) {
+        this.filePath = filePath;
+        if (filePath.indexOf("/") === -1) {
+            this.fileName = filePath.substr(filePath.lastIndexOf("/") + 1);
+        }
+        else {
+            this.fileName = filePath;
+        }
+        let fs = require("fs");
         //Load file into buffer
-        let buff = this.fs.readFileSync(nesPath);
+        let buff = fs.readFileSync(filePath);
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E)
             throw Error("Corrupted iNES file!"); //N
@@ -1867,7 +1894,7 @@ class NES {
         //Start loading memory
         let startLoc = 0;
         if (this.trainerPresent) {
-            let trainer = new Uint8Array(buff.slice(0, 0x200));
+            this.trainerData = new Uint8Array(buff.slice(0, 0x200));
             startLoc = 0x200;
         }
         this.pgrRom = new Uint8Array(buff.slice(startLoc, 0x4000 * this.pgrPages));
@@ -1875,22 +1902,4 @@ class NES {
         this.chrRom = new Uint8Array(buff.slice(startLoc, 0x2000 * this.chrPages));
         startLoc += 0x2000 * this.chrPages;
     }
-    boot() {
-        this.running = true;
-        while (this.running) {
-            try {
-                this.cpu.step();
-            }
-            catch (e) {
-                if (e.name == "Unexpected OpCode") {
-                    console.log(e.message);
-                    break;
-                }
-                throw e;
-            }
-        }
-        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
-    }
 }
-let nes = new NES("../nestest.nes");
-nes.boot();
