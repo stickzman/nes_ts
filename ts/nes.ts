@@ -5,6 +5,9 @@ class NES {
 
     private cpu: CPU;
     private mainMemory: Uint8Array;
+
+    private pgrRom : Uint8Array;
+    private chrRom: Uint8Array;
     private pgrPages: number; //Num of 1 x 16kb pages for PGR mem
     private chrPages: number; //Num of 1 x 8kb pages for CHR mem
     private mapNum: number; //Num of mapper used by program
@@ -17,6 +20,7 @@ class NES {
     private isPC10: boolean; //Is it a Playchoice 10 game?
     private nes2_0: boolean; //Is this an iNES 2.0 file
 
+    //May be undefined if iNES 1.0 is loaded
     private pgrRamSize: number; //Amount of PGR RAM not battery backed
     private pgrRamBattSize: number; //Amount of battery backed PGR RAM
     private chrRamSize: number; //Amount of CHR RAM not battery backed
@@ -110,6 +114,18 @@ class NES {
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
+
+        //Start loading memory
+        let startLoc = 0;
+        if (this.trainerPresent) {
+            let trainer = new Uint8Array(buff.slice(0, 0x200));
+            startLoc = 0x200;
+        }
+        this.pgrRom = new Uint8Array(buff.slice(startLoc, 0x4000 * this.pgrPages));
+        startLoc += 0x4000 * this.pgrPages;
+        this.chrRom = new Uint8Array(buff.slice(startLoc, 0x2000 * this.chrPages));
+        startLoc += 0x2000 * this.chrPages;
+
     }
 
     public boot() {

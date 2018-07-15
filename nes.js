@@ -1864,6 +1864,16 @@ class NES {
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
+        //Start loading memory
+        let startLoc = 0;
+        if (this.trainerPresent) {
+            let trainer = new Uint8Array(buff.slice(0, 0x200));
+            startLoc = 0x200;
+        }
+        this.pgrRom = new Uint8Array(buff.slice(startLoc, 0x4000 * this.pgrPages));
+        startLoc += 0x4000 * this.pgrPages;
+        this.chrRom = new Uint8Array(buff.slice(startLoc, 0x2000 * this.chrPages));
+        startLoc += 0x2000 * this.chrPages;
     }
     boot() {
         this.running = true;
