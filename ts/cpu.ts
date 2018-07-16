@@ -653,8 +653,15 @@ opTable[0x7D] = {
     bytes: 3,
     cycles: 4,
     execute: function() {
+        //this.displayState();
+        //console.log("");
+        //this.debug = true;
         let addr = this.getRef(this.X);
+        //console.log(this.mem[addr].toString(16));
         ADC.call(this, this.mem[addr]);
+        //this.debug = false;
+        //this.displayState();
+        //console.log("");
     }
 }
 opTable[0x79] = {
@@ -2640,11 +2647,11 @@ opTable[0x63] = {
     }
 }
 opTable[0x73] = {
-    name: "RRA (ind, Y)",
+    name: "RRA (ind), Y",
     bytes: 2,
     cycles: 8,
     execute: function() {
-        let addr = this.getIndrXRef();
+        let addr = this.getIndrYRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
         this.flags.carry = (this.mem[addr] % 2 == 1);
         this.mem[addr] = this.mem[addr] >> 1;
@@ -2680,13 +2687,3 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 }
-/*
-//HLT
-//Crashes CPU. Only reset fixes. (Currently ignoring these instr.s)
-opTable[0x42] = {
-    name: "HLT",
-    bytes: 1,
-    cycles: 1,
-    execute: function() { }
-}
-*/

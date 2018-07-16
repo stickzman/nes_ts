@@ -16,11 +16,11 @@ class NES {
                 this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
             } else {
                 this.mainMemory = new Uint8Array(this.MEM_SIZE);
-                this.mainMemory.fill(0xFF);
+                this.mainMemory.fill(0x02);
             }
         } else {
             this.mainMemory = new Uint8Array(this.MEM_SIZE);
-            this.mainMemory.fill(0xFF);
+            this.mainMemory.fill(0x02);
         }
         this.rom = new iNESFile(nesPath);
         this.cpu = new CPU(this.mainMemory);
