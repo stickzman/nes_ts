@@ -1,5 +1,5 @@
 class CPU {
-    public debug: boolean = true; //Output debug info
+    public debug: boolean = false; //Output debug info
     //Stop execution when an infinite loop is detected
     public detectTraps: boolean = false;
 
@@ -2658,5 +2658,33 @@ opTable[0x73] = {
         this.mem[addr] = this.mem[addr] >> 1;
         this.mem[addr] += addBit;
         ADC.call(this, this.mem[addr]);
+    }
+}
+
+//LAR
+//AND memory w/ SP, store result in ACC, X, and SP
+opTable[0xBB] = {
+    name: "LAR (abs, Y)",
+    bytes: 3,
+    cycles: 4,
+    execute: function() {
+        let addr = this.getRef(this.Y);
+        this.SP = this.SP & this.mem[addr];
+        this.X = this.SP;
+        this.ACC = this.X;
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+
+//ATX
+//AND byte with ACC, transfer ACC to X
+opTable[0xAB] = {
+    name: "ATX (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function() {
+        this.ACC = this.ACC & this.nextByte();
+        this.X = this.ACC;
+        this.updateNumStateFlags(this.ACC);
     }
 }
