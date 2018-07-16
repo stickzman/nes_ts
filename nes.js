@@ -1931,6 +1931,108 @@ opTable[0xFC] = {
     cycles: 4,
     execute: function () { }
 };
+//LAX
+opTable[0xA3] = {
+    name: "LAX (ind, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getIndrXRef();
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0xB3] = {
+    name: "LAX (ind), Y",
+    bytes: 2,
+    cycles: 5,
+    execute: function () {
+        let addr = this.getIndrYRef();
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0xA7] = {
+    name: "LAX (zpg)",
+    bytes: 2,
+    cycles: 3,
+    execute: function () {
+        let addr = this.getZPageRef();
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0xB7] = {
+    name: "LAX (zpg, Y)",
+    bytes: 2,
+    cycles: 4,
+    execute: function () {
+        let addr = this.getZPageRef(this.Y);
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0xAF] = {
+    name: "LAX (abs)",
+    bytes: 3,
+    cycles: 4,
+    execute: function () {
+        let addr = this.getRef();
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0xBF] = {
+    name: "LAX (abs)",
+    bytes: 3,
+    cycles: 4,
+    execute: function () {
+        let addr = this.getRef(this.Y);
+        this.ACC = this.X + this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+//AND X with ACC and store result in memory
+opTable[0x87] = {
+    name: "AAX (zpg)",
+    bytes: 2,
+    cycles: 3,
+    execute: function () {
+        let addr = this.getZPageRef();
+        this.mem[addr] = this.ACC & this.X;
+        this.updateNumStateFlags(this.mem[addr]);
+    }
+};
+opTable[0x97] = {
+    name: "AAX (zpg, Y)",
+    bytes: 2,
+    cycles: 4,
+    execute: function () {
+        let addr = this.getZPageRef(this.Y);
+        this.mem[addr] = this.ACC & this.X;
+        this.updateNumStateFlags(this.mem[addr]);
+    }
+};
+opTable[0x83] = {
+    name: "AAX (ind, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getIndrXRef();
+        this.mem[addr] = this.ACC & this.X;
+        this.updateNumStateFlags(this.mem[addr]);
+    }
+};
+opTable[0x8F] = {
+    name: "AAX (abs)",
+    bytes: 3,
+    cycles: 4,
+    execute: function () {
+        let addr = this.getRef();
+        this.mem[addr] = this.ACC & this.X;
+        this.updateNumStateFlags(this.mem[addr]);
+    }
+};
 function combineHexBuff(buff) {
     return (buff[0] << 8) | (buff[1]);
 }
