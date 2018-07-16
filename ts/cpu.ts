@@ -2367,3 +2367,111 @@ opTable[0x13] = {
         this.updateNumStateFlags(this.ACC);
     }
 }
+
+//RLA
+//Rotate one bit left in memory, AND result with ACC
+opTable[0x27] = {
+    name: "RLA (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function() {
+        let addr = this.getZPageRef();
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x37] = {
+    name: "RLA (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getZPageRef(this.X);
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x2F] = {
+    name: "RLA (abs)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef();
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x3F] = {
+    name: "RLA (abs, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.X);
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x3B] = {
+    name: "RLA (abs, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.Y);
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x23] = {
+    name: "RLA (ind, X)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrXRef();
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x33] = {
+    name: "RLA (ind), Y",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrYRef();
+        let addBit = this.flags.carry;
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.mem[addr] += addBit;
+        this.ACC = this.ACC & this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
