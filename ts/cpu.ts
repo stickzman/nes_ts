@@ -2129,7 +2129,7 @@ opTable[0x8F] = {
 }
 
 //DCP
-//Subtract 1 from memory (without borrow)
+//Subtract 1 from memory content, then CMP with ACC
 opTable[0xC7] = {
     name: "DCP (zpg)",
     bytes: 2,
@@ -2191,12 +2191,85 @@ opTable[0xC3] = {
     }
 }
 opTable[0xD3] = {
-    name: "DCP (ind), X",
+    name: "DCP (ind), Y",
     bytes: 2,
     cycles: 8,
     execute: function() {
         let addr = this.getIndrYRef();
         this.mem[addr]--;
         CMP.call(this, this.mem[addr], this.ACC);
+    }
+}
+
+//ISC
+//Increase memory content by 1, then SBC from the ACC
+opTable[0xE7] = {
+    name: "ISC (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function() {
+        let addr = this.getZPageRef();
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xF7] = {
+    name: "ISC (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getZPageRef(this.X);
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xEF] = {
+    name: "ISC (abs)",
+    bytes: 3,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getRef();
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xFF] = {
+    name: "ISC (abs, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.X);
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xFB] = {
+    name: "ISC (abs, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.Y);
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xE3] = {
+    name: "ISC (ind, X)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrXRef();
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
+    }
+}
+opTable[0xF3] = {
+    name: "ISC (abs)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrYRef();
+        this.mem[addr]++;
+        SBC.call(this, this.mem[addr]);
     }
 }
