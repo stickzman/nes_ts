@@ -1860,15 +1860,167 @@ opTable[0xEB] = { //Seems to be identical to SBC (imm)
         SBC.call(this, this.nextByte());
     }
 }
+//NOP
+opTable[0x1A] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0x3A] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0x5A] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0x7A] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0xDA] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0xFA] = {
+    name: "NOP", //No operation, skip 2 bytes
+    bytes: 1,
+    cycles: 2,
+    execute: function() { }
+}
 opTable[0x04] = {
-    name: "NOP (zpg, unoffical)", //No operation
+    name: "DOP", //No operation, skip 2 bytes
     bytes: 2,
+    cycles: 3,
+    execute: function() { }
+}
+opTable[0x14] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x34] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x44] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 3,
+    execute: function() { }
+}
+opTable[0x54] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x64] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 3,
+    execute: function() { }
+}
+opTable[0x74] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x80] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0x82] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0x89] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0xC2] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0xD4] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0xE2] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function() { }
+}
+opTable[0xF4] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function() { }
+}
+
+opTable[0x0C] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x1C] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
     cycles: 1,
     execute: function() { }
 }
-opTable[0x0C] = {
-    name: "NOP (abs, unoffical)", //No operation
+opTable[0x3C] = {
+    name: "TOP", //No operation, skip 3 bytes
     bytes: 3,
-    cycles: 1,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x5C] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0x7C] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0xDC] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
+    cycles: 4,
+    execute: function() { }
+}
+opTable[0xFC] = {
+    name: "TOP", //No operation, skip 3 bytes
+    bytes: 3,
+    cycles: 4,
     execute: function() { }
 }

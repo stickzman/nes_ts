@@ -1768,16 +1768,167 @@ opTable[0xEB] = {
         SBC.call(this, this.nextByte());
     }
 };
+//NOP
+opTable[0x1A] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0x3A] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0x5A] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0x7A] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0xDA] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0xFA] = {
+    name: "NOP",
+    bytes: 1,
+    cycles: 2,
+    execute: function () { }
+};
 opTable[0x04] = {
-    name: "NOP (zpg, unoffical)",
+    name: "DOP",
     bytes: 2,
-    cycles: 1,
+    cycles: 3,
+    execute: function () { }
+};
+opTable[0x14] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x34] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x44] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 3,
+    execute: function () { }
+};
+opTable[0x54] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x64] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 3,
+    execute: function () { }
+};
+opTable[0x74] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x80] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0x82] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0x89] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0xC2] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0xD4] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0xE2] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 2,
+    execute: function () { }
+};
+opTable[0xF4] = {
+    name: "DOP",
+    bytes: 2,
+    cycles: 4,
     execute: function () { }
 };
 opTable[0x0C] = {
-    name: "NOP (abs, unoffical)",
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x1C] = {
+    name: "TOP",
     bytes: 3,
     cycles: 1,
+    execute: function () { }
+};
+opTable[0x3C] = {
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x5C] = {
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0x7C] = {
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0xDC] = {
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
+    execute: function () { }
+};
+opTable[0xFC] = {
+    name: "TOP",
+    bytes: 3,
+    cycles: 4,
     execute: function () { }
 };
 function combineHexBuff(buff) {
