@@ -12,15 +12,15 @@ class CPU {
     private IRQ: boolean = false; //Interrupt Request signal line
     private NMI: boolean = false; //Non-Maskable Interrupt signal line
 
-    private ACC: number = 0;//Accumulator
-    private X: number = 0;  //Register X
-    private Y: number = 0;  //Register Y
-    private PC: number = 0; //Program Counter
-    private SP: number = 0xFF; //Stack Pointer
+    private ACC: number;//Accumulator
+    private X: number;  //Register X
+    private Y: number;  //Register Y
+    public PC: number = 0; //Program Counter
+    private SP: number; //Stack Pointer
     private flags = {
         carry: false, //Last op caused overflow from bit 7 (or 0) of result
         zero: false, //Result of last op was 0
-        interruptDisable: false, //Processor will ignore interrupts when true
+        interruptDisable: true, //Processor will ignore interrupts when true
         decimalMode: false, //Enables BCD arithmetic (ignored in NES)
         break: false, //Set when BRK op was executed
         overflow: false, //Arithmetic yielded invalid 2's complement result
@@ -29,6 +29,25 @@ class CPU {
 
     constructor(memory: Uint8Array) {
         this.mem = memory;
+    }
+
+    public boot() {
+        this.flags.interruptDisable = true;
+        this.ACC = 0;
+        this.X = 0;
+        this.Y = 0;
+        this.SP = 0xFD;
+        this.mem[0x4015] = 0;
+        this.mem[0x4017] = 0;
+        this.mem.fill(0x00, 0x4000, 0x4010); //LSFR?
+        this.PC = this.getResetVector();
+    }
+
+    public reset() {
+        this.SP -= 3;
+        this.flags.interruptDisable = true;
+        this.mem[0x4015] = 0;
+        this.PC = this.getResetVector();
     }
 
     public step() {
@@ -73,12 +92,6 @@ class CPU {
 
     public requestNMInterrupt() {
         this.NMI = true;
-    }
-
-    public reset() {
-        this.flags.interruptDisable = true;
-        this.PC = this.getResetVector();
-        this.flags.interruptDisable = false;
     }
 
     private handleInterrupt(resetVectStartAddr: number, setBRK = false) {
@@ -1834,4 +1847,28 @@ opTable[0x40] = {
         }
         this.PC = addr-1;
     }
+}
+
+
+//UNOFFICIAL OPCODES
+
+opTable[0xEB] = { //Seems to be identical to SBC (imm)
+    name: "SBC (imm, unoffical)",
+    bytes: 2,
+    cycles: 2,
+    execute: function() {
+        SBC.call(this, this.nextByte());
+    }
+}
+opTable[0x04] = {
+    name: "NOP (zpg, unoffical)", //No operation
+    bytes: 2,
+    cycles: 1,
+    execute: function() { }
+}
+opTable[0x0C] = {
+    name: "NOP (abs, unoffical)", //No operation
+    bytes: 3,
+    cycles: 1,
+    execute: function() { }
 }

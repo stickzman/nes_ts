@@ -8,21 +8,34 @@ class CPU {
         this.NMI_VECT_LOC = 0xFFFA;
         this.IRQ = false; //Interrupt Request signal line
         this.NMI = false; //Non-Maskable Interrupt signal line
-        this.ACC = 0; //Accumulator
-        this.X = 0; //Register X
-        this.Y = 0; //Register Y
         this.PC = 0; //Program Counter
-        this.SP = 0xFF; //Stack Pointer
         this.flags = {
             carry: false,
             zero: false,
-            interruptDisable: false,
+            interruptDisable: true,
             decimalMode: false,
             break: false,
             overflow: false,
             negative: false //Result of last op had bit 7 set to 1
         };
         this.mem = memory;
+    }
+    boot() {
+        this.flags.interruptDisable = true;
+        this.ACC = 0;
+        this.X = 0;
+        this.Y = 0;
+        this.SP = 0xFD;
+        this.mem[0x4015] = 0;
+        this.mem[0x4017] = 0;
+        this.mem.fill(0x00, 0x4000, 0x4010); //LSFR?
+        this.PC = this.getResetVector();
+    }
+    reset() {
+        this.SP -= 3;
+        this.flags.interruptDisable = true;
+        this.mem[0x4015] = 0;
+        this.PC = this.getResetVector();
     }
     step() {
         //Check interrupt lines
@@ -56,11 +69,6 @@ class CPU {
     }
     requestNMInterrupt() {
         this.NMI = true;
-    }
-    reset() {
-        this.flags.interruptDisable = true;
-        this.PC = this.getResetVector();
-        this.flags.interruptDisable = false;
     }
     handleInterrupt(resetVectStartAddr, setBRK = false) {
         //Split PC and add each addr byte to stack
@@ -1751,6 +1759,27 @@ opTable[0x40] = {
         this.PC = addr - 1;
     }
 };
+//UNOFFICIAL OPCODES
+opTable[0xEB] = {
+    name: "SBC (imm, unoffical)",
+    bytes: 2,
+    cycles: 2,
+    execute: function () {
+        SBC.call(this, this.nextByte());
+    }
+};
+opTable[0x04] = {
+    name: "NOP (zpg, unoffical)",
+    bytes: 2,
+    cycles: 1,
+    execute: function () { }
+};
+opTable[0x0C] = {
+    name: "NOP (abs, unoffical)",
+    bytes: 3,
+    cycles: 1,
+    execute: function () { }
+};
 function combineHexBuff(buff) {
     return (buff[0] << 8) | (buff[1]);
 }
@@ -1773,45 +1802,6 @@ function addWrap(reg, add) {
     }
     return reg;
 }
-class NES {
-    constructor(nesPath) {
-        this.MEM_PATH = "mem.hex";
-        this.MEM_SIZE = 0x10000;
-        this.fs = require("fs");
-        this.running = false;
-        if (nesPath === undefined) {
-            if (this.fs.existsSync(this.MEM_PATH)) {
-                this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
-            }
-            else {
-                this.mainMemory = new Uint8Array(this.MEM_SIZE);
-                this.mainMemory.fill(0xFF);
-            }
-        }
-        else {
-            this.rom = new iNESFile(nesPath);
-        }
-        this.cpu = new CPU(this.mainMemory);
-    }
-    boot() {
-        this.running = true;
-        while (this.running) {
-            try {
-                this.cpu.step();
-            }
-            catch (e) {
-                if (e.name == "Unexpected OpCode") {
-                    console.log(e.message);
-                    break;
-                }
-                throw e;
-            }
-        }
-        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
-    }
-}
-let nes = new NES("../nestest.nes");
-nes.boot();
 class iNESFile {
     constructor(filePath) {
         this.filePath = filePath;
@@ -1892,14 +1882,67 @@ class iNESFile {
             //TODO: Byte 14 (Misc. ROMs)
         }
         //Start loading memory
-        let startLoc = 0;
+        let startLoc = 0x10;
         if (this.trainerPresent) {
-            this.trainerData = new Uint8Array(buff.slice(0, 0x200));
-            startLoc = 0x200;
+            this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
+            startLoc += 0x200;
         }
-        this.pgrRom = new Uint8Array(buff.slice(startLoc, 0x4000 * this.pgrPages));
+        this.pgrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x4000 * this.pgrPages));
         startLoc += 0x4000 * this.pgrPages;
-        this.chrRom = new Uint8Array(buff.slice(startLoc, 0x2000 * this.chrPages));
+        this.chrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x2000 * this.chrPages));
         startLoc += 0x2000 * this.chrPages;
     }
+    load(mem) {
+        switch (this.mapNum) {
+            case 0: //NROM
+                mem.set(this.pgrRom, 0x8000);
+                mem.set(this.pgrRom, 0xC000);
+                break;
+        }
+    }
 }
+/// <reference path="rom.ts" />
+class NES {
+    constructor(nesPath) {
+        this.MEM_PATH = "mem.hex";
+        this.MEM_SIZE = 0x10000;
+        this.fs = require("fs");
+        this.running = false;
+        if (nesPath === undefined) {
+            if (this.fs.existsSync(this.MEM_PATH)) {
+                this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
+            }
+            else {
+                this.mainMemory = new Uint8Array(this.MEM_SIZE);
+                this.mainMemory.fill(0xFF);
+            }
+        }
+        else {
+            this.mainMemory = new Uint8Array(this.MEM_SIZE);
+            this.mainMemory.fill(0xFF);
+        }
+        this.rom = new iNESFile(nesPath);
+        this.cpu = new CPU(this.mainMemory);
+    }
+    boot() {
+        this.rom.load(this.mainMemory);
+        this.cpu.boot();
+        this.cpu.PC = 0xC000;
+        this.running = true;
+        while (this.running) {
+            try {
+                this.cpu.step();
+            }
+            catch (e) {
+                if (e.name == "Unexpected OpCode") {
+                    console.log(e.message);
+                    break;
+                }
+                throw e;
+            }
+        }
+        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
+    }
+}
+let nes = new NES("../nestest.nes");
+nes.boot();

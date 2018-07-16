@@ -1,3 +1,4 @@
+/// <reference path="rom.ts" />
 class NES {
     private readonly MEM_PATH = "mem.hex";
     private readonly MEM_SIZE = 0x10000;
@@ -18,12 +19,18 @@ class NES {
                 this.mainMemory.fill(0xFF);
             }
         } else {
-            this.rom = new iNESFile(nesPath);
+            this.mainMemory = new Uint8Array(this.MEM_SIZE);
+            this.mainMemory.fill(0xFF);
         }
+        this.rom = new iNESFile(nesPath);
         this.cpu = new CPU(this.mainMemory);
     }
 
     public boot() {
+        this.rom.load(this.mainMemory);
+        this.cpu.boot();
+        this.cpu.PC = 0xC000;
+
         this.running = true;
         while (this.running) {
             try {
@@ -36,7 +43,7 @@ class NES {
                 throw e;
             }
         }
-        
+
         this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
     }
 }
