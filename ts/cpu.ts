@@ -208,7 +208,13 @@ class CPU {
 
     private getIndrYRef(): number {
         let addr = this.getZPageRef();
-        let res = combineHex(this.mem[addr+1], this.mem[addr]) + this.Y;
+        //console.log(addr.toString(16), this.mem[addr+1].toString(16), this.mem[addr].toString(16), this.Y.toString(16));
+        let res: number;
+        if (addr == 0xFF) {
+            res = combineHex(this.mem[0], this.mem[addr]) + this.Y;
+        } else {
+            res = combineHex(this.mem[addr+1], this.mem[addr]) + this.Y;
+        }
         if (res > 0xFFFF) { res -= 0x10000; }
         return res;
     }
@@ -593,33 +599,19 @@ opTable[0x98] = {
 }
 
 function ADC(num: number) {
-    if (this.flags.decimalMode) {
-        //Convert current 2 digit hex to literal 2 digit decimal
-        let num2 = parseInt(this.ACC.toString(16));
-        num = parseInt(num.toString(16));
-        let res = num + num2 + this.flags.carry;
-        if (res > 99) {
-            this.flags.carry = true;
-            res -= 100;
-        } else {
-            this.flags.carry = false;
-        }
-        this.ACC = parseInt(res.toString(), 16);
+    let num2 = this.ACC;
+    this.ACC += num + this.flags.carry;
+    //Wrap ACC and set/clear carry flag
+    if (this.ACC > 0xFF) {
+        this.flags.carry = true;
+        this.ACC -= 0x100;
     } else {
-        let num2 = this.ACC;
-        this.ACC += num + this.flags.carry;
-        //Wrap ACC and set/clear carry flag
-        if (this.ACC > 0xFF) {
-            this.flags.carry = true;
-            this.ACC -= 0x100;
-        } else {
-            this.flags.carry = false;
-        }
-        ///Set/clear overflow flag
-        this.updateOverflowFlag(this.ACC, num, num2);
-        //Set/clear negative + zero flags
-        this.updateNumStateFlags(this.ACC);
+        this.flags.carry = false;
     }
+    ///Set/clear overflow flag
+    this.updateOverflowFlag(this.ACC, num, num2);
+    //Set/clear negative + zero flags
+    this.updateNumStateFlags(this.ACC);
 }
 opTable[0x69] = {
     name: "ADC (imm)", //Adds constant to ACC
@@ -2688,3 +2680,13 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 }
+/*
+//HLT
+//Crashes CPU. Only reset fixes. (Currently ignoring these instr.s)
+opTable[0x42] = {
+    name: "HLT",
+    bytes: 1,
+    cycles: 1,
+    execute: function() { }
+}
+*/
