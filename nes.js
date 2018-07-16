@@ -2377,6 +2377,92 @@ opTable[0x33] = {
         this.updateNumStateFlags(this.ACC);
     }
 };
+//SRE
+//Shift memory 1 bit right, then EOR with ACC
+opTable[0x47] = {
+    name: "SRE (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function () {
+        let addr = this.getZPageRef();
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x57] = {
+    name: "SRE (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getZPageRef(this.X);
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x4F] = {
+    name: "SRE (abs)",
+    bytes: 3,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getRef();
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x5F] = {
+    name: "SRE (abs, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function () {
+        let addr = this.getRef(this.X);
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x5B] = {
+    name: "SRE (abs, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function () {
+        let addr = this.getRef(this.Y);
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x43] = {
+    name: "SRE (ind, X)",
+    bytes: 2,
+    cycles: 8,
+    execute: function () {
+        let addr = this.getIndrXRef();
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+opTable[0x53] = {
+    name: "SRE (ind), X",
+    bytes: 2,
+    cycles: 8,
+    execute: function () {
+        let addr = this.getIndrYRef();
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.ACC = this.ACC ^ this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+};
 function combineHexBuff(buff) {
     return (buff[0] << 8) | (buff[1]);
 }
