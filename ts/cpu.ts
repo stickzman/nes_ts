@@ -2273,3 +2273,97 @@ opTable[0xF3] = {
         SBC.call(this, this.mem[addr]);
     }
 }
+
+//SLO
+//Shift memory content 1 bit left, then OR with ACC
+opTable[0x07] = {
+    name: "SLO (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function() {
+        let addr = this.getZPageRef();
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x17] = {
+    name: "SLO (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getZPageRef(this.X);
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x0F] = {
+    name: "SLO (abs)",
+    bytes: 3,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getZPageRef();
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x1F] = {
+    name: "SLO (abs, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.X);
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x1B] = {
+    name: "SLO (abs, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.Y);
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x03] = {
+    name: "SLO (ind, Y)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrXRef();
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
+opTable[0x13] = {
+    name: "SLO (ind), Y",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrYRef();
+        this.flags.carry = (this.mem[addr] >= 0x80);
+        this.mem[addr] = this.mem[addr] << 1;
+        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
+        this.ACC = this.ACC | this.mem[addr];
+        this.updateNumStateFlags(this.ACC);
+    }
+}
