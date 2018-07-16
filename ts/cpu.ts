@@ -2137,7 +2137,7 @@ opTable[0xC7] = {
     execute: function() {
         let addr = this.getZPageRef();
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xD7] = {
@@ -2147,7 +2147,7 @@ opTable[0xD7] = {
     execute: function() {
         let addr = this.getZPageRef(this.X);
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xCF] = {
@@ -2157,7 +2157,7 @@ opTable[0xCF] = {
     execute: function() {
         let addr = this.getRef();
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xDF] = {
@@ -2167,7 +2167,7 @@ opTable[0xDF] = {
     execute: function() {
         let addr = this.getRef(this.X);
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xDB] = {
@@ -2177,7 +2177,7 @@ opTable[0xDB] = {
     execute: function() {
         let addr = this.getRef(this.Y);
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xC3] = {
@@ -2187,7 +2187,7 @@ opTable[0xC3] = {
     execute: function() {
         let addr = this.getIndrXRef();
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
 opTable[0xD3] = {
@@ -2197,6 +2197,6 @@ opTable[0xD3] = {
     execute: function() {
         let addr = this.getIndrYRef();
         this.mem[addr]--;
-        CMP(this.mem[addr], this.ACC);
+        CMP.call(this, this.mem[addr], this.ACC);
     }
 }
