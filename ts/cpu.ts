@@ -1,5 +1,5 @@
 class CPU {
-    public debug: boolean = false; //Output debug info
+    public debug: boolean = true; //Output debug info
     //Stop execution when an infinite loop is detected
     public detectTraps: boolean = false;
 
@@ -84,6 +84,7 @@ class CPU {
         }
 
         this.PC += op.bytes;
+        if (this.PC > 0xFFFF) { this.PC -= 0x10000; }
     }
 
     public requestInterrupt() {
@@ -186,6 +187,7 @@ class CPU {
 
     private getRef(offset: number = 0): number {
         let addr = this.next2Bytes() + offset;
+        if (addr > 0xFFFF) { addr -= 0x10000; }
         if (this.debug) { console.log(`Accessing memory at 0x${
             addr.toString(16).padStart(4, "0").toUpperCase()}...`); }
         return addr;
@@ -206,7 +208,9 @@ class CPU {
 
     private getIndrYRef(): number {
         let addr = this.getZPageRef();
-        return combineHex(this.mem[addr+1], this.mem[addr]) + this.Y;
+        let res = combineHex(this.mem[addr+1], this.mem[addr]) + this.Y;
+        if (res > 0xFFFF) { res -= 0x10000; }
+        return res;
     }
 }
 
@@ -2560,5 +2564,99 @@ opTable[0x53] = {
         this.mem[addr] = this.mem[addr] >> 1;
         this.ACC = this.ACC ^ this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+    }
+}
+
+//RRA
+//Rotate memory 1 bit right, then ADC with ACC
+opTable[0x67] = {
+    name: "RRA (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function() {
+        let addr = this.getZPageRef();
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x77] = {
+    name: "RRA (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getZPageRef(this.X);
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x6F] = {
+    name: "RRA (abs)",
+    bytes: 3,
+    cycles: 6,
+    execute: function() {
+        let addr = this.getRef();
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x7F] = {
+    name: "RRA (abs, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.X);
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x7B] = {
+    name: "RRA (abs, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function() {
+        let addr = this.getRef(this.Y);
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x63] = {
+    name: "RRA (ind, X)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrXRef();
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
+    }
+}
+opTable[0x73] = {
+    name: "RRA (ind, Y)",
+    bytes: 2,
+    cycles: 8,
+    execute: function() {
+        let addr = this.getIndrXRef();
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.mem[addr] % 2 == 1);
+        this.mem[addr] = this.mem[addr] >> 1;
+        this.mem[addr] += addBit;
+        ADC.call(this, this.mem[addr]);
     }
 }
