@@ -2033,6 +2033,78 @@ opTable[0x8F] = {
         this.updateNumStateFlags(this.mem[addr]);
     }
 };
+//DCP
+//Subtract 1 from memory (without borrow)
+opTable[0xC7] = {
+    name: "DCP (zpg)",
+    bytes: 2,
+    cycles: 5,
+    execute: function () {
+        let addr = this.getZPageRef();
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xD7] = {
+    name: "DCP (zpg, X)",
+    bytes: 2,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getZPageRef(this.X);
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xCF] = {
+    name: "DCP (abs)",
+    bytes: 3,
+    cycles: 6,
+    execute: function () {
+        let addr = this.getRef();
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xDF] = {
+    name: "DCP (zpg, X)",
+    bytes: 3,
+    cycles: 7,
+    execute: function () {
+        let addr = this.getRef(this.X);
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xDB] = {
+    name: "DCP (zpg, Y)",
+    bytes: 3,
+    cycles: 7,
+    execute: function () {
+        let addr = this.getRef(this.Y);
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xC3] = {
+    name: "DCP (ind, X)",
+    bytes: 2,
+    cycles: 8,
+    execute: function () {
+        let addr = this.getIndrXRef();
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
+opTable[0xD3] = {
+    name: "DCP (ind), X",
+    bytes: 2,
+    cycles: 8,
+    execute: function () {
+        let addr = this.getIndrYRef();
+        this.mem[addr]--;
+        CMP(this.mem[addr], this.ACC);
+    }
+};
 function combineHexBuff(buff) {
     return (buff[0] << 8) | (buff[1]);
 }
