@@ -168,7 +168,12 @@ class CPU {
     }
     getIndrXRef() {
         let addr = this.getZPageRef(this.X);
-        return combineHex(this.mem[addr + 1], this.mem[addr]);
+        if (addr == 0xFF) {
+            return combineHex(this.mem[0], this.mem[addr]);
+        }
+        else {
+            return combineHex(this.mem[addr + 1], this.mem[addr]);
+        }
     }
     getIndrYRef() {
         let addr = this.getZPageRef();
