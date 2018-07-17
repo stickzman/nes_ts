@@ -116,11 +116,12 @@ class iNESFile {
         startLoc += 0x2000 * this.chrPages;
     }
 
-    public load(mem: Uint8Array) {
+    public load(mem: Uint8Array, ppuMem: Uint8Array) {
         switch(this.mapNum) {
             case 0: //NROM
                 mem.set(this.pgrRom, 0x8000);
                 mem.set(this.pgrRom, 0xC000);
+                ppuMem.set(this.chrRom, 0)
                 break;
         }
     }

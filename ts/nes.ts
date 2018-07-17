@@ -6,6 +6,7 @@ class NES {
 
     private rom: iNESFile;
     private cpu: CPU;
+    private ppu: PPU;
     private mainMemory: Uint8Array;
 
     private running: boolean = false;
@@ -24,12 +25,13 @@ class NES {
         }
         this.rom = new iNESFile(nesPath);
         this.cpu = new CPU(this.mainMemory);
+        this.ppu = new PPU(this.mainMemory);
     }
 
     public boot() {
-        this.rom.load(this.mainMemory);
+        this.ppu.boot();
+        this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
-        this.cpu.PC = 0xC000;
 
         this.running = true;
         while (this.running) {
