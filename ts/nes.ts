@@ -1,4 +1,5 @@
 /// <reference path="rom.ts" />
+/// <reference path="ppu.ts" />
 class NES {
     private readonly MEM_PATH = "mem.hex";
     private readonly MEM_SIZE = 0x10000;

@@ -2717,7 +2717,33 @@ class iNESFile {
         }
     }
 }
+class PPU {
+    constructor(mainMemory) {
+        this.mem = new Uint8Array(0x4000);
+        this.OAM = new Uint8Array(0x100);
+        this.cpuMem = mainMemory;
+    }
+    boot() {
+        this.cpuMem[0x2000] = 0;
+        this.cpuMem[0x2001] = 0;
+        this.cpuMem[0x2002] |= 64;
+        this.cpuMem[0x2002] &= 95;
+        this.cpuMem[0x2003] = 0;
+        this.cpuMem[0x2005] = 0;
+        this.cpuMem[0x2006] = 0;
+        this.cpuMem[0x2007] = 0;
+        this.oddFrame = false;
+    }
+    reset() {
+        this.cpuMem[0x2000] = 0;
+        this.cpuMem[0x2001] = 0;
+        this.cpuMem[0x2005] = 0;
+        this.cpuMem[0x2007] = 0;
+        this.oddFrame = false;
+    }
+}
 /// <reference path="rom.ts" />
+/// <reference path="ppu.ts" />
 class NES {
     constructor(nesPath) {
         this.MEM_PATH = "mem.hex";
@@ -2763,29 +2789,3 @@ class NES {
 }
 let nes = new NES("../nestest.nes");
 nes.boot();
-class PPU {
-    constructor(mainMemory) {
-        this.mem = new Uint8Array(0x4000);
-        this.OAM = new Uint8Array(0x100);
-        this.regData = mainMemory.slice(0x2000, 0x2008);
-        this.oamdmaData = mainMemory.slice(0x4014, 0x4015);
-    }
-    boot() {
-        this.regData[0] = 0;
-        this.regData[1] = 0;
-        this.regData[2] |= 64;
-        this.regData[2] &= 95;
-        this.regData[3] = 0;
-        this.regData[5] = 0;
-        this.regData[6] = 0;
-        this.regData[7] = 0;
-        this.oddFrame = false;
-    }
-    reset() {
-        this.regData[0] = 0;
-        this.regData[1] = 0;
-        this.regData[5] = 0;
-        this.regData[7] = 0;
-        this.oddFrame = false;
-    }
-}
