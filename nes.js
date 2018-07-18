@@ -2719,25 +2719,34 @@ class iNESFile {
 }
 class PPU {
     constructor(mainMemory) {
+        this.PPUCTRL = 0x2000;
+        this.PPUMASK = 0x2001;
+        this.PPUSTATUS = 0x2002;
+        this.OAMADDR = 0x2003;
+        this.OAMDATA = 0x2004;
+        this.PPUSCROLL = 0x2005;
+        this.PPUADDR = 0x2006;
+        this.PPUDATA = 0x2007;
+        this.OAMDMA = 0x4014;
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         this.cpuMem = mainMemory;
     }
     boot() {
-        this.cpuMem[0x2000] = 0;
-        this.cpuMem[0x2001] = 0;
-        this.cpuMem[0x2002] = 0xA0;
-        this.cpuMem[0x2003] = 0;
-        this.cpuMem[0x2005] = 0;
-        this.cpuMem[0x2006] = 0;
-        this.cpuMem[0x2007] = 0;
+        this.cpuMem[this.PPUCTRL] = 0;
+        this.cpuMem[this.PPUMASK] = 0;
+        this.cpuMem[this.PPUSTATUS] = 0xA0;
+        this.cpuMem[this.OAMADDR] = 0;
+        this.cpuMem[this.PPUSCROLL] = 0;
+        this.cpuMem[this.PPUADDR] = 0;
+        this.cpuMem[this.PPUDATA] = 0;
         this.oddFrame = false;
     }
     reset() {
-        this.cpuMem[0x2000] = 0;
-        this.cpuMem[0x2001] = 0;
-        this.cpuMem[0x2005] = 0;
-        this.cpuMem[0x2007] = 0;
+        this.cpuMem[this.PPUCTRL] = 0;
+        this.cpuMem[this.PPUMASK] = 0;
+        this.cpuMem[this.PPUSCROLL] = 0;
+        this.cpuMem[this.PPUDATA] = 0;
         this.oddFrame = false;
     }
 }
