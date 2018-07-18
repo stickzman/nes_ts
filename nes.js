@@ -2726,8 +2726,7 @@ class PPU {
     boot() {
         this.cpuMem[0x2000] = 0;
         this.cpuMem[0x2001] = 0;
-        this.cpuMem[0x2002] |= 64;
-        this.cpuMem[0x2002] &= 95;
+        this.cpuMem[0x2002] = 0xA0;
         this.cpuMem[0x2003] = 0;
         this.cpuMem[0x2005] = 0;
         this.cpuMem[0x2006] = 0;
