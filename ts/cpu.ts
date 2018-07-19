@@ -27,8 +27,11 @@ class CPU {
         negative: false //Result of last op had bit 7 set to 1
     }
 
-    constructor(memory: Uint8Array) {
+    private ppu; //Reference to NES PPU component for read/write its registers
+
+    constructor(memory: Uint8Array, ppu) {
         this.mem = memory;
+        this.ppu = ppu;
     }
 
     public boot() {
@@ -265,6 +268,7 @@ opTable[0xAD] = {
         let addr = this.getRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xBD] = {
@@ -275,6 +279,7 @@ opTable[0xBD] = {
         let addr = this.getRef(this.X);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xB9] = {
@@ -285,6 +290,7 @@ opTable[0xB9] = {
         let addr = this.getRef(this.Y);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xA5] = {
@@ -295,6 +301,7 @@ opTable[0xA5] = {
         let addr = this.getZPageRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xB5] = {
@@ -305,6 +312,7 @@ opTable[0xB5] = {
         let addr = this.getZPageRef(this.X);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xA1] = {
@@ -315,6 +323,7 @@ opTable[0xA1] = {
         let addr = this.getIndrXRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xB1] = {
@@ -325,6 +334,7 @@ opTable[0xB1] = {
         let addr = this.getIndrYRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 }
 
@@ -345,6 +355,7 @@ opTable[0xA6] = {
         let addr = this.getZPageRef();
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xB6] = {
@@ -355,6 +366,7 @@ opTable[0xB6] = {
         let addr = this.getZPageRef(this.Y);
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xAE] = {
@@ -365,6 +377,7 @@ opTable[0xAE] = {
         let addr = this.getRef();
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xBE] = {
@@ -375,6 +388,7 @@ opTable[0xBE] = {
         let addr = this.getRef(this.Y);
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 }
 
@@ -395,6 +409,7 @@ opTable[0xA4] = {
         let addr = this.getZPageRef();
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xB4] = {
@@ -405,6 +420,7 @@ opTable[0xB4] = {
         let addr = this.getZPageRef(this.X);
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xAC] = {
@@ -415,6 +431,7 @@ opTable[0xAC] = {
         let addr = this.getRef();
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 }
 opTable[0xBC] = {
@@ -425,6 +442,7 @@ opTable[0xBC] = {
         let addr = this.getRef(this.X);
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 }
 
@@ -435,6 +453,7 @@ opTable[0x85] = {
     execute: function() {
         let addr = this.getZPageRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x95] = {
@@ -444,6 +463,7 @@ opTable[0x95] = {
     execute: function() {
         let addr = this.getZPageRef(this.X);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x8D] = {
@@ -453,6 +473,7 @@ opTable[0x8D] = {
     execute: function() {
         let addr = this.getRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x9D] = {
@@ -462,6 +483,7 @@ opTable[0x9D] = {
     execute: function() {
         let addr = this.getRef(this.X);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x99] = {
@@ -471,6 +493,7 @@ opTable[0x99] = {
     execute: function() {
         let addr = this.getRef(this.Y);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x81] = {
@@ -480,6 +503,7 @@ opTable[0x81] = {
     execute: function() {
         let addr = this.getIndrXRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x91] = {
@@ -489,6 +513,7 @@ opTable[0x91] = {
     execute: function() {
         let addr = this.getIndrYRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 }
 
@@ -499,6 +524,7 @@ opTable[0x86] = {
     execute: function() {
         let addr = this.getZPageRef();
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x96] = {
@@ -508,6 +534,7 @@ opTable[0x96] = {
     execute: function() {
         let addr = this.getZPageRef(this.Y);
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x8E] = {
@@ -517,6 +544,7 @@ opTable[0x8E] = {
     execute: function() {
         let addr = this.getRef();
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 }
 
@@ -527,6 +555,7 @@ opTable[0x84] = {
     execute: function() {
         let addr = this.getZPageRef();
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x94] = {
@@ -536,6 +565,7 @@ opTable[0x94] = {
     execute: function() {
         let addr = this.getZPageRef(this.X);
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 }
 opTable[0x8C] = {
@@ -545,6 +575,7 @@ opTable[0x8C] = {
     execute: function() {
         let addr = this.getRef();
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 }
 

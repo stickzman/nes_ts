@@ -2,7 +2,28 @@ class PPU {
     public mem: Uint8Array;
     private OAM: Uint8Array;
     private cpuMem: Uint8Array;
-    private oddFrame: boolean;
+
+    private oddFrame: boolean = false;
+    private latch = false;
+    private address: number;
+
+    //CTRL vars
+    private baseNTAddr: number = 0x2000;
+    private incAddrBy32: boolean = false; //If false, inc by 1
+    private spritePatAddr: number = 0;
+    private bkgPatAddr: number = 0;
+    private sprite8x16: boolean = false; //If false, sprite size is 8x8
+    private masterSlave: boolean = false;
+    private vBlankNMI: boolean = false;
+    //MASK vars
+    private greyscale: boolean = false;
+    private showLeftBkg: boolean = false;
+    private showLeftSprite: boolean = false;
+    private showBkg: boolean = false;
+    private showSprites: boolean = false;
+    private maxRed: boolean = false;
+    private maxGreen: boolean = false;
+    private maxBlue: boolean = false;
 
     private readonly PPUCTRL: number = 0x2000;
     private readonly PPUMASK: number = 0x2001;
@@ -38,5 +59,64 @@ class PPU {
         this.cpuMem[this.PPUSCROLL] = 0;
         this.cpuMem[this.PPUDATA] = 0;
         this.oddFrame = false;
+    }
+
+    public readReg(addr: number) {
+        switch (addr) {
+            case this.PPUSTATUS:
+                this.latch = false;
+                break;
+        }
+    }
+
+    public writeReg(addr: number) {
+        let byte = this.cpuMem[addr];
+        switch (addr) {
+            case this.PPUCTRL:
+                let ntBit = byte & 3;
+                switch (ntBit) {
+                    case 0: this.baseNTAddr = 0x2000; break;
+                    case 1: this.baseNTAddr = 0x2400; break;
+                    case 2: this.baseNTAddr = 0x2800; break;
+                    case 3: this.baseNTAddr = 0x2C00; break;
+                }
+                this.incAddrBy32 = (byte & 4) == 1;
+                if ((byte & 8) == 1) {
+                    this.spritePatAddr = 0x1000;
+                } else {
+                    this.spritePatAddr = 0;
+                }
+                if ((byte & 16) == 1) {
+                    this.bkgPatAddr = 0x1000;
+                } else {
+                    this.bkgPatAddr = 0;
+                }
+                this.sprite8x16 = (byte & 32) == 1;
+                this.masterSlave = (byte & 64) == 1;
+                this.vBlankNMI = (byte & 128) == 1;
+                break;
+            case this.PPUMASK:
+                this.greyscale = (byte & 1) == 1;
+
+                break;
+            case this.PPUADDR:
+                console.log("Address Set");
+                if (!this.latch) {
+                    this.address = byte << 8;
+                } else {
+                    this.address += byte;
+                }
+                this.latch = !this.latch;
+                break;
+            case this.PPUDATA:
+                console.log(byte.toString(16).toUpperCase() + " at " + this.address.toString(16).toUpperCase());
+                this.mem[this.address] = byte;
+                if (this.incAddrBy32) {
+                    this.address += 32;
+                } else {
+                    this.address += 1;
+                }
+                break;
+        }
     }
 }

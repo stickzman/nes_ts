@@ -2,6 +2,7 @@
 /// <reference path="ppu.ts" />
 class NES {
     private readonly MEM_PATH = "mem.hex";
+    private readonly PPU_MEM_PATH = "ppuMem.hex";
     private readonly MEM_SIZE = 0x10000;
     private fs = require("fs");
 
@@ -25,8 +26,8 @@ class NES {
             this.mainMemory.fill(0x02);
         }
         this.rom = new iNESFile(nesPath);
-        this.cpu = new CPU(this.mainMemory);
         this.ppu = new PPU(this.mainMemory);
+        this.cpu = new CPU(this.mainMemory, this.ppu);
     }
 
     public boot() {
@@ -35,7 +36,8 @@ class NES {
         this.cpu.boot();
 
         this.running = true;
-        while (this.running) {
+        let i = 0;
+        while (i++ < 9000) {
             try {
                 this.cpu.step();
             } catch (e) {
@@ -48,6 +50,7 @@ class NES {
         }
 
         this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
+        this.fs.writeFileSync(this.PPU_MEM_PATH, Buffer.from(this.ppu.mem));
     }
 }
 

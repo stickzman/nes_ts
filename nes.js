@@ -1,5 +1,5 @@
 class CPU {
-    constructor(memory) {
+    constructor(memory, ppu) {
         this.debug = false; //Output debug info
         //Stop execution when an infinite loop is detected
         this.detectTraps = false;
@@ -19,6 +19,7 @@ class CPU {
             negative: false //Result of last op had bit 7 set to 1
         };
         this.mem = memory;
+        this.ppu = ppu;
     }
     boot() {
         this.flags.interruptDisable = true;
@@ -218,6 +219,7 @@ opTable[0xAD] = {
         let addr = this.getRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xBD] = {
@@ -228,6 +230,7 @@ opTable[0xBD] = {
         let addr = this.getRef(this.X);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xB9] = {
@@ -238,6 +241,7 @@ opTable[0xB9] = {
         let addr = this.getRef(this.Y);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xA5] = {
@@ -248,6 +252,7 @@ opTable[0xA5] = {
         let addr = this.getZPageRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xB5] = {
@@ -258,6 +263,7 @@ opTable[0xB5] = {
         let addr = this.getZPageRef(this.X);
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xA1] = {
@@ -268,6 +274,7 @@ opTable[0xA1] = {
         let addr = this.getIndrXRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xB1] = {
@@ -278,6 +285,7 @@ opTable[0xB1] = {
         let addr = this.getIndrYRef();
         this.ACC = this.mem[addr];
         this.updateNumStateFlags(this.ACC);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xA2] = {
@@ -297,6 +305,7 @@ opTable[0xA6] = {
         let addr = this.getZPageRef();
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xB6] = {
@@ -307,6 +316,7 @@ opTable[0xB6] = {
         let addr = this.getZPageRef(this.Y);
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xAE] = {
@@ -317,6 +327,7 @@ opTable[0xAE] = {
         let addr = this.getRef();
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xBE] = {
@@ -327,6 +338,7 @@ opTable[0xBE] = {
         let addr = this.getRef(this.Y);
         this.X = this.mem[addr];
         this.updateNumStateFlags(this.X);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xA0] = {
@@ -346,6 +358,7 @@ opTable[0xA4] = {
         let addr = this.getZPageRef();
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xB4] = {
@@ -356,6 +369,7 @@ opTable[0xB4] = {
         let addr = this.getZPageRef(this.X);
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xAC] = {
@@ -366,6 +380,7 @@ opTable[0xAC] = {
         let addr = this.getRef();
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0xBC] = {
@@ -376,6 +391,7 @@ opTable[0xBC] = {
         let addr = this.getRef(this.X);
         this.Y = this.mem[addr];
         this.updateNumStateFlags(this.Y);
+        this.ppu.readReg(addr);
     }
 };
 opTable[0x85] = {
@@ -385,6 +401,7 @@ opTable[0x85] = {
     execute: function () {
         let addr = this.getZPageRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x95] = {
@@ -394,6 +411,7 @@ opTable[0x95] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x8D] = {
@@ -403,6 +421,7 @@ opTable[0x8D] = {
     execute: function () {
         let addr = this.getRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x9D] = {
@@ -412,6 +431,7 @@ opTable[0x9D] = {
     execute: function () {
         let addr = this.getRef(this.X);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x99] = {
@@ -421,6 +441,7 @@ opTable[0x99] = {
     execute: function () {
         let addr = this.getRef(this.Y);
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x81] = {
@@ -430,6 +451,7 @@ opTable[0x81] = {
     execute: function () {
         let addr = this.getIndrXRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x91] = {
@@ -439,6 +461,7 @@ opTable[0x91] = {
     execute: function () {
         let addr = this.getIndrYRef();
         this.mem[addr] = this.ACC;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x86] = {
@@ -448,6 +471,7 @@ opTable[0x86] = {
     execute: function () {
         let addr = this.getZPageRef();
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x96] = {
@@ -457,6 +481,7 @@ opTable[0x96] = {
     execute: function () {
         let addr = this.getZPageRef(this.Y);
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x8E] = {
@@ -466,6 +491,7 @@ opTable[0x8E] = {
     execute: function () {
         let addr = this.getRef();
         this.mem[addr] = this.X;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x84] = {
@@ -475,6 +501,7 @@ opTable[0x84] = {
     execute: function () {
         let addr = this.getZPageRef();
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x94] = {
@@ -484,6 +511,7 @@ opTable[0x94] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0x8C] = {
@@ -493,6 +521,7 @@ opTable[0x8C] = {
     execute: function () {
         let addr = this.getRef();
         this.mem[addr] = this.Y;
+        this.ppu.writeReg(addr);
     }
 };
 opTable[0xAA] = {
@@ -2719,6 +2748,25 @@ class iNESFile {
 }
 class PPU {
     constructor(mainMemory) {
+        this.oddFrame = false;
+        this.latch = false;
+        //CTRL vars
+        this.baseNTAddr = 0x2000;
+        this.incAddrBy32 = false; //If false, inc by 1
+        this.spritePatAddr = 0;
+        this.bkgPatAddr = 0;
+        this.sprite8x16 = false; //If false, sprite size is 8x8
+        this.masterSlave = false;
+        this.vBlankNMI = false;
+        //MASK vars
+        this.greyscale = false;
+        this.showLeftBkg = false;
+        this.showLeftSprite = false;
+        this.showBkg = false;
+        this.showSprites = false;
+        this.maxRed = false;
+        this.maxGreen = false;
+        this.maxBlue = false;
         this.PPUCTRL = 0x2000;
         this.PPUMASK = 0x2001;
         this.PPUSTATUS = 0x2002;
@@ -2749,12 +2797,81 @@ class PPU {
         this.cpuMem[this.PPUDATA] = 0;
         this.oddFrame = false;
     }
+    readReg(addr) {
+        switch (addr) {
+            case this.PPUSTATUS:
+                this.latch = false;
+                break;
+        }
+    }
+    writeReg(addr) {
+        let byte = this.cpuMem[addr];
+        switch (addr) {
+            case this.PPUCTRL:
+                let ntBit = byte & 3;
+                switch (ntBit) {
+                    case 0:
+                        this.baseNTAddr = 0x2000;
+                        break;
+                    case 1:
+                        this.baseNTAddr = 0x2400;
+                        break;
+                    case 2:
+                        this.baseNTAddr = 0x2800;
+                        break;
+                    case 3:
+                        this.baseNTAddr = 0x2C00;
+                        break;
+                }
+                this.incAddrBy32 = (byte & 4) == 1;
+                if ((byte & 8) == 1) {
+                    this.spritePatAddr = 0x1000;
+                }
+                else {
+                    this.spritePatAddr = 0;
+                }
+                if ((byte & 16) == 1) {
+                    this.bkgPatAddr = 0x1000;
+                }
+                else {
+                    this.bkgPatAddr = 0;
+                }
+                this.sprite8x16 = (byte & 32) == 1;
+                this.masterSlave = (byte & 64) == 1;
+                this.vBlankNMI = (byte & 128) == 1;
+                break;
+            case this.PPUMASK:
+                this.greyscale = (byte & 1) == 1;
+                break;
+            case this.PPUADDR:
+                console.log("Address Set");
+                if (!this.latch) {
+                    this.address = byte << 8;
+                }
+                else {
+                    this.address += byte;
+                }
+                this.latch = !this.latch;
+                break;
+            case this.PPUDATA:
+                console.log(byte.toString(16).toUpperCase() + " at " + this.address.toString(16).toUpperCase());
+                this.mem[this.address] = byte;
+                if (this.incAddrBy32) {
+                    this.address += 32;
+                }
+                else {
+                    this.address += 1;
+                }
+                break;
+        }
+    }
 }
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
     constructor(nesPath) {
         this.MEM_PATH = "mem.hex";
+        this.PPU_MEM_PATH = "ppuMem.hex";
         this.MEM_SIZE = 0x10000;
         this.fs = require("fs");
         this.running = false;
@@ -2772,15 +2889,16 @@ class NES {
             this.mainMemory.fill(0x02);
         }
         this.rom = new iNESFile(nesPath);
-        this.cpu = new CPU(this.mainMemory);
         this.ppu = new PPU(this.mainMemory);
+        this.cpu = new CPU(this.mainMemory, this.ppu);
     }
     boot() {
         this.ppu.boot();
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
         this.running = true;
-        while (this.running) {
+        let i = 0;
+        while (i++ < 9000) {
             try {
                 this.cpu.step();
             }
@@ -2793,6 +2911,7 @@ class NES {
             }
         }
         this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
+        this.fs.writeFileSync(this.PPU_MEM_PATH, Buffer.from(this.ppu.mem));
     }
 }
 let nes = new NES("../nestest.nes");
