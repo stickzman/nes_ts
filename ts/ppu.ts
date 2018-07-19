@@ -25,6 +25,8 @@ class PPU {
     private maxRed: boolean = false;
     private maxGreen: boolean = false;
     private maxBlue: boolean = false;
+    //STATUS vars
+    private vbl: boolean = false;
 
     private readonly PPUCTRL: number = 0x2000;
     private readonly PPUMASK: number = 0x2001;
@@ -108,7 +110,6 @@ class PPU {
                 this.maxBlue = (byte & 128) == 1;
                 break;
             case this.PPUADDR:
-                console.log("Address Set");
                 if (!this.latch) {
                     this.address = byte << 8;
                 } else {
@@ -117,7 +118,6 @@ class PPU {
                 this.latch = !this.latch;
                 break;
             case this.PPUDATA:
-                console.log(byte.toString(16).toUpperCase() + " at " + this.address.toString(16).toUpperCase());
                 this.mem[this.address] = byte;
                 if (this.incAddrBy32) {
                     this.address += 32;
@@ -126,5 +126,15 @@ class PPU {
                 }
                 break;
         }
+    }
+
+    private setVBL() {
+        this.vbl = true;
+        this.mem[this.PPUSTATUS] |= 128;
+    }
+
+    private clearVBL() {
+        this.vbl = false;
+        this.mem[this.PPUSTATUS] &= 0x7F;
     }
 }

@@ -2767,6 +2767,8 @@ class PPU {
         this.maxRed = false;
         this.maxGreen = false;
         this.maxBlue = false;
+        //STATUS vars
+        this.vbl = false;
         this.PPUCTRL = 0x2000;
         this.PPUMASK = 0x2001;
         this.PPUSTATUS = 0x2002;
@@ -2852,7 +2854,6 @@ class PPU {
                 this.maxBlue = (byte & 128) == 1;
                 break;
             case this.PPUADDR:
-                console.log("Address Set");
                 if (!this.latch) {
                     this.address = byte << 8;
                 }
@@ -2862,7 +2863,6 @@ class PPU {
                 this.latch = !this.latch;
                 break;
             case this.PPUDATA:
-                console.log(byte.toString(16).toUpperCase() + " at " + this.address.toString(16).toUpperCase());
                 this.mem[this.address] = byte;
                 if (this.incAddrBy32) {
                     this.address += 32;
@@ -2872,6 +2872,14 @@ class PPU {
                 }
                 break;
         }
+    }
+    setVBL() {
+        this.vbl = true;
+        this.mem[this.PPUSTATUS] |= 128;
+    }
+    clearVBL() {
+        this.vbl = false;
+        this.mem[this.PPUSTATUS] &= 0x7F;
     }
 }
 /// <reference path="rom.ts" />
