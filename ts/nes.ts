@@ -37,7 +37,7 @@ class NES {
 
         this.running = true;
         let i = 0;
-        while (i++ < 9000) {
+        while (i++ < 250000) {
             try {
                 this.cpu.step();
             } catch (e) {

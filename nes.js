@@ -2801,6 +2801,7 @@ class PPU {
         switch (addr) {
             case this.PPUSTATUS:
                 this.latch = false;
+                //this.cpuMem[addr] = (this.cpuMem[addr] & 0x7F);
                 break;
         }
     }
@@ -2842,6 +2843,13 @@ class PPU {
                 break;
             case this.PPUMASK:
                 this.greyscale = (byte & 1) == 1;
+                this.showLeftBkg = (byte & 2) == 1;
+                this.showLeftSprite = (byte & 4) == 1;
+                this.showBkg = (byte & 8) == 1;
+                this.showSprites = (byte & 16) == 1;
+                this.maxRed = (byte & 32) == 1;
+                this.maxGreen = (byte & 64) == 1;
+                this.maxBlue = (byte & 128) == 1;
                 break;
             case this.PPUADDR:
                 console.log("Address Set");
@@ -2898,7 +2906,7 @@ class NES {
         this.cpu.boot();
         this.running = true;
         let i = 0;
-        while (i++ < 9000) {
+        while (i++ < 250000) {
             try {
                 this.cpu.step();
             }

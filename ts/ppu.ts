@@ -6,6 +6,7 @@ class PPU {
     private oddFrame: boolean = false;
     private latch = false;
     private address: number;
+    private scanline: number;
 
     //CTRL vars
     private baseNTAddr: number = 0x2000;
@@ -39,7 +40,7 @@ class PPU {
     constructor(mainMemory: Uint8Array) {
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
-        this.cpuMem = mainMemory
+        this.cpuMem = mainMemory;
     }
 
     public boot() {
@@ -65,6 +66,7 @@ class PPU {
         switch (addr) {
             case this.PPUSTATUS:
                 this.latch = false;
+                //this.cpuMem[addr] = (this.cpuMem[addr] & 0x7F);
                 break;
         }
     }
@@ -97,7 +99,13 @@ class PPU {
                 break;
             case this.PPUMASK:
                 this.greyscale = (byte & 1) == 1;
-
+                this.showLeftBkg = (byte & 2) == 1;
+                this.showLeftSprite = (byte & 4) == 1;
+                this.showBkg = (byte & 8) == 1;
+                this.showSprites = (byte & 16) == 1;
+                this.maxRed = (byte & 32) == 1;
+                this.maxGreen = (byte & 64) == 1;
+                this.maxBlue = (byte & 128) == 1;
                 break;
             case this.PPUADDR:
                 console.log("Address Set");
