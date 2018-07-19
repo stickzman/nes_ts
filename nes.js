@@ -2750,6 +2750,10 @@ class PPU {
     constructor(mainMemory) {
         this.oddFrame = false;
         this.latch = false;
+        this.scanline = 261;
+        this.dot = 0;
+        //Visible Scanline vars
+        this.addrOffset = 0;
         //CTRL vars
         this.baseNTAddr = 0x2000;
         this.incAddrBy32 = false; //If false, inc by 1
@@ -2798,6 +2802,37 @@ class PPU {
         this.cpuMem[this.PPUSCROLL] = 0;
         this.cpuMem[this.PPUDATA] = 0;
         this.oddFrame = false;
+    }
+    cycle() {
+        switch (true) {
+            case (this.scanline < 240):
+                this.visibleCycle();
+                break;
+            case (this.scanline < 260):
+                //POST-RENDER
+                break;
+            case (this.scanline == 261):
+                //PRE-RENDER
+                break;
+        }
+        if (++this.dot > 340) {
+            this.dot = 0;
+            if (++this.scanline > 261) {
+                this.scanline = 0;
+            }
+        }
+    }
+    visibleCycle() {
+        if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
+            this.dot++;
+        }
+        if (this.dot == 0)
+            return;
+        switch (this.dot % 8) {
+            case 1: this.addr = this.baseNTAddr + this.addrOffset;
+            case 2: this.ntLatch = this.mem[this.addr];
+            case 3: this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset / 15);
+        }
     }
     readReg(addr) {
         switch (addr) {
@@ -2855,20 +2890,20 @@ class PPU {
                 break;
             case this.PPUADDR:
                 if (!this.latch) {
-                    this.address = byte << 8;
+                    this.vRamAddr = byte << 8;
                 }
                 else {
-                    this.address += byte;
+                    this.vRamAddr += byte;
                 }
                 this.latch = !this.latch;
                 break;
             case this.PPUDATA:
-                this.mem[this.address] = byte;
+                this.mem[this.vRamAddr] = byte;
                 if (this.incAddrBy32) {
-                    this.address += 32;
+                    this.vRamAddr += 32;
                 }
                 else {
-                    this.address += 1;
+                    this.vRamAddr += 1;
                 }
                 break;
         }
@@ -2913,8 +2948,7 @@ class NES {
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
         this.running = true;
-        let i = 0;
-        while (i++ < 250000) {
+        while (this.running) {
             try {
                 this.cpu.step();
             }
