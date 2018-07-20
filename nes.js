@@ -2647,17 +2647,7 @@ function addWrap(reg, add) {
     return reg;
 }
 class iNESFile {
-    constructor(filePath) {
-        this.filePath = filePath;
-        if (filePath.indexOf("/") === -1) {
-            this.fileName = filePath.substr(filePath.lastIndexOf("/") + 1);
-        }
-        else {
-            this.fileName = filePath;
-        }
-        let fs = require("fs");
-        //Load file into buffer
-        let buff = fs.readFileSync(filePath);
+    constructor(buff) {
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E)
             throw Error("Corrupted iNES file!"); //N
@@ -2717,7 +2707,8 @@ class iNESFile {
             this.chrRamBattSize = hiNib;
             this.chrRamSize = lowNib;
             //Byte 12
-            let byte = parseInt(buff[12], 16);
+            hexStr = buff[12].toString(16);
+            let byte = parseInt(hexStr, 16);
             mask = 1;
             this.isPAL = (byte & mask) == 1;
             mask = 1 << 1;
@@ -2970,26 +2961,14 @@ class PPU {
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
-    constructor(nesPath) {
+    constructor(romData) {
         this.MEM_PATH = "mem.hex";
         this.PPU_MEM_PATH = "ppuMem.hex";
         this.MEM_SIZE = 0x10000;
-        this.fs = require("fs");
         this.running = false;
-        if (nesPath === undefined) {
-            if (this.fs.existsSync(this.MEM_PATH)) {
-                this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
-            }
-            else {
-                this.mainMemory = new Uint8Array(this.MEM_SIZE);
-                this.mainMemory.fill(0x02);
-            }
-        }
-        else {
-            this.mainMemory = new Uint8Array(this.MEM_SIZE);
-            this.mainMemory.fill(0x02);
-        }
-        this.rom = new iNESFile(nesPath);
+        this.mainMemory = new Uint8Array(this.MEM_SIZE);
+        this.mainMemory.fill(0x02);
+        this.rom = new iNESFile(romData);
         this.ppu = new PPU(this.mainMemory);
         this.cpu = new CPU(this.mainMemory, this.ppu);
     }
@@ -2998,7 +2977,8 @@ class NES {
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
         this.running = true;
-        while (this.running) {
+        let i = 0;
+        while (i++ < 1000000) {
             try {
                 this.cpu.step();
             }
@@ -3010,9 +2990,36 @@ class NES {
                 throw e;
             }
         }
-        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
-        this.fs.writeFileSync(this.PPU_MEM_PATH, Buffer.from(this.ppu.mem));
+        this.displayMem();
+        this.displayPPUMem();
+    }
+    displayMem() {
+        let str = "";
+        for (let i = 0; i < this.mainMemory.length; i++) {
+            str += this.mainMemory[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("mem").innerHTML = str;
+    }
+    displayPPUMem() {
+        let str = "";
+        for (let i = 0; i < this.ppu.mem.length; i++) {
+            str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("ppuMem").innerHTML = str;
     }
 }
-let nes = new NES("../nestest.nes");
-nes.boot();
+let nes;
+document.getElementById('file-input')
+    .addEventListener('change', init, false);
+function init(e) {
+    let file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    let reader = new FileReader();
+    reader.onload = function (e) {
+        nes = new NES(new Uint8Array(e.target.result));
+        nes.boot();
+    };
+    reader.readAsArrayBuffer(file);
+}

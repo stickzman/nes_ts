@@ -25,15 +25,7 @@ class iNESFile {
     private isPAL: boolean; //Is it a PAL or NTSC game?
     private bothFormats: boolean; //Will the game adjust to both NTSC and PAL?
 
-    constructor(public filePath: string) {
-        if (filePath.indexOf("/") === -1) {
-            this.fileName = filePath.substr(filePath.lastIndexOf("/") + 1);
-        } else {
-            this.fileName = filePath;
-        }
-        let fs = require("fs");
-        //Load file into buffer
-        let buff = fs.readFileSync(filePath);
+    constructor(buff: Uint8Array) {
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E) throw Error("Corrupted iNES file!"); //N
         if (buff[1] !== 0x45) throw Error("Corrupted iNES file!"); //E
@@ -92,7 +84,8 @@ class iNESFile {
             this.chrRamBattSize = hiNib;
             this.chrRamSize = lowNib;
             //Byte 12
-            let byte = parseInt(buff[12], 16);
+            hexStr = buff[12].toString(16);
+            let byte = parseInt(hexStr, 16);
             mask = 1;
             this.isPAL = (byte & mask) == 1;
             mask = 1 << 1;
