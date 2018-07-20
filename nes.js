@@ -2752,8 +2752,14 @@ class PPU {
         this.latch = false;
         this.scanline = 261;
         this.dot = 0;
-        //Visible Scanline vars
+        //Render vars
         this.addrOffset = 0;
+        //Drawing to screen
+        this.pixelPointer = {
+            x: 0,
+            y: 0,
+            size: 1
+        };
         //CTRL vars
         this.baseNTAddr = 0x2000;
         this.incAddrBy32 = false; //If false, inc by 1
@@ -2819,6 +2825,7 @@ class PPU {
             this.dot = 0;
             if (++this.scanline > 261) {
                 this.scanline = 0;
+                this.oddFrame = !this.oddFrame;
             }
         }
     }
@@ -2828,10 +2835,53 @@ class PPU {
         }
         if (this.dot == 0)
             return;
-        switch (this.dot % 8) {
-            case 1: this.addr = this.baseNTAddr + this.addrOffset;
-            case 2: this.ntLatch = this.mem[this.addr];
-            case 3: this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset / 15);
+        switch (true) {
+            case (this.dot < 257 || (this.dot > 320 && this.dot <= 336)):
+                switch (this.dot % 8) {
+                    case 1:
+                        this.addr = this.baseNTAddr + this.addrOffset;
+                        break;
+                    case 2:
+                        this.ntLatch = this.mem[this.addr];
+                        break;
+                    case 3:
+                        this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset / 15);
+                        break;
+                    case 4:
+                        this.atLatch = this.mem[this.addr];
+                        break;
+                    case 5:
+                        this.addr = this.ntLatch;
+                        break;
+                    case 6:
+                        this.bkgLoLatch = this.mem[this.addr];
+                        break;
+                    case 7:
+                        this.addr += 8;
+                        break;
+                    case 0:
+                        this.bkgHiLatch = this.mem[this.addr];
+                        this.render();
+                        break;
+                }
+                break;
+            case (this.dot < 321):
+                //TODO: Get sprites for *next* scanline HERE
+                break;
+        }
+    }
+    render() {
+        //Combine the hi and lo pattern tables into an array of nibbles
+        let hi = this.bkgHiLatch.toString(2);
+        let lo = this.bkgLoLatch.toString(2);
+        let pStr = [""];
+        for (let i = 0; i < hi.length; i++) {
+            pStr[0] += hi[i] + lo[i] + ",";
+        }
+        pStr = pStr[0].split(",");
+        let pByte;
+        for (let i = 0; i < pStr.length; i++) {
+            pByte[i] = parseInt(pByte[i], 2);
         }
     }
     readReg(addr) {
