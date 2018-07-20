@@ -2738,7 +2738,8 @@ class iNESFile {
     }
 }
 class PPU {
-    constructor(mainMemory) {
+    constructor(mainMemory, ctx) {
+        this.ctx = ctx;
         this.oddFrame = false;
         this.latch = false;
         this.scanline = 261;
@@ -2746,7 +2747,7 @@ class PPU {
         //Render vars
         this.addrOffset = 0;
         //Drawing to screen
-        this.pixelPointer = {
+        this.pixel = {
             x: 0,
             y: 0,
             size: 1
@@ -2874,6 +2875,30 @@ class PPU {
         for (let i = 0; i < pStr.length; i++) {
             pByte[i] = parseInt(pByte[i], 2);
         }
+        let color;
+        for (let i = 0; i < pByte.length; i++) {
+            switch (pByte[i]) {
+                case 0:
+                    color = "#000000";
+                    break;
+                case 1:
+                    color = "#666666";
+                    break;
+                case 2:
+                    color = "#cccccc";
+                    break;
+                case 3:
+                    color = "#FFFFFF";
+                    break;
+            }
+            this.ctx.fillRect(this.pixel.x, this.pixel.y, this.pixel.size, this.pixel.size);
+            if (++this.pixel.x >= 256) {
+                this.pixel.x = 0;
+                if (++this.pixel.y >= 240) {
+                    this.pixel.y = 0;
+                }
+            }
+        }
     }
     readReg(addr) {
         switch (addr) {
@@ -2962,14 +2987,14 @@ class PPU {
 /// <reference path="ppu.ts" />
 class NES {
     constructor(romData) {
-        this.MEM_PATH = "mem.hex";
-        this.PPU_MEM_PATH = "ppuMem.hex";
         this.MEM_SIZE = 0x10000;
         this.running = false;
+        let canvas = document.getElementById("screen");
+        let ctx = canvas.getContext("2d");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.mainMemory.fill(0x02);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory);
+        this.ppu = new PPU(this.mainMemory, ctx);
         this.cpu = new CPU(this.mainMemory, this.ppu);
     }
     boot() {

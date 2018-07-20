@@ -17,7 +17,7 @@ class PPU {
     private bkgLoLatch: number;
 
     //Drawing to screen
-    private pixelPointer = {
+    private pixel = {
         x: 0,
         y: 0,
         size: 1
@@ -54,7 +54,7 @@ class PPU {
     private readonly OAMDMA: number = 0x4014;
 
 
-    constructor(mainMemory: Uint8Array) {
+    constructor(mainMemory: Uint8Array, private ctx: CanvasRenderingContext2D) {
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         this.cpuMem = mainMemory;
@@ -138,7 +138,30 @@ class PPU {
         for (let i = 0; i < pStr.length; i++) {
             pByte[i] = parseInt(pByte[i], 2);
         }
-        
+        let color;
+        for (let i = 0; i < pByte.length; i++) {
+            switch (pByte[i]) {
+                case 0:
+                    color = "#000000";
+                    break;
+                case 1:
+                    color = "#666666";
+                    break;
+                case 2:
+                    color = "#cccccc";
+                    break;
+                case 3:
+                    color = "#FFFFFF";
+                    break;
+            }
+            this.ctx.fillRect(this.pixel.x, this.pixel.y, this.pixel.size, this.pixel.size);
+            if (++this.pixel.x >= 256) {
+                this.pixel.x = 0;
+                if (++this.pixel.y >= 240) {
+                    this.pixel.y = 0;
+                }
+            }
+        }
     }
 
     public readReg(addr: number) {

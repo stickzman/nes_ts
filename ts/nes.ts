@@ -1,8 +1,6 @@
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
-    private readonly MEM_PATH = "mem.hex";
-    private readonly PPU_MEM_PATH = "ppuMem.hex";
     private readonly MEM_SIZE = 0x10000;
 
     private rom: iNESFile;
@@ -13,11 +11,15 @@ class NES {
     private running: boolean = false;
 
     constructor(romData: Uint8Array) {
+        let canvas = <HTMLCanvasElement>document.getElementById("screen");
+        let ctx = canvas.getContext("2d");
+
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.mainMemory.fill(0x02);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory);
+        this.ppu = new PPU(this.mainMemory, ctx);
         this.cpu = new CPU(this.mainMemory, this.ppu);
+
     }
 
     public boot() {
