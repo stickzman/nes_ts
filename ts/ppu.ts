@@ -6,25 +6,11 @@ class PPU {
     private oddFrame: boolean = false;
     private latch = false;
     private vRamAddr: number;
-    private scanline: number = 261;
+    private scanline: number = 0;
     private dot: number = 0;
-    //Render vars
-    private addrOffset: number = 0;
-    private addr: number;
-    private ntLatch: number;
-    private atLatch: number;
-    private bkgHiLatch: number;
-    private bkgLoLatch: number;
-
-    //Drawing to screen
-    private pixel = {
-        x: 0,
-        y: 0,
-        size: 1
-    };
 
     //CTRL vars
-    private baseNTAddr: number = 0x2000;
+    private static baseNTAddr: number = 0x2000;
     private incAddrBy32: boolean = false; //If false, inc by 1
     private spritePatAddr: number = 0;
     private bkgPatAddr: number = 0;
@@ -52,6 +38,43 @@ class PPU {
     private readonly PPUADDR: number = 0x2006;
     private readonly PPUDATA: number = 0x2007;
     private readonly OAMDMA: number = 0x4014;
+
+    //Render vars
+    private ntPointer = {
+        row: 0, //0-29 (30 rows, each row 8 px height)
+        col: 0, //0-31 (32 cols, each column 8 px width)
+        addr: function () {
+            //return ((this.row * 16) << 1) + this.col + PPU.baseNTAddr;
+            return this.row * 32 + this.col + PPU.baseNTAddr;
+        },
+        incCol: function() {
+            if (++this.col > 31) {
+                this.col = 0;
+            }
+        },
+        incRow: function() {
+            if (++this.row > 29) {
+                this.row = 0;
+            }
+        }
+    }
+    private atPointer = {
+        row: 0, //0-7.5 (8 rows, each row 32 px height)
+        col: 0, //0-8 (8 cols, each column 32 px width)
+        addr: function () {
+            return this.row * 8 + 0xC0 + this.col + PPU.baseNTAddr;
+        },
+        incCol: function() {
+            if (++this.col > 7) {
+                this.col = 0;
+            }
+        },
+        incRow: function() {
+            if (++this.row > 6.5) {
+                this.row = 0;
+            }
+        }
+    }
 
 
     constructor(mainMemory: Uint8Array, private ctx: CanvasRenderingContext2D) {
@@ -82,6 +105,7 @@ class PPU {
     public cycle() {
         switch (true) {
             case (this.scanline < 240):
+                if (this.oddFrame && this.dot == 0 && this.scanline == 0) this.dot++;
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
@@ -101,78 +125,30 @@ class PPU {
     }
 
     public visibleCycle() {
-        if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
-            this.dot++;
-        }
-        if (this.dot == 0) return;
-        switch (true) {
-            case (this.dot < 257 || (this.dot > 320 && this.dot <= 336)):
-                switch (this.dot % 8) {
-                    case 1: this.addr = this.baseNTAddr + this.addrOffset; break;
-                    case 2: this.ntLatch = this.mem[this.addr]; break;
-                    case 3: this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset/15); break;
-                    case 4: this.atLatch = this.mem[this.addr]; break;
-                    case 5: this.addr = this.ntLatch; break;
-                    case 6: this.bkgLoLatch = this.mem[this.addr]; break;
-                    case 7: this.addr += 8; break;
-                    case 0:
-                        this.bkgHiLatch = this.mem[this.addr];
-                        if (this.showBkg) {
-                            this.render();
-                        }
-                        if (++this.addrOffset >= 0x3C0) {
-                            this.addrOffset = 0;
-                        }
-                        break;
-                }
-                break;
-            case (this.dot < 321):
-                //TODO: Get sprites for *next* scanline HERE
-                break;
-        }
+        if (this.dot <= 256) {
+            console.log(this.ntPointer.addr().toString(16), this.atPointer.addr().toString(16));
 
-    }
-
-    public render() {
-        //Combine the hi and lo pattern tables into an array of nibbles
-        let hi = this.bkgHiLatch.toString(2).padStart(8, "0");
-        let lo = this.bkgLoLatch.toString(2).padStart(8, "0");
-        let pStr = [""];
-        for (let i = 0; i < hi.length; i++) {
-            if (i != hi.length - 1) {
-                pStr[0] += hi[i] + lo[i] + ",";
-            } else {
-                pStr[0] += hi[i] + lo[i];
-            }
-        }
-        pStr = pStr[0].split(",");
-        let pByte = [];
-        for (let i = 0; i < pStr.length; i++) {
-            pByte[i] = parseInt(pStr[i], 2);
-        }
-        let color;
-        for (let i = 0; i < pByte.length; i++) {
-            switch (pByte[i]) {
-                case 0:
-                    color = "#000000";
-                    break;
-                case 1:
-                    color = "#666666";
-                    break;
-                case 2:
-                    color = "#cccccc";
-                    break;
-                case 3:
-                    color = "#FFFFFF";
-                    break;
-            }
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(this.pixel.x, this.pixel.y, this.pixel.size, this.pixel.size);
-            if (++this.pixel.x >= 256) {
-                this.pixel.x = 0;
-                if (++this.pixel.y >= 240) {
-                    this.pixel.y = 0;
+            //Inc Nametable Pointer
+            if (this.dot % 8 == 0 && this.dot != 0) {
+                this.ntPointer.incCol();
+                if (this.ntPointer.col == 0
+                        && this.scanline % 8 == 7) {
+                    this.ntPointer.incRow();
                 }
+            }
+            //Inc Attr Table Pointer
+            if (this.dot % 32 == 0 && this.dot != 0) {
+                this.atPointer.incCol();
+                if (this.scanline % 32 == 31) {
+                    this.atPointer.incRow();
+                }
+            }
+            //Reset pointers
+            if (this.dot == 0 && this.scanline == 261) {
+                this.atPointer.row = 0;
+                this.atPointer.col = 0;
+                this.ntPointer.row = 0;
+                this.ntPointer.col = 0;
             }
         }
     }
@@ -192,10 +168,10 @@ class PPU {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
                 switch (ntBit) {
-                    case 0: this.baseNTAddr = 0x2000; break;
-                    case 1: this.baseNTAddr = 0x2400; break;
-                    case 2: this.baseNTAddr = 0x2800; break;
-                    case 3: this.baseNTAddr = 0x2C00; break;
+                    case 0: PPU.baseNTAddr = 0x2000; break;
+                    case 1: PPU.baseNTAddr = 0x2400; break;
+                    case 2: PPU.baseNTAddr = 0x2800; break;
+                    case 3: PPU.baseNTAddr = 0x2C00; break;
                 }
                 this.incAddrBy32 = (byte & 4) != 0;
                 if ((byte & 8) != 0) {
