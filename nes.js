@@ -2666,13 +2666,13 @@ class iNESFile {
         //Parse settings
         let lowNib = parseInt(hexStr[1], 16);
         let mask = 1;
-        this.mirrorVertical = (lowNib & mask) == 1;
+        this.mirrorVertical = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.batteryBacked = (lowNib & mask) == 1;
+        this.batteryBacked = (lowNib & mask) != 0;
         mask = 1 << 2;
-        this.trainerPresent = (lowNib & mask) == 1;
+        this.trainerPresent = (lowNib & mask) != 0;
         mask = 1 << 3;
-        this.fourScreenMode = (lowNib & mask) == 1;
+        this.fourScreenMode = (lowNib & mask) != 0;
         //Byte 7
         hexStr = buff[7].toString(16);
         //Get the hiByte of the mapper #
@@ -2682,9 +2682,9 @@ class iNESFile {
         //Get additional settings
         lowNib = parseInt(hexStr[1], 16);
         mask = 1;
-        this.vsGame = (lowNib & mask) == 1;
+        this.vsGame = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.isPC10 = (lowNib & mask) == 1;
+        this.isPC10 = (lowNib & mask) != 0;
         mask = 3 << 2;
         this.nes2_0 = (lowNib & mask) == 2;
         if (this.nes2_0) {
@@ -2711,9 +2711,9 @@ class iNESFile {
             hexStr = buff[12].toString(16);
             let byte = parseInt(hexStr, 16);
             mask = 1;
-            this.isPAL = (byte & mask) == 1;
+            this.isPAL = (byte & mask) != 0;
             mask = 1 << 1;
-            this.bothFormats = (byte & mask) == 1;
+            this.bothFormats = (byte & mask) != 0;
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
@@ -2835,7 +2835,7 @@ class PPU {
                         this.addr = this.baseNTAddr + this.addrOffset;
                         break;
                     case 2:
-                        this.ntLatch = this.mem[this.addr]; /* console.log(this.addr.toString(16), this.mem[0x21d0]);*/
+                        this.ntLatch = this.mem[this.addr];
                         break;
                     case 3:
                         this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset / 15);
@@ -2857,7 +2857,9 @@ class PPU {
                         if (this.showBkg) {
                             this.render();
                         }
-                        this.addrOffset++;
+                        if (++this.addrOffset >= 0x3C0) {
+                            this.addrOffset = 0;
+                        }
                         break;
                 }
                 break;
@@ -2886,7 +2888,6 @@ class PPU {
         }
         let color;
         for (let i = 0; i < pByte.length; i++) {
-            //console.log(this.ntLatch.toString(16));
             switch (pByte[i]) {
                 case 0:
                     color = "#000000";
@@ -2938,33 +2939,32 @@ class PPU {
                         this.baseNTAddr = 0x2C00;
                         break;
                 }
-                this.incAddrBy32 = (byte & 4) == 1;
-                if ((byte & 8) == 1) {
+                this.incAddrBy32 = (byte & 4) != 0;
+                if ((byte & 8) != 0) {
                     this.spritePatAddr = 0x1000;
                 }
                 else {
                     this.spritePatAddr = 0;
                 }
-                if ((byte & 16) == 1) {
+                if ((byte & 16) != 0) {
                     this.bkgPatAddr = 0x1000;
                 }
                 else {
                     this.bkgPatAddr = 0;
                 }
-                this.sprite8x16 = (byte & 32) == 1;
-                this.masterSlave = (byte & 64) == 1;
-                this.vBlankNMI = (byte & 128) == 1;
+                this.sprite8x16 = (byte & 32) != 0;
+                this.masterSlave = (byte & 64) != 0;
+                this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:
-                this.greyscale = (byte & 1) == 1;
-                this.showLeftBkg = (byte & 2) == 1;
-                this.showLeftSprite = (byte & 4) == 1;
-                this.showBkg = (byte & 8) == 1;
-                this.showSprites = (byte & 16) == 1;
-                this.maxRed = (byte & 32) == 1;
-                this.maxGreen = (byte & 64) == 1;
-                this.maxBlue = (byte & 128) == 1;
-                console.log(byte & 8);
+                this.greyscale = (byte & 1) != 0;
+                this.showLeftBkg = (byte & 2) != 0;
+                this.showLeftSprite = (byte & 4) != 0;
+                this.showBkg = (byte & 8) != 0;
+                this.showSprites = (byte & 16) != 0;
+                this.maxRed = (byte & 32) != 0;
+                this.maxGreen = (byte & 64) != 0;
+                this.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
                 if (!this.latch) {

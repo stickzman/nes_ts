@@ -109,7 +109,7 @@ class PPU {
             case (this.dot < 257 || (this.dot > 320 && this.dot <= 336)):
                 switch (this.dot % 8) {
                     case 1: this.addr = this.baseNTAddr + this.addrOffset; break;
-                    case 2: this.ntLatch = this.mem[this.addr];/* console.log(this.addr.toString(16), this.mem[0x21d0]);*/ break;
+                    case 2: this.ntLatch = this.mem[this.addr]; break;
                     case 3: this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset/15); break;
                     case 4: this.atLatch = this.mem[this.addr]; break;
                     case 5: this.addr = this.ntLatch; break;
@@ -120,7 +120,9 @@ class PPU {
                         if (this.showBkg) {
                             this.render();
                         }
-                        this.addrOffset++;
+                        if (++this.addrOffset >= 0x3C0) {
+                            this.addrOffset = 0;
+                        }
                         break;
                 }
                 break;
@@ -150,7 +152,6 @@ class PPU {
         }
         let color;
         for (let i = 0; i < pByte.length; i++) {
-            //console.log(this.ntLatch.toString(16));
             switch (pByte[i]) {
                 case 0:
                     color = "#000000";
@@ -196,32 +197,30 @@ class PPU {
                     case 2: this.baseNTAddr = 0x2800; break;
                     case 3: this.baseNTAddr = 0x2C00; break;
                 }
-                this.incAddrBy32 = (byte & 4) == 1;
-                if ((byte & 8) == 1) {
+                this.incAddrBy32 = (byte & 4) != 0;
+                if ((byte & 8) != 0) {
                     this.spritePatAddr = 0x1000;
                 } else {
                     this.spritePatAddr = 0;
                 }
-                if ((byte & 16) == 1) {
+                if ((byte & 16) != 0) {
                     this.bkgPatAddr = 0x1000;
                 } else {
                     this.bkgPatAddr = 0;
                 }
-                this.sprite8x16 = (byte & 32) == 1;
-                this.masterSlave = (byte & 64) == 1;
-                this.vBlankNMI = (byte & 128) == 1;
+                this.sprite8x16 = (byte & 32) != 0;
+                this.masterSlave = (byte & 64) != 0;
+                this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:
-                this.greyscale = (byte & 1) == 1;
-                this.showLeftBkg = (byte & 2) == 1;
-                this.showLeftSprite = (byte & 4) == 1;
-                this.showBkg = (byte & 8) == 1;
-                this.showSprites = (byte & 16) == 1;
-                this.maxRed = (byte & 32) == 1;
-                this.maxGreen = (byte & 64) == 1;
-                this.maxBlue = (byte & 128) == 1;
-
-                    console.log(byte & 8);
+                this.greyscale = (byte & 1) != 0;
+                this.showLeftBkg = (byte & 2) != 0;
+                this.showLeftSprite = (byte & 4) != 0;
+                this.showBkg = (byte & 8) != 0;
+                this.showSprites = (byte & 16) != 0;
+                this.maxRed = (byte & 32) != 0;
+                this.maxGreen = (byte & 64) != 0;
+                this.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
                 if (!this.latch) {

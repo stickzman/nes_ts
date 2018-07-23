@@ -40,13 +40,13 @@ class iNESFile {
         //Parse settings
         let lowNib = parseInt(hexStr[1], 16);
         let mask = 1;
-        this.mirrorVertical = (lowNib & mask) == 1;
+        this.mirrorVertical = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.batteryBacked = (lowNib & mask) == 1;
+        this.batteryBacked = (lowNib & mask) != 0;
         mask = 1 << 2;
-        this.trainerPresent = (lowNib & mask) == 1;
+        this.trainerPresent = (lowNib & mask) != 0;
         mask = 1 << 3;
-        this.fourScreenMode = (lowNib & mask) == 1;
+        this.fourScreenMode = (lowNib & mask) != 0;
 
         //Byte 7
         hexStr = buff[7].toString(16);
@@ -57,9 +57,9 @@ class iNESFile {
         //Get additional settings
         lowNib = parseInt(hexStr[1], 16);
         mask = 1;
-        this.vsGame = (lowNib & mask) == 1;
+        this.vsGame = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.isPC10 = (lowNib & mask) == 1;
+        this.isPC10 = (lowNib & mask) != 0;
         mask = 3 << 2;
         this.nes2_0 = (lowNib & mask) == 2;
 
@@ -87,9 +87,9 @@ class iNESFile {
             hexStr = buff[12].toString(16);
             let byte = parseInt(hexStr, 16);
             mask = 1;
-            this.isPAL = (byte & mask) == 1;
+            this.isPAL = (byte & mask) != 0;
             mask = 1 << 1;
-            this.bothFormats = (byte & mask) == 1;
+            this.bothFormats = (byte & mask) != 0;
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
