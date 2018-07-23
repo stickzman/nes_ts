@@ -109,13 +109,19 @@ class PPU {
             case (this.dot < 257 || (this.dot > 320 && this.dot <= 336)):
                 switch (this.dot % 8) {
                     case 1: this.addr = this.baseNTAddr + this.addrOffset; break;
-                    case 2: this.ntLatch = this.mem[this.addr]; break;
+                    case 2: this.ntLatch = this.mem[this.addr];/* console.log(this.addr.toString(16), this.mem[0x21d0]);*/ break;
                     case 3: this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset/15); break;
                     case 4: this.atLatch = this.mem[this.addr]; break;
                     case 5: this.addr = this.ntLatch; break;
                     case 6: this.bkgLoLatch = this.mem[this.addr]; break;
                     case 7: this.addr += 8; break;
-                    case 0: this.bkgHiLatch = this.mem[this.addr]; this.render(); break;
+                    case 0:
+                        this.bkgHiLatch = this.mem[this.addr];
+                        if (this.showBkg) {
+                            this.render();
+                        }
+                        this.addrOffset++;
+                        break;
                 }
                 break;
             case (this.dot < 321):
@@ -127,19 +133,24 @@ class PPU {
 
     public render() {
         //Combine the hi and lo pattern tables into an array of nibbles
-        let hi = this.bkgHiLatch.toString(2);
-        let lo = this.bkgLoLatch.toString(2);
+        let hi = this.bkgHiLatch.toString(2).padStart(8, "0");
+        let lo = this.bkgLoLatch.toString(2).padStart(8, "0");
         let pStr = [""];
         for (let i = 0; i < hi.length; i++) {
-            pStr[0] += hi[i] + lo[i] + ",";
+            if (i != hi.length - 1) {
+                pStr[0] += hi[i] + lo[i] + ",";
+            } else {
+                pStr[0] += hi[i] + lo[i];
+            }
         }
         pStr = pStr[0].split(",");
-        let pByte;
+        let pByte = [];
         for (let i = 0; i < pStr.length; i++) {
-            pByte[i] = parseInt(pByte[i], 2);
+            pByte[i] = parseInt(pStr[i], 2);
         }
         let color;
         for (let i = 0; i < pByte.length; i++) {
+            //console.log(this.ntLatch.toString(16));
             switch (pByte[i]) {
                 case 0:
                     color = "#000000";
@@ -154,6 +165,7 @@ class PPU {
                     color = "#FFFFFF";
                     break;
             }
+            this.ctx.fillStyle = color;
             this.ctx.fillRect(this.pixel.x, this.pixel.y, this.pixel.size, this.pixel.size);
             if (++this.pixel.x >= 256) {
                 this.pixel.x = 0;
@@ -208,6 +220,8 @@ class PPU {
                 this.maxRed = (byte & 32) == 1;
                 this.maxGreen = (byte & 64) == 1;
                 this.maxBlue = (byte & 128) == 1;
+
+                    console.log(byte & 8);
                 break;
             case this.PPUADDR:
                 if (!this.latch) {

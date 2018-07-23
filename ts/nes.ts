@@ -29,9 +29,12 @@ class NES {
 
         this.running = true;
         let i = 0;
-        while (i++ < 1000000) {
+        while (i++ < 40000) {
             try {
-                this.cpu.step();
+                let cpuCycles = this.cpu.step();
+                for (let j = 0; j < cpuCycles * 3; j++) {
+                    this.ppu.cycle();
+                }
             } catch (e) {
                 if (e.name == "Unexpected OpCode") {
                     console.log(e.message);

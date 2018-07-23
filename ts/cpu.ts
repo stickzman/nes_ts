@@ -88,6 +88,8 @@ class CPU {
 
         this.PC += op.bytes;
         if (this.PC > 0xFFFF) { this.PC -= 0x10000; }
+        
+        return op.cycles;
     }
 
     public requestInterrupt() {
