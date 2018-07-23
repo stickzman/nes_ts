@@ -3004,7 +3004,6 @@ class NES {
         let canvas = document.getElementById("screen");
         let ctx = canvas.getContext("2d");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
-        this.mainMemory.fill(0x02);
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this.mainMemory, ctx);
         this.cpu = new CPU(this.mainMemory, this.ppu);
