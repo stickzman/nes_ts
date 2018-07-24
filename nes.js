@@ -2864,7 +2864,7 @@ class PPU {
             //Inc Attr Table Pointer
             if (this.dot % 32 == 0 && this.dot != 0) {
                 this.atPointer.incCol();
-                if (this.scanline % 32 == 31) {
+                if (this.atPointer.col == 0 && this.scanline % 32 == 31) {
                     this.atPointer.incRow();
                 }
             }
