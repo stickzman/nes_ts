@@ -9,6 +9,11 @@ class PPU {
     private scanline: number = 0;
     private dot: number = 0;
 
+    private attrByte: number;
+    private bkgAddr: number;
+    private bkgHiByte: number;
+    private bkgLoByte: number;
+
     //CTRL vars
     private static baseNTAddr: number = 0x2000;
     private incAddrBy32: boolean = false; //If false, inc by 1
@@ -131,8 +136,50 @@ class PPU {
     }
 
     public visibleCycle() {
+        if (this.dot == 0) return; //Idle on Cycle 0
+        switch (true) {
+            case (this.dot <= 256):
+                switch (this.dot % 8) {
+                    case 1:
+                        //Get nameTable addr (handled below switch/case)
+                        break;
+                    case 2:
+                        //Get nameTable byte
+                        break;
+                    case 3:
+                        //Get attrTable addr (handled below switch/case)
+                        break;
+                    case 4:
+                        //Get attrTable byte
+                        this.attrByte = this.mem[this.atPointer.addr()];
+                        break;
+                    case 5:
+                        //Get Low BG addr
+                        this.bkgAddr = this.mem[this.ntPointer.addr()];
+                        break;
+                    case 6:
+                        //Get Low BG byte
+                        this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8];
+                        break;
+                    case 7:
+                        //Get High BG addr
+                        this.bkgAddr += 8;
+                        break;
+                    case 0:
+                        //Get High BG byte
+                        this.bkgHiByte = this.mem[this.bkgAddr];
+                        if (this.showBkg) {
+                            this.render();
+                        }
+                        break;
+                }
+                break;
+            case (this.dot <= 320):
+                //TODO: Sprite Evaluation
+                break;
+        }
+
         if (this.dot <= 256) {
-            console.log(this.ntPointer.addr().toString(16), this.atPointer.addr().toString(16));
             //Inc Nametable Pointer
             if (this.dot % 8 == 0 && this.dot != 0) {
                 this.ntPointer.incCol();
@@ -147,6 +194,24 @@ class PPU {
                     this.atPointer.incRow();
                 }
             }
+        }
+    }
+
+    public render() {
+        let hi = this.bkgHiByte.toString(2).padStart(8, "0");
+        let lo = this.bkgLoByte.toString(2).padStart(8, "0");
+        let pStr = [""];
+        for (let i = 0; i < hi.length; i++) {
+            if (i == hi.length - 1) {
+                pStr[0] += "" + hi[i] + lo[i];
+            } else {
+                pStr[0] += "" + hi[i] + lo[i] + ",";
+            }
+        }
+        pStr = pStr[0].split(",");
+        let pByte = [];
+        for (let i = 0; i < pStr.length; i++) {
+            pByte[i] = parseInt(pStr[i], 2);
         }
     }
 
