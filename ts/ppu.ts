@@ -44,7 +44,6 @@ class PPU {
         row: 0, //0-29 (30 rows, each row 8 px height)
         col: 0, //0-31 (32 cols, each column 8 px width)
         addr: function () {
-            //return ((this.row * 16) << 1) + this.col + PPU.baseNTAddr;
             return this.row * 32 + this.col + PPU.baseNTAddr;
         },
         incCol: function() {
@@ -62,7 +61,7 @@ class PPU {
         row: 0, //0-7.5 (8 rows, each row 32 px height)
         col: 0, //0-8 (8 cols, each column 32 px width)
         addr: function () {
-            return this.row * 8 + 0xC0 + this.col + PPU.baseNTAddr;
+            return this.row * 8 + 0x3C0 + this.col + PPU.baseNTAddr;
         },
         incCol: function() {
             if (++this.col > 7) {
@@ -70,7 +69,7 @@ class PPU {
             }
         },
         incRow: function() {
-            if (++this.row > 6.5) {
+            if (++this.row > 7) {
                 this.row = 0;
             }
         }
@@ -122,17 +121,22 @@ class PPU {
                 this.oddFrame = !this.oddFrame;
             }
         }
+        //Reset pointers
+        if (this.dot == 0 && this.scanline == 261) {
+            this.atPointer.row = 0;
+            this.atPointer.col = 0;
+            this.ntPointer.row = 0;
+            this.ntPointer.col = 0;
+        }
     }
 
     public visibleCycle() {
         if (this.dot <= 256) {
             console.log(this.ntPointer.addr().toString(16), this.atPointer.addr().toString(16));
-
             //Inc Nametable Pointer
             if (this.dot % 8 == 0 && this.dot != 0) {
                 this.ntPointer.incCol();
-                if (this.ntPointer.col == 0
-                        && this.scanline % 8 == 7) {
+                if (this.ntPointer.col == 0 && this.scanline % 8 == 7) {
                     this.ntPointer.incRow();
                 }
             }
@@ -142,13 +146,6 @@ class PPU {
                 if (this.atPointer.col == 0 && this.scanline % 32 == 31) {
                     this.atPointer.incRow();
                 }
-            }
-            //Reset pointers
-            if (this.dot == 0 && this.scanline == 261) {
-                this.atPointer.row = 0;
-                this.atPointer.col = 0;
-                this.ntPointer.row = 0;
-                this.ntPointer.col = 0;
             }
         }
     }

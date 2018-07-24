@@ -27,7 +27,7 @@ class NES {
 
         this.running = true;
         let i = 0;
-        while (i++ < 5000) {
+        while (i++ < 10000) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {

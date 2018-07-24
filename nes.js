@@ -2776,7 +2776,6 @@ class PPU {
             row: 0,
             col: 0,
             addr: function () {
-                //return ((this.row * 16) << 1) + this.col + PPU.baseNTAddr;
                 return this.row * 32 + this.col + PPU.baseNTAddr;
             },
             incCol: function () {
@@ -2794,7 +2793,7 @@ class PPU {
             row: 0,
             col: 0,
             addr: function () {
-                return this.row * 8 + 0xC0 + this.col + PPU.baseNTAddr;
+                return this.row * 8 + 0x3C0 + this.col + PPU.baseNTAddr;
             },
             incCol: function () {
                 if (++this.col > 7) {
@@ -2802,7 +2801,7 @@ class PPU {
                 }
             },
             incRow: function () {
-                if (++this.row > 6.5) {
+                if (++this.row > 7) {
                     this.row = 0;
                 }
             }
@@ -2849,6 +2848,13 @@ class PPU {
                 this.oddFrame = !this.oddFrame;
             }
         }
+        //Reset pointers
+        if (this.dot == 0 && this.scanline == 261) {
+            this.atPointer.row = 0;
+            this.atPointer.col = 0;
+            this.ntPointer.row = 0;
+            this.ntPointer.col = 0;
+        }
     }
     visibleCycle() {
         if (this.dot <= 256) {
@@ -2856,8 +2862,7 @@ class PPU {
             //Inc Nametable Pointer
             if (this.dot % 8 == 0 && this.dot != 0) {
                 this.ntPointer.incCol();
-                if (this.ntPointer.col == 0
-                    && this.scanline % 8 == 7) {
+                if (this.ntPointer.col == 0 && this.scanline % 8 == 7) {
                     this.ntPointer.incRow();
                 }
             }
@@ -2867,13 +2872,6 @@ class PPU {
                 if (this.atPointer.col == 0 && this.scanline % 32 == 31) {
                     this.atPointer.incRow();
                 }
-            }
-            //Reset pointers
-            if (this.dot == 0 && this.scanline == 261) {
-                this.atPointer.row = 0;
-                this.atPointer.col = 0;
-                this.ntPointer.row = 0;
-                this.ntPointer.col = 0;
             }
         }
     }
@@ -2981,7 +2979,7 @@ class NES {
         this.cpu.boot();
         this.running = true;
         let i = 0;
-        while (i++ < 5000) {
+        while (i++ < 10000) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
