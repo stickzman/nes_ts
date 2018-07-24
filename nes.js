@@ -2918,6 +2918,7 @@ class PPU {
         }
     }
     render() {
+        //Combine PATTERN DATA
         let hi = this.bkgHiByte.toString(2).padStart(8, "0");
         let lo = this.bkgLoByte.toString(2).padStart(8, "0");
         let pStr = [""];
@@ -2934,6 +2935,17 @@ class PPU {
         for (let i = 0; i < pStr.length; i++) {
             pByte[i] = parseInt(pStr[i], 2);
         }
+        //Get PALETTE NUMBER
+        let quad;
+        if (this.dot % 32 < 16) {
+            quad = (this.scanline % 32 < 16) ? 0 : 1;
+        }
+        else {
+            quad = (this.scanline % 32 < 16) ? 2 : 3;
+        }
+        let palNum;
+        let mask = 3 << (quad * 2);
+        palNum = (this.attrByte & mask) >> (quad * 2);
     }
     readReg(addr) {
         switch (addr) {
@@ -3020,6 +3032,327 @@ class PPU {
 }
 //CTRL vars
 PPU.baseNTAddr = 0x2000;
+let palData = {};
+palData[0x30] = {
+    r: 84,
+    g: 84,
+    b: 84
+};
+palData[0x01] = {
+    r: 0,
+    g: 30,
+    b: 116
+};
+palData[0x02] = {
+    r: 8,
+    g: 16,
+    b: 144
+};
+palData[0x03] = {
+    r: 48,
+    g: 0,
+    b: 136
+};
+palData[0x04] = {
+    r: 68,
+    g: 0,
+    b: 100
+};
+palData[0x05] = {
+    r: 92,
+    g: 0,
+    b: 48
+};
+palData[0x06] = {
+    r: 84,
+    g: 4,
+    b: 0
+};
+palData[0x07] = {
+    r: 60,
+    g: 24,
+    b: 0
+};
+palData[0x08] = {
+    r: 32,
+    g: 42,
+    b: 0
+};
+palData[0x09] = {
+    r: 8,
+    g: 58,
+    b: 0
+};
+palData[0x0A] = {
+    r: 0,
+    g: 64,
+    b: 0
+};
+palData[0x0B] = {
+    r: 0,
+    g: 60,
+    b: 0
+};
+palData[0x0C] = {
+    r: 0,
+    g: 50,
+    b: 60
+};
+palData[0x0D] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x0E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x0F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x10] = {
+    r: 152,
+    g: 150,
+    b: 152
+};
+palData[0x11] = {
+    r: 8,
+    g: 76,
+    b: 196
+};
+palData[0x12] = {
+    r: 48,
+    g: 50,
+    b: 236
+};
+palData[0x13] = {
+    r: 92,
+    g: 30,
+    b: 228
+};
+palData[0x14] = {
+    r: 136,
+    g: 20,
+    b: 176
+};
+palData[0x15] = {
+    r: 160,
+    g: 20,
+    b: 100
+};
+palData[0x16] = {
+    r: 152,
+    g: 34,
+    b: 32
+};
+palData[0x17] = {
+    r: 120,
+    g: 60,
+    b: 0
+};
+palData[0x18] = {
+    r: 84,
+    g: 90,
+    b: 0
+};
+palData[0x19] = {
+    r: 40,
+    g: 114,
+    b: 0
+};
+palData[0x1A] = {
+    r: 8,
+    g: 124,
+    b: 0
+};
+palData[0x1B] = {
+    r: 0,
+    g: 118,
+    b: 40
+};
+palData[0x1C] = {
+    r: 0,
+    g: 102,
+    b: 120
+};
+palData[0x1D] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x1E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x1F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x20] = {
+    r: 236,
+    g: 238,
+    b: 236
+};
+palData[0x21] = {
+    r: 76,
+    g: 154,
+    b: 236
+};
+palData[0x22] = {
+    r: 120,
+    g: 124,
+    b: 236
+};
+palData[0x23] = {
+    r: 176,
+    g: 98,
+    b: 236
+};
+palData[0x24] = {
+    r: 228,
+    g: 84,
+    b: 236
+};
+palData[0x25] = {
+    r: 236,
+    g: 88,
+    b: 180
+};
+palData[0x26] = {
+    r: 236,
+    g: 106,
+    b: 100
+};
+palData[0x27] = {
+    r: 212,
+    g: 136,
+    b: 32
+};
+palData[0x28] = {
+    r: 160,
+    g: 170,
+    b: 0
+};
+palData[0x29] = {
+    r: 116,
+    g: 196,
+    b: 0
+};
+palData[0x2A] = {
+    r: 76,
+    g: 208,
+    b: 32
+};
+palData[0x2B] = {
+    r: 56,
+    g: 204,
+    b: 108
+};
+palData[0x2C] = {
+    r: 56,
+    g: 180,
+    b: 204
+};
+palData[0x2D] = {
+    r: 60,
+    g: 60,
+    b: 60
+};
+palData[0x2E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x2F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x30] = {
+    r: 236,
+    g: 238,
+    b: 236
+};
+palData[0x31] = {
+    r: 168,
+    g: 204,
+    b: 236
+};
+palData[0x32] = {
+    r: 188,
+    g: 188,
+    b: 236
+};
+palData[0x33] = {
+    r: 212,
+    g: 178,
+    b: 236
+};
+palData[0x34] = {
+    r: 236,
+    g: 174,
+    b: 236
+};
+palData[0x35] = {
+    r: 236,
+    g: 174,
+    b: 212
+};
+palData[0x36] = {
+    r: 236,
+    g: 180,
+    b: 176
+};
+palData[0x37] = {
+    r: 228,
+    g: 196,
+    b: 144
+};
+palData[0x38] = {
+    r: 204,
+    g: 210,
+    b: 120
+};
+palData[0x39] = {
+    r: 180,
+    g: 222,
+    b: 120
+};
+palData[0x3A] = {
+    r: 168,
+    g: 226,
+    b: 144
+};
+palData[0x3B] = {
+    r: 152,
+    g: 226,
+    b: 180
+};
+palData[0x3C] = {
+    r: 160,
+    g: 214,
+    b: 228
+};
+palData[0x3D] = {
+    r: 160,
+    g: 162,
+    b: 160
+};
+palData[0x3E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+palData[0x3F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
