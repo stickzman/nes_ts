@@ -12,10 +12,9 @@ class NES {
 
     constructor(romData: Uint8Array) {
         let canvas = <HTMLCanvasElement>document.getElementById("screen");
-        let ctx = canvas.getContext("2d");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory, ctx);
+        this.ppu = new PPU(this.mainMemory, canvas);
         this.cpu = new CPU(this.mainMemory, this.ppu);
 
     }
@@ -27,7 +26,7 @@ class NES {
 
         this.running = true;
         let i = 0;
-        while (i++ < 100000) {
+        while (i++ < 90000) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {

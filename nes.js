@@ -2739,12 +2739,34 @@ class iNESFile {
     }
 }
 class PPU {
-    constructor(mainMemory, ctx) {
-        this.ctx = ctx;
+    constructor(mainMemory, canvas) {
+        this.canvas = canvas;
         this.oddFrame = false;
         this.latch = false;
         this.scanline = 0;
         this.dot = 0;
+        this.ctx = {
+            ctx: null,
+            imageData: null,
+            x: 0,
+            y: 0,
+            setPixel: function (r, g, b, a = 255) {
+                let i = this.y * this.imageData.width * 4 + this.x * 4;
+                this.imageData.data[i++] = r;
+                this.imageData.data[i++] = g;
+                this.imageData.data[i++] = b;
+                this.imageData.data[i] = a;
+                if (++this.x > this.imageData.width - 1) {
+                    this.x = 0;
+                    if (++this.y > this.imageData.height - 1) {
+                        this.y = 0;
+                    }
+                }
+            },
+            paintFrame: function () {
+                this.ctx.putImageData(this.imageData, 0, 0);
+            }
+        };
         this.incAddrBy32 = false; //If false, inc by 1
         this.spritePatAddr = 0;
         this.bkgPatAddr = 0;
@@ -2806,11 +2828,16 @@ class PPU {
                 }
             }
         };
-        this.x = 0;
-        this.y = 0;
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         this.cpuMem = mainMemory;
+        let ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        let imgData = ctx.createImageData(canvas.width, canvas.height);
+        this.ctx.ctx = ctx;
+        this.ctx.imageData = imgData;
     }
     boot() {
         this.cpuMem[this.PPUCTRL] = 0;
@@ -2863,6 +2890,12 @@ class PPU {
             return; //Idle on Cycle 0
         switch (true) {
             case (this.dot <= 256):
+                /*
+                    console.log(this.showBkg);
+                    console.log(this.scanline, this.dot);
+                    console.log(this.ctx.x, this.ctx.y);
+                    console.log(this.ntPointer.addr().toString(16), this.atPointer.addr().toString(16));
+                */
                 switch (this.dot % 8) {
                     case 1:
                         //Get nameTable addr (handled below switch/case)
@@ -2892,9 +2925,7 @@ class PPU {
                     case 0:
                         //Get High BG byte
                         this.bkgHiByte = this.mem[this.bkgAddr];
-                        if (this.showBkg) {
-                            this.render();
-                        }
+                        this.render();
                         break;
                 }
                 break;
@@ -2904,22 +2935,36 @@ class PPU {
         }
         if (this.dot <= 256) {
             //Inc Nametable Pointer
-            if (this.dot % 8 == 0 && this.dot != 0) {
+            if (this.dot % 8 == 0) {
                 this.ntPointer.incCol();
-                if (this.ntPointer.col == 0 && this.scanline % 8 == 7) {
-                    this.ntPointer.incRow();
-                }
             }
             //Inc Attr Table Pointer
             if (this.dot % 32 == 0 && this.dot != 0) {
                 this.atPointer.incCol();
-                if (this.atPointer.col == 0 && this.scanline % 32 == 31) {
-                    this.atPointer.incRow();
-                }
+            }
+        }
+        if (this.dot == 256) {
+            if (this.scanline % 32 == 31) {
+                this.atPointer.incRow();
+            }
+            if (this.scanline % 8 == 7) {
+                this.ntPointer.incRow();
+            }
+            if (this.scanline == 239) {
+                this.ctx.paintFrame();
             }
         }
     }
     render() {
+        if (!this.showBkg) {
+            //Get Universal Background Color and paint a blank pixel
+            let palData = this.mem[0x3F00] & 0x3F;
+            let col = colorData[palData];
+            for (let i = 0; i < 8; i++) {
+                this.ctx.setPixel(col.r, col.g, col.b);
+            }
+            return;
+        }
         //Combine PATTERN DATA
         let hi = this.bkgHiByte.toString(2).padStart(8, "0");
         let lo = this.bkgLoByte.toString(2).padStart(8, "0");
@@ -2952,14 +2997,7 @@ class PPU {
             let palInd = 0x3F00 + palNum * 4 + pByte[i];
             let palData = this.mem[palInd] & 0x3F;
             let col = colorData[palData];
-            this.ctx.fillStyle = `rgba(${col.r}, ${col.g}, ${col.b})`;
-            this.ctx.fillRect(this.x, this.y, 1, 1);
-            if (++this.x > 255) {
-                this.x = 0;
-                if (++this.y > 239) {
-                    this.y = 0;
-                }
-            }
+            this.ctx.setPixel(col.r, col.g, col.b);
         }
     }
     readReg(addr) {
@@ -3036,6 +3074,16 @@ class PPU {
                 break;
         }
     }
+    /*
+        private resetPointers() {
+            this.ctx.x = 0;
+            this.ctx.y = 0;
+            this.ntPointer.row = 0;
+            this.ntPointer.col = 0;
+            this.atPointer.row = 0;
+            this.atPointer.col = 0;
+        }
+        */
     setVBL() {
         this.vbl = true;
         this.mem[this.PPUSTATUS] |= 128;
@@ -3048,7 +3096,7 @@ class PPU {
 //CTRL vars
 PPU.baseNTAddr = 0x2000;
 let colorData = {};
-colorData[0x30] = {
+colorData[0x00] = {
     r: 84,
     g: 84,
     b: 84
@@ -3375,10 +3423,9 @@ class NES {
         this.MEM_SIZE = 0x10000;
         this.running = false;
         let canvas = document.getElementById("screen");
-        let ctx = canvas.getContext("2d");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory, ctx);
+        this.ppu = new PPU(this.mainMemory, canvas);
         this.cpu = new CPU(this.mainMemory, this.ppu);
     }
     boot() {
@@ -3387,7 +3434,7 @@ class NES {
         this.cpu.boot();
         this.running = true;
         let i = 0;
-        while (i++ < 100000) {
+        while (i++ < 90000) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
