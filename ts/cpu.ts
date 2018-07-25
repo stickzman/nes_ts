@@ -88,7 +88,7 @@ class CPU {
 
         this.PC += op.bytes;
         if (this.PC > 0xFFFF) { this.PC -= 0x10000; }
-        
+
         return op.cycles;
     }
 
@@ -120,15 +120,11 @@ class CPU {
 
         this.flags.interruptDisable = true;
         //Set program counter to interrupt vector
-        let vector = new Uint8Array(
-            this.mem.slice(resetVectStartAddr, resetVectStartAddr+2));
-        this.PC = combineHexBuff(vector.reverse());
+        this.PC = combineHex(this.mem[resetVectStartAddr+1], this.mem[resetVectStartAddr]);
     }
 
     private getResetVector(): number{
-        let bytes = new Uint8Array(
-                this.mem.slice(this.RES_VECT_LOC,this.RES_VECT_LOC+2));
-        return combineHexBuff(bytes.reverse());
+        return combineHex(this.mem[this.RES_VECT_LOC+1], this.mem[this.RES_VECT_LOC]);
     }
 
     private pushStack(byte: number) {
@@ -167,11 +163,11 @@ class CPU {
     }
 
     private next2Bytes(flip = true): number {
-        let bytes = new Uint8Array(this.mem.slice(this.PC+1, this.PC+3));
         if (flip) {
-            bytes.reverse();
+            return combineHex(this.mem[this.PC+2], this.mem[this.PC+1]);
+        } else {
+            return combineHex(this.mem[this.PC+1], this.mem[this.PC+2]);
         }
-        return combineHexBuff(bytes);
     }
 
     private updateOverflowFlag(reg: number, num1: number, num2: number) {

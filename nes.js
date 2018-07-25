@@ -94,12 +94,10 @@ class CPU {
         this.pushStack(statusByte);
         this.flags.interruptDisable = true;
         //Set program counter to interrupt vector
-        let vector = new Uint8Array(this.mem.slice(resetVectStartAddr, resetVectStartAddr + 2));
-        this.PC = combineHexBuff(vector.reverse());
+        this.PC = combineHex(this.mem[resetVectStartAddr + 1], this.mem[resetVectStartAddr]);
     }
     getResetVector() {
-        let bytes = new Uint8Array(this.mem.slice(this.RES_VECT_LOC, this.RES_VECT_LOC + 2));
-        return combineHexBuff(bytes.reverse());
+        return combineHex(this.mem[this.RES_VECT_LOC + 1], this.mem[this.RES_VECT_LOC]);
     }
     pushStack(byte) {
         //Write byte to stack
@@ -131,11 +129,12 @@ class CPU {
         return this.mem[this.PC + 1];
     }
     next2Bytes(flip = true) {
-        let bytes = new Uint8Array(this.mem.slice(this.PC + 1, this.PC + 3));
         if (flip) {
-            bytes.reverse();
+            return combineHex(this.mem[this.PC + 2], this.mem[this.PC + 1]);
         }
-        return combineHexBuff(bytes);
+        else {
+            return combineHex(this.mem[this.PC + 1], this.mem[this.PC + 2]);
+        }
     }
     updateOverflowFlag(reg, num1, num2) {
         //If the sum of two like signed terms is a diff sign, then the
@@ -2625,9 +2624,6 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 };
-function combineHexBuff(buff) {
-    return (buff[0] << 8) | (buff[1]);
-}
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
