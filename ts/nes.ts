@@ -16,8 +16,7 @@ class NES {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this.mainMemory, canvas);
-        this.cpu = new CPU(this.mainMemory, this.ppu);
-
+        this.cpu = new CPU(this);
     }
 
     public boot() {
@@ -28,6 +27,7 @@ class NES {
         this.step();
     }
 
+    private counter = 0;
     private step() {
         NES.drawFrame = false;
         while (!NES.drawFrame) {
@@ -47,7 +47,22 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
+        if (this.counter++ > 1000) {
+            this.displayMem();
+            this.displayPPUMem();
+        } else {
+            this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
+        }
+    }
+
+    public read(addr: number): number {
+        this.ppu.readReg(addr);
+        return this.mainMemory[addr];
+    }
+
+    public write(addr: number, data: number) {
+        this.mainMemory[addr] = data;
+        this.ppu.writeReg(addr);
     }
 
     private displayMem() {
