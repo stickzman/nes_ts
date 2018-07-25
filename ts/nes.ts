@@ -28,8 +28,6 @@ class NES {
     }
 
     private step() {
-        //let prevMS = Date.now();
-
         NES.drawFrame = false;
         while (!NES.drawFrame) {
             try {
@@ -47,8 +45,6 @@ class NES {
         }
 
         this.ppu.ctx.paintFrame();
-
-        //console.log(Date.now() - prevMS);
 
         window.requestAnimationFrame(this.step.bind(this));
     }

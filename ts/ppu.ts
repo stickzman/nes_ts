@@ -242,20 +242,17 @@ class PPU {
             return;
         }
         //Combine PATTERN DATA
-        let hi = this.bkgHiByte.toString(2).padStart(8, "0");
-        let lo = this.bkgLoByte.toString(2).padStart(8, "0");
-        let pStr = [""];
-        for (let i = 0; i < hi.length; i++) {
-            if (i == hi.length - 1) {
-                pStr[0] += "" + hi[i] + lo[i];
-            } else {
-                pStr[0] += "" + hi[i] + lo[i] + ",";
-            }
-        }
-        pStr = pStr[0].split(",");
         let pByte = [];
-        for (let i = 0; i < pStr.length; i++) {
-            pByte[i] = parseInt(pStr[i], 2);
+        let mask: number;
+        for (let i = 0; i < 8; i++) {
+            mask = 1 << (7 - i);
+            if (i > 6) {
+                pByte[i] = ((this.bkgHiByte & mask) << 1) +
+                                (this.bkgLoByte & mask);
+            } else {
+                pByte[i] = ((this.bkgHiByte & mask) >> (6 - i)) +
+                                ((this.bkgLoByte & mask) >> (7 - i));
+            }
         }
         //Get PALETTE NUMBER
         let quad: number;
@@ -265,7 +262,7 @@ class PPU {
             quad = (this.scanline % 32 < 16) ? 2 : 3;
         }
         let palNum: number;
-        let mask = 3 << (quad * 2);
+        mask = 3 << (quad * 2);
         palNum = (this.attrByte & mask) >> (quad * 2);
         for (let i = 0; i < 8; i++) {
             let palInd = 0x3F00 + palNum * 4 + pByte[i];
