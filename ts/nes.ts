@@ -9,6 +9,7 @@ class NES {
     private mainMemory: Uint8Array;
 
     public static drawFrame: boolean = false;
+    public lastAnimFrame;
 
     constructor(romData: Uint8Array) {
         let canvas = <HTMLCanvasElement>document.getElementById("screen");
@@ -46,7 +47,7 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        window.requestAnimationFrame(this.step.bind(this));
+        this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
     }
 
     private displayMem() {
@@ -73,6 +74,9 @@ document.getElementById('file-input')
   .addEventListener('change', init, false);
 
 function init(e) {
+    if (nes !== undefined) {
+        window.cancelAnimationFrame(nes.lastAnimFrame);
+    }
     let file = e.target.files[0];
     if (!file) {
         return;
