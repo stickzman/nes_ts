@@ -9,7 +9,7 @@ class PPU {
     private scanline: number = 0;
     private dot: number = 0;
 
-    private ctx = {
+    public ctx = {
         ctx: null,
         imageData: null,
         x: 0,
@@ -225,7 +225,8 @@ class PPU {
                 this.ntPointer.incRow();
             }
             if (this.scanline == 239) {
-                this.ctx.paintFrame();
+                //this.ctx.paintFrame();
+                NES.drawFrame = true;
             }
         }
     }

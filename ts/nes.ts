@@ -8,7 +8,7 @@ class NES {
     private ppu: PPU;
     private mainMemory: Uint8Array;
 
-    private running: boolean = false;
+    public static drawFrame: boolean = false;
 
     constructor(romData: Uint8Array) {
         let canvas = <HTMLCanvasElement>document.getElementById("screen");
@@ -23,10 +23,15 @@ class NES {
         this.ppu.boot();
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
-        
-        this.running = true;
-        let i = 0;
-        while (i++ < 90000) {
+
+        this.step();
+    }
+
+    private step() {
+        //let prevMS = Date.now();
+
+        NES.drawFrame = false;
+        while (!NES.drawFrame) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
@@ -41,8 +46,11 @@ class NES {
             }
         }
 
-        this.displayMem();
-        this.displayPPUMem();
+        this.ppu.ctx.paintFrame();
+
+        //console.log(Date.now() - prevMS);
+
+        window.requestAnimationFrame(this.step.bind(this));
     }
 
     private displayMem() {
