@@ -2890,12 +2890,6 @@ class PPU {
             return; //Idle on Cycle 0
         switch (true) {
             case (this.dot <= 256):
-                /*
-                    console.log(this.showBkg);
-                    console.log(this.scanline, this.dot);
-                    console.log(this.ctx.x, this.ctx.y);
-                    console.log(this.ntPointer.addr().toString(16), this.atPointer.addr().toString(16));
-                */
                 switch (this.dot % 8) {
                     case 1:
                         //Get nameTable addr (handled below switch/case)
@@ -2924,7 +2918,7 @@ class PPU {
                         break;
                     case 0:
                         //Get High BG byte
-                        this.bkgHiByte = this.mem[this.bkgAddr];
+                        this.bkgHiByte = this.mem[this.bkgAddr + this.scanline % 8];
                         this.render();
                         break;
                 }
@@ -3004,7 +2998,6 @@ class PPU {
         switch (addr) {
             case this.PPUSTATUS:
                 this.latch = false;
-                //this.cpuMem[addr] = (this.cpuMem[addr] & 0x7F);
                 break;
         }
     }
@@ -3074,16 +3067,6 @@ class PPU {
                 break;
         }
     }
-    /*
-        private resetPointers() {
-            this.ctx.x = 0;
-            this.ctx.y = 0;
-            this.ntPointer.row = 0;
-            this.ntPointer.col = 0;
-            this.atPointer.row = 0;
-            this.atPointer.col = 0;
-        }
-        */
     setVBL() {
         this.vbl = true;
         this.mem[this.PPUSTATUS] |= 128;

@@ -23,7 +23,7 @@ class NES {
         this.ppu.boot();
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
-
+        
         this.running = true;
         let i = 0;
         while (i++ < 90000) {
