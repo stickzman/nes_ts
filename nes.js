@@ -2879,7 +2879,7 @@ class PPU {
                         break;
                     case 6:
                         //Get Low BG byte
-                        this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8];
+                        this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
                         break;
                     case 7:
                         //Get High BG addr
@@ -2887,7 +2887,7 @@ class PPU {
                         break;
                     case 0:
                         //Get High BG byte
-                        this.bkgHiByte = this.mem[this.bkgAddr + this.scanline % 8];
+                        this.bkgHiByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
                         this.render();
                         break;
                 }
