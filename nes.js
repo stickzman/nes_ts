@@ -2956,6 +2956,8 @@ class PPU {
         for (let i = 0; i < 8; i++) {
             let palInd = 0x3F00 + palNum * 4 + pByte[i];
             let palData = this.mem[palInd] & 0x3F;
+            if (this.greyscale)
+                palData &= 0x30;
             let col = colorData[palData];
             this.ctx.setPixel(col.r, col.g, col.b);
         }
