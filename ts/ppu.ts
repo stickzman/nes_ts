@@ -1,7 +1,6 @@
 class PPU {
     public mem: Uint8Array;
     private OAM: Uint8Array;
-    private cpuMem: Uint8Array;
 
     private oddFrame: boolean = false;
     private latch = false;
@@ -104,10 +103,9 @@ class PPU {
     }
 
 
-    constructor(mainMemory: Uint8Array, private canvas: HTMLCanvasElement) {
+    constructor(private nes: NES, private canvas: HTMLCanvasElement) {
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
-        this.cpuMem = mainMemory;
         let ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
@@ -118,21 +116,21 @@ class PPU {
     }
 
     public boot() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSTATUS] = 0xA0;
-        this.cpuMem[this.OAMADDR] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUADDR] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSTATUS, 0xA0);
+        this.nes.write(this.OAMADDR, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUADDR, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
 
     public reset() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
 
@@ -281,7 +279,7 @@ class PPU {
     }
 
     public writeReg(addr: number) {
-        let byte = this.cpuMem[addr];
+        let byte = this.nes.read(addr);
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;

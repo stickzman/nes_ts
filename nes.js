@@ -2700,7 +2700,8 @@ class iNESFile {
     }
 }
 class PPU {
-    constructor(mainMemory, canvas) {
+    constructor(nes, canvas) {
+        this.nes = nes;
         this.canvas = canvas;
         this.oddFrame = false;
         this.latch = false;
@@ -2791,7 +2792,6 @@ class PPU {
         };
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
-        this.cpuMem = mainMemory;
         let ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
@@ -2801,20 +2801,20 @@ class PPU {
         this.ctx.imageData = imgData;
     }
     boot() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSTATUS] = 0xA0;
-        this.cpuMem[this.OAMADDR] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUADDR] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSTATUS, 0xA0);
+        this.nes.write(this.OAMADDR, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUADDR, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
     reset() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
     cycle() {
@@ -2961,7 +2961,7 @@ class PPU {
         }
     }
     writeReg(addr) {
-        let byte = this.cpuMem[addr];
+        let byte = this.nes.read(addr);
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
@@ -3367,7 +3367,7 @@ class NES {
         let canvas = document.getElementById("screen");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory, canvas);
+        this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
     }
     boot() {
@@ -3378,6 +3378,7 @@ class NES {
     }
     step() {
         NES.drawFrame = false;
+        let error = false;
         while (!NES.drawFrame) {
             try {
                 let cpuCycles = this.cpu.step();
@@ -3388,13 +3389,14 @@ class NES {
             catch (e) {
                 if (e.name == "Unexpected OpCode") {
                     console.log(e.message);
+                    error = true;
                     break;
                 }
                 throw e;
             }
         }
         this.ppu.ctx.paintFrame();
-        if (this.counter++ > 1000) {
+        if (error) {
             this.displayMem();
             this.displayPPUMem();
         }

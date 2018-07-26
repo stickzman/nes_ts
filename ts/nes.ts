@@ -15,7 +15,7 @@ class NES {
         let canvas = <HTMLCanvasElement>document.getElementById("screen");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this.mainMemory, canvas);
+        this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
     }
 
@@ -30,6 +30,7 @@ class NES {
     private counter = 0;
     private step() {
         NES.drawFrame = false;
+        let error = false;
         while (!NES.drawFrame) {
             try {
                 let cpuCycles = this.cpu.step();
@@ -39,6 +40,7 @@ class NES {
             } catch (e) {
                 if (e.name == "Unexpected OpCode") {
                     console.log(e.message);
+                    error = true;
                     break;
                 }
                 throw e;
@@ -47,7 +49,7 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        if (this.counter++ > 1000) {
+        if (error) {
             this.displayMem();
             this.displayPPUMem();
         } else {
