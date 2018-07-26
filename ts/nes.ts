@@ -4,7 +4,7 @@ class NES {
     private readonly MEM_SIZE = 0x10000;
 
     private rom: iNESFile;
-    private cpu: CPU;
+    public cpu: CPU;
     private ppu: PPU;
     private mainMemory: Uint8Array;
 
@@ -49,7 +49,7 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        if (error) {
+        if (error || this.counter < -1) {
             this.displayMem();
             this.displayPPUMem();
         } else {
@@ -58,13 +58,23 @@ class NES {
     }
 
     public read(addr: number): number {
-        this.ppu.readReg(addr);
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            //console.log(addr.toString(16));
+            this.ppu.readReg(0x2000 + (addr % 8));
+        }
         return this.mainMemory[addr];
     }
 
     public write(addr: number, data: number) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+
+            for (let i = 0x2000; i < 0x3FFF; i += 8) {
+                this.mainMemory[i + (addr % 8)] = data;
+            }
+            this.ppu.writeReg(0x2000 + (addr % 8));
+            return;
+        }
         this.mainMemory[addr] = data;
-        this.ppu.writeReg(addr);
     }
 
     private displayMem() {

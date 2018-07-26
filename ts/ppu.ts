@@ -141,9 +141,15 @@ class PPU {
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
+                if (this.scanline == 241 && this.dot == 1) this.setVBL();
                 //POST-RENDER
                 break;
             case (this.scanline == 261):
+                if (this.dot == 1) {
+                    this.clearVBL();
+                    this.clearSprite0();
+                    this.clearOverflow();
+                }
                 //PRE-RENDER
                 break;
         }
@@ -335,12 +341,21 @@ class PPU {
 
     private setVBL() {
         this.vbl = true;
-        this.mem[this.PPUSTATUS] |= 128;
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) | 0x80));
+        if (this.vBlankNMI) this.nes.cpu.requestNMInterrupt();
     }
 
     private clearVBL() {
         this.vbl = false;
-        this.mem[this.PPUSTATUS] &= 0x7F;
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0x7F));
+    }
+
+    private clearSprite0() {
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xBF));
+    }
+
+    private clearOverflow() {
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xDF));
     }
 }
 

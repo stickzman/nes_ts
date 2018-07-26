@@ -64,7 +64,10 @@ class CPU {
 
         let opCode = this.nes.read(this.PC); //Fetch
 
+
         let op = opTable[opCode];       //Decode
+        //console.log(op.name, "at", this.PC.toString(16));
+
         if (op === undefined) {
             let e = new Error(`Encountered unknown opCode: [0x${
                 opCode.toString(16).toUpperCase()}] at PC: 0x${

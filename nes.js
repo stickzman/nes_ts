@@ -51,6 +51,7 @@ class CPU {
         }
         let opCode = this.nes.read(this.PC); //Fetch
         let op = opTable[opCode]; //Decode
+        //console.log(op.name, "at", this.PC.toString(16));
         if (op === undefined) {
             let e = new Error(`Encountered unknown opCode: [0x${opCode.toString(16).toUpperCase()}] at PC: 0x${this.PC.toString(16).padStart(4, "0").toUpperCase()}`);
             e.name = "Unexpected OpCode";
@@ -2825,9 +2826,16 @@ class PPU {
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
+                if (this.scanline == 241 && this.dot == 1)
+                    this.setVBL();
                 //POST-RENDER
                 break;
             case (this.scanline == 261):
+                if (this.dot == 1) {
+                    this.clearVBL();
+                    this.clearSprite0();
+                    this.clearOverflow();
+                }
                 //PRE-RENDER
                 break;
         }
@@ -3028,11 +3036,19 @@ class PPU {
     }
     setVBL() {
         this.vbl = true;
-        this.mem[this.PPUSTATUS] |= 128;
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) | 0x80));
+        if (this.vBlankNMI)
+            this.nes.cpu.requestNMInterrupt();
     }
     clearVBL() {
         this.vbl = false;
-        this.mem[this.PPUSTATUS] &= 0x7F;
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0x7F));
+    }
+    clearSprite0() {
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xBF));
+    }
+    clearOverflow() {
+        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xDF));
     }
 }
 //CTRL vars
@@ -3396,7 +3412,7 @@ class NES {
             }
         }
         this.ppu.ctx.paintFrame();
-        if (error) {
+        if (error || this.counter < -1) {
             this.displayMem();
             this.displayPPUMem();
         }
@@ -3405,12 +3421,21 @@ class NES {
         }
     }
     read(addr) {
-        this.ppu.readReg(addr);
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            //console.log(addr.toString(16));
+            this.ppu.readReg(0x2000 + (addr % 8));
+        }
         return this.mainMemory[addr];
     }
     write(addr, data) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            for (let i = 0x2000; i < 0x3FFF; i += 8) {
+                this.mainMemory[i + (addr % 8)] = data;
+            }
+            this.ppu.writeReg(0x2000 + (addr % 8));
+            return;
+        }
         this.mainMemory[addr] = data;
-        this.ppu.writeReg(addr);
     }
     displayMem() {
         let str = "";
