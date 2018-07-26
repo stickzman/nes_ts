@@ -1,33 +1,22 @@
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
-    private readonly MEM_PATH = "mem.hex";
-    private readonly PPU_MEM_PATH = "ppuMem.hex";
     private readonly MEM_SIZE = 0x10000;
-    private fs = require("fs");
 
     private rom: iNESFile;
     private cpu: CPU;
     private ppu: PPU;
     private mainMemory: Uint8Array;
 
-    private running: boolean = false;
+    public static drawFrame: boolean = false;
+    public lastAnimFrame;
 
-    constructor(nesPath?: string) {
-        if (nesPath === undefined) {
-            if (this.fs.existsSync(this.MEM_PATH)) {
-                this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
-            } else {
-                this.mainMemory = new Uint8Array(this.MEM_SIZE);
-                this.mainMemory.fill(0x02);
-            }
-        } else {
-            this.mainMemory = new Uint8Array(this.MEM_SIZE);
-            this.mainMemory.fill(0x02);
-        }
-        this.rom = new iNESFile(nesPath);
-        this.ppu = new PPU(this.mainMemory);
-        this.cpu = new CPU(this.mainMemory, this.ppu);
+    constructor(romData: Uint8Array) {
+        let canvas = <HTMLCanvasElement>document.getElementById("screen");
+        this.mainMemory = new Uint8Array(this.MEM_SIZE);
+        this.rom = new iNESFile(romData);
+        this.ppu = new PPU(this, canvas);
+        this.cpu = new CPU(this);
     }
 
     public boot() {
@@ -35,24 +24,84 @@ class NES {
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
 
-        this.running = true;
-        while (this.running) {
+        this.step();
+    }
+
+    private counter = 0;
+    private step() {
+        NES.drawFrame = false;
+        let error = false;
+        while (!NES.drawFrame) {
             try {
-                this.cpu.step();
+                let cpuCycles = this.cpu.step();
+                for (let j = 0; j < cpuCycles * 3; j++) {
+                    this.ppu.cycle();
+                }
             } catch (e) {
                 if (e.name == "Unexpected OpCode") {
                     console.log(e.message);
+                    error = true;
                     break;
                 }
                 throw e;
             }
         }
 
-        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
-        this.fs.writeFileSync(this.PPU_MEM_PATH, Buffer.from(this.ppu.mem));
+        this.ppu.ctx.paintFrame();
+
+        if (error) {
+            this.displayMem();
+            this.displayPPUMem();
+        } else {
+            this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
+        }
+    }
+
+    public read(addr: number): number {
+        this.ppu.readReg(addr);
+        return this.mainMemory[addr];
+    }
+
+    public write(addr: number, data: number) {
+        this.mainMemory[addr] = data;
+        this.ppu.writeReg(addr);
+    }
+
+    private displayMem() {
+        let str = "";
+        for (let i = 0; i < this.mainMemory.length; i++) {
+            str += this.mainMemory[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("mem").innerHTML = str;
+    }
+
+    private displayPPUMem() {
+        let str = "";
+        for (let i = 0; i < this.ppu.mem.length; i++) {
+            str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("ppuMem").innerHTML = str;
     }
 }
 
 
-let nes = new NES("../nestest.nes");
-nes.boot();
+let nes;
+
+document.getElementById('file-input')
+  .addEventListener('change', init, false);
+
+function init(e) {
+    if (nes !== undefined) {
+        window.cancelAnimationFrame(nes.lastAnimFrame);
+    }
+    let file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        nes = new NES(new Uint8Array(e.target.result));
+        nes.boot();
+    }
+    reader.readAsArrayBuffer(file);
+}

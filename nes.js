@@ -1,5 +1,5 @@
 class CPU {
-    constructor(memory, ppu) {
+    constructor(nes) {
         this.debug = false; //Output debug info
         //Stop execution when an infinite loop is detected
         this.detectTraps = false;
@@ -18,8 +18,7 @@ class CPU {
             overflow: false,
             negative: false //Result of last op had bit 7 set to 1
         };
-        this.mem = memory;
-        this.ppu = ppu;
+        this.nes = nes;
     }
     boot() {
         this.flags.interruptDisable = true;
@@ -27,15 +26,17 @@ class CPU {
         this.X = 0;
         this.Y = 0;
         this.SP = 0xFD;
-        this.mem[0x4015] = 0;
-        this.mem[0x4017] = 0;
-        this.mem.fill(0x00, 0x4000, 0x4010); //LSFR?
+        this.nes.write(0x4015, 0);
+        this.nes.write(0x4017, 0);
+        for (let i = 0; i < 0x10; i++) {
+            this.nes.write(0x4000 + i, 0);
+        }
         this.PC = this.getResetVector();
     }
     reset() {
         this.SP -= 3;
         this.flags.interruptDisable = true;
-        this.mem[0x4015] = 0;
+        this.nes.write(0x4015, 0);
         this.PC = this.getResetVector();
     }
     step() {
@@ -48,7 +49,7 @@ class CPU {
             this.IRQ = false;
             this.handleInterrupt(this.INT_VECT_LOC);
         }
-        let opCode = this.mem[this.PC]; //Fetch
+        let opCode = this.nes.read(this.PC); //Fetch
         let op = opTable[opCode]; //Decode
         if (op === undefined) {
             let e = new Error(`Encountered unknown opCode: [0x${opCode.toString(16).toUpperCase()}] at PC: 0x${this.PC.toString(16).padStart(4, "0").toUpperCase()}`);
@@ -67,6 +68,7 @@ class CPU {
         if (this.PC > 0xFFFF) {
             this.PC -= 0x10000;
         }
+        return op.cycles;
     }
     requestInterrupt() {
         this.IRQ = true;
@@ -93,16 +95,14 @@ class CPU {
         this.pushStack(statusByte);
         this.flags.interruptDisable = true;
         //Set program counter to interrupt vector
-        let vector = new Uint8Array(this.mem.slice(resetVectStartAddr, resetVectStartAddr + 2));
-        this.PC = combineHexBuff(vector.reverse());
+        this.PC = combineHex(this.nes.read(resetVectStartAddr + 1), this.nes.read(resetVectStartAddr));
     }
     getResetVector() {
-        let bytes = new Uint8Array(this.mem.slice(this.RES_VECT_LOC, this.RES_VECT_LOC + 2));
-        return combineHexBuff(bytes.reverse());
+        return combineHex(this.nes.read(this.RES_VECT_LOC + 1), this.nes.read(this.RES_VECT_LOC));
     }
     pushStack(byte) {
         //Write byte to stack
-        this.mem[combineHex(0x01, this.SP)] = byte;
+        this.nes.write(combineHex(0x01, this.SP), byte);
         //Decrement stack pointer, wrap if necessary
         this.SP--;
         if (this.SP < 0) {
@@ -114,7 +114,7 @@ class CPU {
         if (this.SP > 0xFF) {
             this.SP = 0;
         }
-        let byte = this.mem[combineHex(0x01, this.SP)];
+        let byte = this.nes.read(combineHex(0x01, this.SP));
         return byte;
     }
     displayState() {
@@ -127,14 +127,15 @@ class CPU {
         }
     }
     nextByte() {
-        return this.mem[this.PC + 1];
+        return this.nes.read(this.PC + 1);
     }
     next2Bytes(flip = true) {
-        let bytes = new Uint8Array(this.mem.slice(this.PC + 1, this.PC + 3));
         if (flip) {
-            bytes.reverse();
+            return combineHex(this.nes.read(this.PC + 2), this.nes.read(this.PC + 1));
         }
-        return combineHexBuff(bytes);
+        else {
+            return combineHex(this.nes.read(this.PC + 1), this.nes.read(this.PC + 2));
+        }
     }
     updateOverflowFlag(reg, num1, num2) {
         //If the sum of two like signed terms is a diff sign, then the
@@ -170,21 +171,20 @@ class CPU {
     getIndrXRef() {
         let addr = this.getZPageRef(this.X);
         if (addr == 0xFF) {
-            return combineHex(this.mem[0], this.mem[addr]);
+            return combineHex(this.nes.read(0), this.nes.read(addr));
         }
         else {
-            return combineHex(this.mem[addr + 1], this.mem[addr]);
+            return combineHex(this.nes.read(addr + 1), this.nes.read(addr));
         }
     }
     getIndrYRef() {
         let addr = this.getZPageRef();
-        //console.log(addr.toString(16), this.mem[addr+1].toString(16), this.mem[addr].toString(16), this.Y.toString(16));
         let res;
         if (addr == 0xFF) {
-            res = combineHex(this.mem[0], this.mem[addr]) + this.Y;
+            res = combineHex(this.nes.read(0), this.nes.read(addr)) + this.Y;
         }
         else {
-            res = combineHex(this.mem[addr + 1], this.mem[addr]) + this.Y;
+            res = combineHex(this.nes.read(addr + 1), this.nes.read(addr)) + this.Y;
         }
         if (res > 0xFFFF) {
             res -= 0x10000;
@@ -217,9 +217,8 @@ opTable[0xAD] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xBD] = {
@@ -228,9 +227,8 @@ opTable[0xBD] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xB9] = {
@@ -239,9 +237,8 @@ opTable[0xB9] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xA5] = {
@@ -250,9 +247,8 @@ opTable[0xA5] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xB5] = {
@@ -261,9 +257,8 @@ opTable[0xB5] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xA1] = {
@@ -272,9 +267,8 @@ opTable[0xA1] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xB1] = {
@@ -283,9 +277,8 @@ opTable[0xB1] = {
     cycles: 5,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.ACC = this.mem[addr];
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xA2] = {
@@ -303,9 +296,8 @@ opTable[0xA6] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.X = this.mem[addr];
+        this.X = this.nes.read(addr);
         this.updateNumStateFlags(this.X);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xB6] = {
@@ -314,9 +306,8 @@ opTable[0xB6] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
-        this.X = this.mem[addr];
+        this.X = this.nes.read(addr);
         this.updateNumStateFlags(this.X);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xAE] = {
@@ -325,9 +316,8 @@ opTable[0xAE] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.X = this.mem[addr];
+        this.X = this.nes.read(addr);
         this.updateNumStateFlags(this.X);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xBE] = {
@@ -336,9 +326,8 @@ opTable[0xBE] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.X = this.mem[addr];
+        this.X = this.nes.read(addr);
         this.updateNumStateFlags(this.X);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xA0] = {
@@ -356,9 +345,8 @@ opTable[0xA4] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.Y = this.mem[addr];
+        this.Y = this.nes.read(addr);
         this.updateNumStateFlags(this.Y);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xB4] = {
@@ -367,9 +355,8 @@ opTable[0xB4] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.Y = this.mem[addr];
+        this.Y = this.nes.read(addr);
         this.updateNumStateFlags(this.Y);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xAC] = {
@@ -378,9 +365,8 @@ opTable[0xAC] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.Y = this.mem[addr];
+        this.Y = this.nes.read(addr);
         this.updateNumStateFlags(this.Y);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0xBC] = {
@@ -389,9 +375,8 @@ opTable[0xBC] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.Y = this.mem[addr];
+        this.Y = this.nes.read(addr);
         this.updateNumStateFlags(this.Y);
-        this.ppu.readReg(addr);
     }
 };
 opTable[0x85] = {
@@ -400,8 +385,7 @@ opTable[0x85] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x95] = {
@@ -410,8 +394,7 @@ opTable[0x95] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x8D] = {
@@ -420,8 +403,7 @@ opTable[0x8D] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x9D] = {
@@ -430,8 +412,7 @@ opTable[0x9D] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x99] = {
@@ -440,8 +421,7 @@ opTable[0x99] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x81] = {
@@ -450,8 +430,7 @@ opTable[0x81] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x91] = {
@@ -460,8 +439,7 @@ opTable[0x91] = {
     cycles: 5,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.mem[addr] = this.ACC;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.ACC);
     }
 };
 opTable[0x86] = {
@@ -470,8 +448,7 @@ opTable[0x86] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = this.X;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.X);
     }
 };
 opTable[0x96] = {
@@ -480,8 +457,7 @@ opTable[0x96] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
-        this.mem[addr] = this.X;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.X);
     }
 };
 opTable[0x8E] = {
@@ -490,8 +466,7 @@ opTable[0x8E] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = this.X;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.X);
     }
 };
 opTable[0x84] = {
@@ -500,8 +475,7 @@ opTable[0x84] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = this.Y;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.Y);
     }
 };
 opTable[0x94] = {
@@ -510,8 +484,7 @@ opTable[0x94] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr] = this.Y;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.Y);
     }
 };
 opTable[0x8C] = {
@@ -520,8 +493,7 @@ opTable[0x8C] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = this.Y;
-        this.ppu.writeReg(addr);
+        this.nes.write(addr, this.Y);
     }
 };
 opTable[0xAA] = {
@@ -607,7 +579,7 @@ opTable[0x65] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x75] = {
@@ -616,7 +588,7 @@ opTable[0x75] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x6D] = {
@@ -625,7 +597,7 @@ opTable[0x6D] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x7D] = {
@@ -633,15 +605,8 @@ opTable[0x7D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        //this.displayState();
-        //console.log("");
-        //this.debug = true;
         let addr = this.getRef(this.X);
-        //console.log(this.mem[addr].toString(16));
-        ADC.call(this, this.mem[addr]);
-        //this.debug = false;
-        //this.displayState();
-        //console.log("");
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x79] = {
@@ -650,7 +615,7 @@ opTable[0x79] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x61] = {
@@ -659,7 +624,7 @@ opTable[0x61] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x71] = {
@@ -668,7 +633,7 @@ opTable[0x71] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrYRef();
-        ADC.call(this, this.mem[addr]);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 function SBC(num) {
@@ -706,7 +671,7 @@ opTable[0xE5] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        let num = this.mem[this.getZPageRef()];
+        let num = this.nes.read(this.getZPageRef());
         SBC.call(this, num);
     }
 };
@@ -715,7 +680,7 @@ opTable[0xF5] = {
     bytes: 2,
     cycles: 4,
     execute: function () {
-        let num = this.mem[this.getZPageRef(this.X)];
+        let num = this.nes.read(this.getZPageRef(this.X));
         SBC.call(this, num);
     }
 };
@@ -724,7 +689,7 @@ opTable[0xED] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        let num = this.mem[this.getRef()];
+        let num = this.nes.read(this.getRef());
         SBC.call(this, num);
     }
 };
@@ -733,7 +698,7 @@ opTable[0xFD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        let num = this.mem[this.getRef(this.X)];
+        let num = this.nes.read(this.getRef(this.X));
         SBC.call(this, num);
     }
 };
@@ -742,7 +707,7 @@ opTable[0xF9] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        let num = this.mem[this.getRef(this.Y)];
+        let num = this.nes.read(this.getRef(this.Y));
         SBC.call(this, num);
     }
 };
@@ -751,7 +716,7 @@ opTable[0xE1] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        let num = this.mem[this.getIndrXRef()];
+        let num = this.nes.read(this.getIndrXRef());
         SBC.call(this, num);
     }
 };
@@ -760,7 +725,7 @@ opTable[0xF1] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        let num = this.mem[this.getIndrYRef()];
+        let num = this.nes.read(this.getIndrYRef());
         SBC.call(this, num);
     }
 };
@@ -776,8 +741,8 @@ opTable[0xE6] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = addWrap(this.mem[addr], 1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), 1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xF6] = {
@@ -786,8 +751,8 @@ opTable[0xF6] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr] = addWrap(this.mem[addr], 1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), 1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xEE] = {
@@ -796,8 +761,8 @@ opTable[0xEE] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = addWrap(this.mem[addr], 1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), 1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xFE] = {
@@ -806,8 +771,8 @@ opTable[0xFE] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.mem[addr] = addWrap(this.mem[addr], 1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), 1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xE8] = {
@@ -834,8 +799,8 @@ opTable[0xC6] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = addWrap(this.mem[addr], -1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), -1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xD6] = {
@@ -844,8 +809,8 @@ opTable[0xD6] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr] = addWrap(this.mem[addr], -1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), -1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xCE] = {
@@ -854,8 +819,8 @@ opTable[0xCE] = {
     cycles: 3,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = addWrap(this.mem[addr], -1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), -1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xDE] = {
@@ -864,8 +829,8 @@ opTable[0xDE] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.mem[addr] = addWrap(this.mem[addr], -1);
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, addWrap(this.nes.read(addr), -1));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0xCA] = {
@@ -962,7 +927,7 @@ opTable[0xC5] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        CMP.call(this, this.mem[this.getZPageRef()], this.ACC);
+        CMP.call(this, this.nes.read(this.getZPageRef()), this.ACC);
     }
 };
 opTable[0xD5] = {
@@ -970,7 +935,7 @@ opTable[0xD5] = {
     bytes: 2,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getZPageRef(this.X)], this.ACC);
+        CMP.call(this, this.nes.read(this.getZPageRef(this.X)), this.ACC);
     }
 };
 opTable[0xCD] = {
@@ -978,7 +943,7 @@ opTable[0xCD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getRef()], this.ACC);
+        CMP.call(this, this.nes.read(this.getRef()), this.ACC);
     }
 };
 opTable[0xDD] = {
@@ -986,7 +951,7 @@ opTable[0xDD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getRef(this.X)], this.ACC);
+        CMP.call(this, this.nes.read(this.getRef(this.X)), this.ACC);
     }
 };
 opTable[0xD9] = {
@@ -994,7 +959,7 @@ opTable[0xD9] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getRef(this.Y)], this.ACC);
+        CMP.call(this, this.nes.read(this.getRef(this.Y)), this.ACC);
     }
 };
 opTable[0xC1] = {
@@ -1002,7 +967,7 @@ opTable[0xC1] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        CMP.call(this, this.mem[this.getIndrXRef()], this.ACC);
+        CMP.call(this, this.nes.read(this.getIndrXRef()), this.ACC);
     }
 };
 opTable[0xD1] = {
@@ -1010,7 +975,7 @@ opTable[0xD1] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
-        CMP.call(this, this.mem[this.getIndrYRef()], this.ACC);
+        CMP.call(this, this.nes.read(this.getIndrYRef()), this.ACC);
     }
 };
 opTable[0xE0] = {
@@ -1026,7 +991,7 @@ opTable[0xE4] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        CMP.call(this, this.mem[this.getZPageRef()], this.X);
+        CMP.call(this, this.nes.read(this.getZPageRef()), this.X);
     }
 };
 opTable[0xEC] = {
@@ -1034,7 +999,7 @@ opTable[0xEC] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getRef()], this.X);
+        CMP.call(this, this.nes.read(this.getRef()), this.X);
     }
 };
 opTable[0xC0] = {
@@ -1050,7 +1015,7 @@ opTable[0xC4] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        CMP.call(this, this.mem[this.getZPageRef()], this.Y);
+        CMP.call(this, this.nes.read(this.getZPageRef()), this.Y);
     }
 };
 opTable[0xCC] = {
@@ -1058,7 +1023,7 @@ opTable[0xCC] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        CMP.call(this, this.mem[this.getRef()], this.Y);
+        CMP.call(this, this.nes.read(this.getRef()), this.Y);
     }
 };
 opTable[0x29] = {
@@ -1075,7 +1040,7 @@ opTable[0x25] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getZPageRef()];
+        this.ACC = this.ACC & this.nes.read(this.getZPageRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1084,7 +1049,7 @@ opTable[0x35] = {
     bytes: 2,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getZPageRef(this.X)];
+        this.ACC = this.ACC & this.nes.read(this.getZPageRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1093,7 +1058,7 @@ opTable[0x2D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getRef()];
+        this.ACC = this.ACC & this.nes.read(this.getRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1102,7 +1067,7 @@ opTable[0x3D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getRef(this.X)];
+        this.ACC = this.ACC & this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1111,7 +1076,7 @@ opTable[0x39] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getRef(this.Y)];
+        this.ACC = this.ACC & this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1120,7 +1085,7 @@ opTable[0x21] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getIndrXRef()];
+        this.ACC = this.ACC & this.nes.read(this.getIndrXRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1129,7 +1094,7 @@ opTable[0x31] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
-        this.ACC = this.ACC & this.mem[this.getIndrYRef()];
+        this.ACC = this.ACC & this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1147,7 +1112,7 @@ opTable[0x05] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getZPageRef()];
+        this.ACC = this.ACC | this.nes.read(this.getZPageRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1156,7 +1121,7 @@ opTable[0x15] = {
     bytes: 2,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getZPageRef(this.X)];
+        this.ACC = this.ACC | this.nes.read(this.getZPageRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1165,7 +1130,7 @@ opTable[0x0D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getRef()];
+        this.ACC = this.ACC | this.nes.read(this.getRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1174,7 +1139,7 @@ opTable[0x1D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getRef(this.X)];
+        this.ACC = this.ACC | this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1183,7 +1148,7 @@ opTable[0x19] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getRef(this.Y)];
+        this.ACC = this.ACC | this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1192,7 +1157,7 @@ opTable[0x01] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getIndrXRef()];
+        this.ACC = this.ACC | this.nes.read(this.getIndrXRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1201,7 +1166,7 @@ opTable[0x11] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
-        this.ACC = this.ACC | this.mem[this.getIndrYRef()];
+        this.ACC = this.ACC | this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1219,7 +1184,7 @@ opTable[0x45] = {
     bytes: 2,
     cycles: 3,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getZPageRef()];
+        this.ACC = this.ACC ^ this.nes.read(this.getZPageRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1228,7 +1193,7 @@ opTable[0x55] = {
     bytes: 2,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getZPageRef(this.X)];
+        this.ACC = this.ACC ^ this.nes.read(this.getZPageRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1237,7 +1202,7 @@ opTable[0x4D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getRef()];
+        this.ACC = this.ACC ^ this.nes.read(this.getRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1246,7 +1211,7 @@ opTable[0x5D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getRef(this.X)];
+        this.ACC = this.ACC ^ this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1255,7 +1220,7 @@ opTable[0x59] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getRef(this.Y)];
+        this.ACC = this.ACC ^ this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1264,7 +1229,7 @@ opTable[0x41] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getIndrXRef()];
+        this.ACC = this.ACC ^ this.nes.read(this.getIndrXRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1273,7 +1238,7 @@ opTable[0x51] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
-        this.ACC = this.ACC ^ this.mem[this.getIndrYRef()];
+        this.ACC = this.ACC ^ this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1294,10 +1259,10 @@ opTable[0x06] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x16] = {
@@ -1306,10 +1271,10 @@ opTable[0x16] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x0E] = {
@@ -1318,10 +1283,10 @@ opTable[0x0E] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x1E] = {
@@ -1330,10 +1295,10 @@ opTable[0x1E] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x4A] = {
@@ -1352,9 +1317,9 @@ opTable[0x46] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x56] = {
@@ -1363,9 +1328,9 @@ opTable[0x56] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x4E] = {
@@ -1374,9 +1339,9 @@ opTable[0x4E] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x5E] = {
@@ -1385,9 +1350,9 @@ opTable[0x5E] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x24] = {
@@ -1396,11 +1361,11 @@ opTable[0x24] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        let res = this.ACC & this.mem[addr];
+        let res = this.ACC & this.nes.read(addr);
         this.flags.zero = (res == 0x00);
-        this.updateNegativeFlag(this.mem[addr]);
+        this.updateNegativeFlag(this.nes.read(addr));
         let mask = 1 << 6; //6th bit mask
-        this.flags.overflow = ((this.mem[addr] & mask) != 0);
+        this.flags.overflow = ((this.nes.read(addr) & mask) != 0);
     }
 };
 opTable[0x2C] = {
@@ -1409,11 +1374,11 @@ opTable[0x2C] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        let res = this.ACC & this.mem[addr];
+        let res = this.ACC & this.nes.read(addr);
         this.flags.zero = (res == 0x00);
-        this.updateNegativeFlag(this.mem[addr]);
+        this.updateNegativeFlag(this.nes.read(addr));
         let mask = 1 << 6; //6th bit mask
-        this.flags.overflow = ((this.mem[addr] & mask) != 0);
+        this.flags.overflow = ((this.nes.read(addr) & mask) != 0);
     }
 };
 opTable[0x2A] = {
@@ -1442,11 +1407,11 @@ opTable[0x26] = {
     execute: function () {
         let addr = this.getZPageRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x36] = {
@@ -1456,11 +1421,11 @@ opTable[0x36] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x2E] = {
@@ -1470,11 +1435,11 @@ opTable[0x2E] = {
     execute: function () {
         let addr = this.getRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x3E] = {
@@ -1484,11 +1449,11 @@ opTable[0x3E] = {
     execute: function () {
         let addr = this.getRef(this.X);
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x6A] = {
@@ -1515,10 +1480,10 @@ opTable[0x66] = {
     execute: function () {
         let addr = this.getZPageRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x76] = {
@@ -1528,10 +1493,10 @@ opTable[0x76] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x6E] = {
@@ -1541,10 +1506,10 @@ opTable[0x6E] = {
     execute: function () {
         let addr = this.getRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x7E] = {
@@ -1554,10 +1519,10 @@ opTable[0x7E] = {
     execute: function () {
         let addr = this.getRef(this.X);
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 function branch() {
@@ -1674,7 +1639,7 @@ opTable[0x6C] = {
     cycles: 5,
     execute: function () {
         let indAddr = this.next2Bytes();
-        let addr = combineHex(this.mem[indAddr + 1], this.mem[indAddr]);
+        let addr = combineHex(this.nes.read(indAddr + 1), this.nes.read(indAddr));
         if (this.debug) {
             console.log(`Jumping to location 0x${addr}...`);
         }
@@ -1980,7 +1945,7 @@ opTable[0xA3] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1990,7 +1955,7 @@ opTable[0xB3] = {
     cycles: 5,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2000,7 +1965,7 @@ opTable[0xA7] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2010,7 +1975,7 @@ opTable[0xB7] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2020,7 +1985,7 @@ opTable[0xAF] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2030,7 +1995,7 @@ opTable[0xBF] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.ACC = this.X + this.mem[addr];
+        this.ACC = this.X + this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2041,8 +2006,8 @@ opTable[0x87] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr] = this.ACC & this.X;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, this.ACC & this.X);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x97] = {
@@ -2051,8 +2016,8 @@ opTable[0x97] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
-        this.mem[addr] = this.ACC & this.X;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, this.ACC & this.X);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x83] = {
@@ -2061,8 +2026,8 @@ opTable[0x83] = {
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.mem[addr] = this.ACC & this.X;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, this.ACC & this.X);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x8F] = {
@@ -2071,8 +2036,8 @@ opTable[0x8F] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr] = this.ACC & this.X;
-        this.updateNumStateFlags(this.mem[addr]);
+        this.nes.write(addr, this.ACC & this.X);
+        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 //DCP
@@ -2083,8 +2048,8 @@ opTable[0xC7] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xD7] = {
@@ -2093,8 +2058,8 @@ opTable[0xD7] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xCF] = {
@@ -2103,8 +2068,8 @@ opTable[0xCF] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xDF] = {
@@ -2113,8 +2078,8 @@ opTable[0xDF] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xDB] = {
@@ -2123,8 +2088,8 @@ opTable[0xDB] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xC3] = {
@@ -2133,8 +2098,8 @@ opTable[0xC3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 opTable[0xD3] = {
@@ -2143,8 +2108,8 @@ opTable[0xD3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.mem[addr]--;
-        CMP.call(this, this.mem[addr], this.ACC);
+        this.nes.write(addr, this.nes.read(addr) - 1);
+        CMP.call(this, this.nes.read(addr), this.ACC);
     }
 };
 //ISC
@@ -2155,8 +2120,8 @@ opTable[0xE7] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xF7] = {
@@ -2165,8 +2130,8 @@ opTable[0xF7] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xEF] = {
@@ -2175,8 +2140,8 @@ opTable[0xEF] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xFF] = {
@@ -2185,8 +2150,8 @@ opTable[0xFF] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xFB] = {
@@ -2195,8 +2160,8 @@ opTable[0xFB] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xE3] = {
@@ -2205,8 +2170,8 @@ opTable[0xE3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 opTable[0xF3] = {
@@ -2215,8 +2180,8 @@ opTable[0xF3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.mem[addr]++;
-        SBC.call(this, this.mem[addr]);
+        this.nes.write(addr, this.nes.read(addr) + 1);
+        SBC.call(this, this.nes.read(addr));
     }
 };
 //SLO
@@ -2227,10 +2192,10 @@ opTable[0x07] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2240,10 +2205,10 @@ opTable[0x17] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2253,10 +2218,10 @@ opTable[0x0F] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2266,10 +2231,10 @@ opTable[0x1F] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2279,10 +2244,10 @@ opTable[0x1B] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2292,10 +2257,10 @@ opTable[0x03] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2305,10 +2270,10 @@ opTable[0x13] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.ACC = this.ACC | this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.ACC = this.ACC | this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2321,11 +2286,11 @@ opTable[0x27] = {
     execute: function () {
         let addr = this.getZPageRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2336,11 +2301,11 @@ opTable[0x37] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2351,11 +2316,11 @@ opTable[0x2F] = {
     execute: function () {
         let addr = this.getRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2366,11 +2331,11 @@ opTable[0x3F] = {
     execute: function () {
         let addr = this.getRef(this.X);
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2381,11 +2346,11 @@ opTable[0x3B] = {
     execute: function () {
         let addr = this.getRef(this.Y);
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2396,11 +2361,11 @@ opTable[0x23] = {
     execute: function () {
         let addr = this.getIndrXRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2411,11 +2376,11 @@ opTable[0x33] = {
     execute: function () {
         let addr = this.getIndrYRef();
         let addBit = this.flags.carry;
-        this.flags.carry = (this.mem[addr] >= 0x80);
-        this.mem[addr] = this.mem[addr] << 1;
-        this.mem[addr] -= (this.flags.carry) ? 0x100 : 0;
-        this.mem[addr] += addBit;
-        this.ACC = this.ACC & this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) >= 0x80);
+        this.nes.write(addr, this.nes.read(addr) << 1);
+        this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        this.ACC = this.ACC & this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2427,9 +2392,9 @@ opTable[0x47] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2439,9 +2404,9 @@ opTable[0x57] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2451,9 +2416,9 @@ opTable[0x4F] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2463,9 +2428,9 @@ opTable[0x5F] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2475,9 +2440,9 @@ opTable[0x5B] = {
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2487,9 +2452,9 @@ opTable[0x43] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2499,9 +2464,9 @@ opTable[0x53] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.ACC = this.ACC ^ this.mem[addr];
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.ACC = this.ACC ^ this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -2514,10 +2479,10 @@ opTable[0x67] = {
     execute: function () {
         let addr = this.getZPageRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x77] = {
@@ -2527,10 +2492,10 @@ opTable[0x77] = {
     execute: function () {
         let addr = this.getZPageRef(this.X);
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x6F] = {
@@ -2540,10 +2505,10 @@ opTable[0x6F] = {
     execute: function () {
         let addr = this.getRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x7F] = {
@@ -2553,10 +2518,10 @@ opTable[0x7F] = {
     execute: function () {
         let addr = this.getRef(this.X);
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x7B] = {
@@ -2566,10 +2531,10 @@ opTable[0x7B] = {
     execute: function () {
         let addr = this.getRef(this.Y);
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x63] = {
@@ -2579,10 +2544,10 @@ opTable[0x63] = {
     execute: function () {
         let addr = this.getIndrXRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 opTable[0x73] = {
@@ -2592,10 +2557,10 @@ opTable[0x73] = {
     execute: function () {
         let addr = this.getIndrYRef();
         let addBit = (this.flags.carry) ? 0x80 : 0;
-        this.flags.carry = (this.mem[addr] % 2 == 1);
-        this.mem[addr] = this.mem[addr] >> 1;
-        this.mem[addr] += addBit;
-        ADC.call(this, this.mem[addr]);
+        this.flags.carry = (this.nes.read(addr) % 2 == 1);
+        this.nes.write(addr, this.nes.read(addr) >> 1);
+        this.nes.write(addr, this.nes.read(addr) + addBit);
+        ADC.call(this, this.nes.read(addr));
     }
 };
 //LAR
@@ -2606,7 +2571,7 @@ opTable[0xBB] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.SP = this.SP & this.mem[addr];
+        this.SP = this.SP & this.nes.read(addr);
         this.X = this.SP;
         this.ACC = this.X;
         this.updateNumStateFlags(this.ACC);
@@ -2624,9 +2589,6 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 };
-function combineHexBuff(buff) {
-    return (buff[0] << 8) | (buff[1]);
-}
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
@@ -2647,17 +2609,7 @@ function addWrap(reg, add) {
     return reg;
 }
 class iNESFile {
-    constructor(filePath) {
-        this.filePath = filePath;
-        if (filePath.indexOf("/") === -1) {
-            this.fileName = filePath.substr(filePath.lastIndexOf("/") + 1);
-        }
-        else {
-            this.fileName = filePath;
-        }
-        let fs = require("fs");
-        //Load file into buffer
-        let buff = fs.readFileSync(filePath);
+    constructor(buff) {
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E)
             throw Error("Corrupted iNES file!"); //N
@@ -2675,13 +2627,13 @@ class iNESFile {
         //Parse settings
         let lowNib = parseInt(hexStr[1], 16);
         let mask = 1;
-        this.mirrorVertical = (lowNib & mask) == 1;
+        this.mirrorVertical = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.batteryBacked = (lowNib & mask) == 1;
+        this.batteryBacked = (lowNib & mask) != 0;
         mask = 1 << 2;
-        this.trainerPresent = (lowNib & mask) == 1;
+        this.trainerPresent = (lowNib & mask) != 0;
         mask = 1 << 3;
-        this.fourScreenMode = (lowNib & mask) == 1;
+        this.fourScreenMode = (lowNib & mask) != 0;
         //Byte 7
         hexStr = buff[7].toString(16);
         //Get the hiByte of the mapper #
@@ -2691,9 +2643,9 @@ class iNESFile {
         //Get additional settings
         lowNib = parseInt(hexStr[1], 16);
         mask = 1;
-        this.vsGame = (lowNib & mask) == 1;
+        this.vsGame = (lowNib & mask) != 0;
         mask = 1 << 1;
-        this.isPC10 = (lowNib & mask) == 1;
+        this.isPC10 = (lowNib & mask) != 0;
         mask = 3 << 2;
         this.nes2_0 = (lowNib & mask) == 2;
         if (this.nes2_0) {
@@ -2717,11 +2669,12 @@ class iNESFile {
             this.chrRamBattSize = hiNib;
             this.chrRamSize = lowNib;
             //Byte 12
-            let byte = parseInt(buff[12], 16);
+            hexStr = buff[12].toString(16);
+            let byte = parseInt(hexStr, 16);
             mask = 1;
-            this.isPAL = (byte & mask) == 1;
+            this.isPAL = (byte & mask) != 0;
             mask = 1 << 1;
-            this.bothFormats = (byte & mask) == 1;
+            this.bothFormats = (byte & mask) != 0;
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
@@ -2747,21 +2700,35 @@ class iNESFile {
     }
 }
 class PPU {
-    constructor(mainMemory) {
+    constructor(nes, canvas) {
+        this.nes = nes;
+        this.canvas = canvas;
         this.oddFrame = false;
         this.latch = false;
-        this.scanline = 261;
+        this.scanline = 0;
         this.dot = 0;
-        //Render vars
-        this.addrOffset = 0;
-        //Drawing to screen
-        this.pixelPointer = {
+        this.ctx = {
+            ctx: null,
+            imageData: null,
             x: 0,
             y: 0,
-            size: 1
+            setPixel: function (r, g, b, a = 255) {
+                let i = this.y * this.imageData.width * 4 + this.x * 4;
+                this.imageData.data[i++] = r;
+                this.imageData.data[i++] = g;
+                this.imageData.data[i++] = b;
+                this.imageData.data[i] = a;
+                if (++this.x > this.imageData.width - 1) {
+                    this.x = 0;
+                    if (++this.y > this.imageData.height - 1) {
+                        this.y = 0;
+                    }
+                }
+            },
+            paintFrame: function () {
+                this.ctx.putImageData(this.imageData, 0, 0);
+            }
         };
-        //CTRL vars
-        this.baseNTAddr = 0x2000;
         this.incAddrBy32 = false; //If false, inc by 1
         this.spritePatAddr = 0;
         this.bkgPatAddr = 0;
@@ -2788,30 +2755,73 @@ class PPU {
         this.PPUADDR = 0x2006;
         this.PPUDATA = 0x2007;
         this.OAMDMA = 0x4014;
+        //Render vars
+        this.ntPointer = {
+            row: 0,
+            col: 0,
+            addr: function () {
+                return this.row * 32 + this.col + PPU.baseNTAddr;
+            },
+            incCol: function () {
+                if (++this.col > 31) {
+                    this.col = 0;
+                }
+            },
+            incRow: function () {
+                if (++this.row > 29) {
+                    this.row = 0;
+                }
+            }
+        };
+        this.atPointer = {
+            row: 0,
+            col: 0,
+            addr: function () {
+                return this.row * 8 + 0x3C0 + this.col + PPU.baseNTAddr;
+            },
+            incCol: function () {
+                if (++this.col > 7) {
+                    this.col = 0;
+                }
+            },
+            incRow: function () {
+                if (++this.row > 7) {
+                    this.row = 0;
+                }
+            }
+        };
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
-        this.cpuMem = mainMemory;
+        let ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        let imgData = ctx.createImageData(canvas.width, canvas.height);
+        this.ctx.ctx = ctx;
+        this.ctx.imageData = imgData;
     }
     boot() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSTATUS] = 0xA0;
-        this.cpuMem[this.OAMADDR] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUADDR] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSTATUS, 0xA0);
+        this.nes.write(this.OAMADDR, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUADDR, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
     reset() {
-        this.cpuMem[this.PPUCTRL] = 0;
-        this.cpuMem[this.PPUMASK] = 0;
-        this.cpuMem[this.PPUSCROLL] = 0;
-        this.cpuMem[this.PPUDATA] = 0;
+        this.nes.write(this.PPUCTRL, 0);
+        this.nes.write(this.PPUMASK, 0);
+        this.nes.write(this.PPUSCROLL, 0);
+        this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
     cycle() {
         switch (true) {
             case (this.scanline < 240):
+                if (this.oddFrame && this.dot == 0 && this.scanline == 0)
+                    this.dot++;
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
@@ -2828,115 +2838,173 @@ class PPU {
                 this.oddFrame = !this.oddFrame;
             }
         }
+        //Reset pointers
+        if (this.dot == 0 && this.scanline == 261) {
+            this.atPointer.row = 0;
+            this.atPointer.col = 0;
+            this.ntPointer.row = 0;
+            this.ntPointer.col = 0;
+        }
     }
     visibleCycle() {
-        if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
-            this.dot++;
-        }
         if (this.dot == 0)
-            return;
+            return; //Idle on Cycle 0
         switch (true) {
-            case (this.dot < 257 || (this.dot > 320 && this.dot <= 336)):
+            case (this.dot <= 256):
                 switch (this.dot % 8) {
                     case 1:
-                        this.addr = this.baseNTAddr + this.addrOffset;
+                        //Get nameTable addr (handled below switch/case)
                         break;
                     case 2:
-                        this.ntLatch = this.mem[this.addr];
+                        //Get nameTable byte
                         break;
                     case 3:
-                        this.addr = this.baseNTAddr + 0x3C0 + Math.floor(this.addrOffset / 15);
+                        //Get attrTable addr (handled below switch/case)
                         break;
                     case 4:
-                        this.atLatch = this.mem[this.addr];
+                        //Get attrTable byte
+                        this.attrByte = this.mem[this.atPointer.addr()];
                         break;
                     case 5:
-                        this.addr = this.ntLatch;
+                        //Get Low BG addr
+                        this.bkgAddr = this.mem[this.ntPointer.addr()] << 4;
                         break;
                     case 6:
-                        this.bkgLoLatch = this.mem[this.addr];
+                        //Get Low BG byte
+                        this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8];
                         break;
                     case 7:
-                        this.addr += 8;
+                        //Get High BG addr
+                        this.bkgAddr += 8;
                         break;
                     case 0:
-                        this.bkgHiLatch = this.mem[this.addr];
+                        //Get High BG byte
+                        this.bkgHiByte = this.mem[this.bkgAddr + this.scanline % 8];
                         this.render();
                         break;
                 }
                 break;
-            case (this.dot < 321):
-                //TODO: Get sprites for *next* scanline HERE
+            case (this.dot <= 320):
+                //TODO: Sprite Evaluation
                 break;
+        }
+        if (this.dot <= 256) {
+            //Inc Nametable Pointer
+            if (this.dot % 8 == 0) {
+                this.ntPointer.incCol();
+            }
+            //Inc Attr Table Pointer
+            if (this.dot % 32 == 0 && this.dot != 0) {
+                this.atPointer.incCol();
+            }
+        }
+        if (this.dot == 256) {
+            if (this.scanline % 32 == 31) {
+                this.atPointer.incRow();
+            }
+            if (this.scanline % 8 == 7) {
+                this.ntPointer.incRow();
+            }
+            if (this.scanline == 239) {
+                //this.ctx.paintFrame();
+                NES.drawFrame = true;
+            }
         }
     }
     render() {
-        //Combine the hi and lo pattern tables into an array of nibbles
-        let hi = this.bkgHiLatch.toString(2);
-        let lo = this.bkgLoLatch.toString(2);
-        let pStr = [""];
-        for (let i = 0; i < hi.length; i++) {
-            pStr[0] += hi[i] + lo[i] + ",";
+        if (!this.showBkg) {
+            //Get Universal Background Color and paint a blank pixel
+            let palData = this.mem[0x3F00] & 0x3F;
+            let col = colorData[palData];
+            for (let i = 0; i < 8; i++) {
+                this.ctx.setPixel(col.r, col.g, col.b);
+            }
+            return;
         }
-        pStr = pStr[0].split(",");
-        let pByte;
-        for (let i = 0; i < pStr.length; i++) {
-            pByte[i] = parseInt(pByte[i], 2);
+        //Combine PATTERN DATA
+        let pByte = [];
+        let mask;
+        for (let i = 0; i < 8; i++) {
+            mask = 1 << (7 - i);
+            if (i > 6) {
+                pByte[i] = ((this.bkgHiByte & mask) << 1) +
+                    (this.bkgLoByte & mask);
+            }
+            else {
+                pByte[i] = ((this.bkgHiByte & mask) >> (6 - i)) +
+                    ((this.bkgLoByte & mask) >> (7 - i));
+            }
+        }
+        //Get PALETTE NUMBER
+        let quad;
+        if (this.dot % 32 < 16) {
+            quad = (this.scanline % 32 < 16) ? 0 : 1;
+        }
+        else {
+            quad = (this.scanline % 32 < 16) ? 2 : 3;
+        }
+        let palNum;
+        mask = 3 << (quad * 2);
+        palNum = (this.attrByte & mask) >> (quad * 2);
+        for (let i = 0; i < 8; i++) {
+            let palInd = 0x3F00 + palNum * 4 + pByte[i];
+            let palData = this.mem[palInd] & 0x3F;
+            let col = colorData[palData];
+            this.ctx.setPixel(col.r, col.g, col.b);
         }
     }
     readReg(addr) {
         switch (addr) {
             case this.PPUSTATUS:
                 this.latch = false;
-                //this.cpuMem[addr] = (this.cpuMem[addr] & 0x7F);
                 break;
         }
     }
     writeReg(addr) {
-        let byte = this.cpuMem[addr];
+        let byte = this.nes.read(addr);
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
                 switch (ntBit) {
                     case 0:
-                        this.baseNTAddr = 0x2000;
+                        PPU.baseNTAddr = 0x2000;
                         break;
                     case 1:
-                        this.baseNTAddr = 0x2400;
+                        PPU.baseNTAddr = 0x2400;
                         break;
                     case 2:
-                        this.baseNTAddr = 0x2800;
+                        PPU.baseNTAddr = 0x2800;
                         break;
                     case 3:
-                        this.baseNTAddr = 0x2C00;
+                        PPU.baseNTAddr = 0x2C00;
                         break;
                 }
-                this.incAddrBy32 = (byte & 4) == 1;
-                if ((byte & 8) == 1) {
+                this.incAddrBy32 = (byte & 4) != 0;
+                if ((byte & 8) != 0) {
                     this.spritePatAddr = 0x1000;
                 }
                 else {
                     this.spritePatAddr = 0;
                 }
-                if ((byte & 16) == 1) {
+                if ((byte & 16) != 0) {
                     this.bkgPatAddr = 0x1000;
                 }
                 else {
                     this.bkgPatAddr = 0;
                 }
-                this.sprite8x16 = (byte & 32) == 1;
-                this.masterSlave = (byte & 64) == 1;
-                this.vBlankNMI = (byte & 128) == 1;
+                this.sprite8x16 = (byte & 32) != 0;
+                this.masterSlave = (byte & 64) != 0;
+                this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:
-                this.greyscale = (byte & 1) == 1;
-                this.showLeftBkg = (byte & 2) == 1;
-                this.showLeftSprite = (byte & 4) == 1;
-                this.showBkg = (byte & 8) == 1;
-                this.showSprites = (byte & 16) == 1;
-                this.maxRed = (byte & 32) == 1;
-                this.maxGreen = (byte & 64) == 1;
-                this.maxBlue = (byte & 128) == 1;
+                this.greyscale = (byte & 1) != 0;
+                this.showLeftBkg = (byte & 2) != 0;
+                this.showLeftSprite = (byte & 4) != 0;
+                this.showBkg = (byte & 8) != 0;
+                this.showSprites = (byte & 16) != 0;
+                this.maxRed = (byte & 32) != 0;
+                this.maxGreen = (byte & 64) != 0;
+                this.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
                 if (!this.latch) {
@@ -2967,52 +3035,414 @@ class PPU {
         this.mem[this.PPUSTATUS] &= 0x7F;
     }
 }
+//CTRL vars
+PPU.baseNTAddr = 0x2000;
+let colorData = {};
+colorData[0x00] = {
+    r: 84,
+    g: 84,
+    b: 84
+};
+colorData[0x01] = {
+    r: 0,
+    g: 30,
+    b: 116
+};
+colorData[0x02] = {
+    r: 8,
+    g: 16,
+    b: 144
+};
+colorData[0x03] = {
+    r: 48,
+    g: 0,
+    b: 136
+};
+colorData[0x04] = {
+    r: 68,
+    g: 0,
+    b: 100
+};
+colorData[0x05] = {
+    r: 92,
+    g: 0,
+    b: 48
+};
+colorData[0x06] = {
+    r: 84,
+    g: 4,
+    b: 0
+};
+colorData[0x07] = {
+    r: 60,
+    g: 24,
+    b: 0
+};
+colorData[0x08] = {
+    r: 32,
+    g: 42,
+    b: 0
+};
+colorData[0x09] = {
+    r: 8,
+    g: 58,
+    b: 0
+};
+colorData[0x0A] = {
+    r: 0,
+    g: 64,
+    b: 0
+};
+colorData[0x0B] = {
+    r: 0,
+    g: 60,
+    b: 0
+};
+colorData[0x0C] = {
+    r: 0,
+    g: 50,
+    b: 60
+};
+colorData[0x0D] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x0E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x0F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x10] = {
+    r: 152,
+    g: 150,
+    b: 152
+};
+colorData[0x11] = {
+    r: 8,
+    g: 76,
+    b: 196
+};
+colorData[0x12] = {
+    r: 48,
+    g: 50,
+    b: 236
+};
+colorData[0x13] = {
+    r: 92,
+    g: 30,
+    b: 228
+};
+colorData[0x14] = {
+    r: 136,
+    g: 20,
+    b: 176
+};
+colorData[0x15] = {
+    r: 160,
+    g: 20,
+    b: 100
+};
+colorData[0x16] = {
+    r: 152,
+    g: 34,
+    b: 32
+};
+colorData[0x17] = {
+    r: 120,
+    g: 60,
+    b: 0
+};
+colorData[0x18] = {
+    r: 84,
+    g: 90,
+    b: 0
+};
+colorData[0x19] = {
+    r: 40,
+    g: 114,
+    b: 0
+};
+colorData[0x1A] = {
+    r: 8,
+    g: 124,
+    b: 0
+};
+colorData[0x1B] = {
+    r: 0,
+    g: 118,
+    b: 40
+};
+colorData[0x1C] = {
+    r: 0,
+    g: 102,
+    b: 120
+};
+colorData[0x1D] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x1E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x1F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x20] = {
+    r: 236,
+    g: 238,
+    b: 236
+};
+colorData[0x21] = {
+    r: 76,
+    g: 154,
+    b: 236
+};
+colorData[0x22] = {
+    r: 120,
+    g: 124,
+    b: 236
+};
+colorData[0x23] = {
+    r: 176,
+    g: 98,
+    b: 236
+};
+colorData[0x24] = {
+    r: 228,
+    g: 84,
+    b: 236
+};
+colorData[0x25] = {
+    r: 236,
+    g: 88,
+    b: 180
+};
+colorData[0x26] = {
+    r: 236,
+    g: 106,
+    b: 100
+};
+colorData[0x27] = {
+    r: 212,
+    g: 136,
+    b: 32
+};
+colorData[0x28] = {
+    r: 160,
+    g: 170,
+    b: 0
+};
+colorData[0x29] = {
+    r: 116,
+    g: 196,
+    b: 0
+};
+colorData[0x2A] = {
+    r: 76,
+    g: 208,
+    b: 32
+};
+colorData[0x2B] = {
+    r: 56,
+    g: 204,
+    b: 108
+};
+colorData[0x2C] = {
+    r: 56,
+    g: 180,
+    b: 204
+};
+colorData[0x2D] = {
+    r: 60,
+    g: 60,
+    b: 60
+};
+colorData[0x2E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x2F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x30] = {
+    r: 236,
+    g: 238,
+    b: 236
+};
+colorData[0x31] = {
+    r: 168,
+    g: 204,
+    b: 236
+};
+colorData[0x32] = {
+    r: 188,
+    g: 188,
+    b: 236
+};
+colorData[0x33] = {
+    r: 212,
+    g: 178,
+    b: 236
+};
+colorData[0x34] = {
+    r: 236,
+    g: 174,
+    b: 236
+};
+colorData[0x35] = {
+    r: 236,
+    g: 174,
+    b: 212
+};
+colorData[0x36] = {
+    r: 236,
+    g: 180,
+    b: 176
+};
+colorData[0x37] = {
+    r: 228,
+    g: 196,
+    b: 144
+};
+colorData[0x38] = {
+    r: 204,
+    g: 210,
+    b: 120
+};
+colorData[0x39] = {
+    r: 180,
+    g: 222,
+    b: 120
+};
+colorData[0x3A] = {
+    r: 168,
+    g: 226,
+    b: 144
+};
+colorData[0x3B] = {
+    r: 152,
+    g: 226,
+    b: 180
+};
+colorData[0x3C] = {
+    r: 160,
+    g: 214,
+    b: 228
+};
+colorData[0x3D] = {
+    r: 160,
+    g: 162,
+    b: 160
+};
+colorData[0x3E] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
+colorData[0x3F] = {
+    r: 0,
+    g: 0,
+    b: 0
+};
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 class NES {
-    constructor(nesPath) {
-        this.MEM_PATH = "mem.hex";
-        this.PPU_MEM_PATH = "ppuMem.hex";
+    constructor(romData) {
         this.MEM_SIZE = 0x10000;
-        this.fs = require("fs");
-        this.running = false;
-        if (nesPath === undefined) {
-            if (this.fs.existsSync(this.MEM_PATH)) {
-                this.mainMemory = this.fs.readFileSync(this.MEM_PATH);
-            }
-            else {
-                this.mainMemory = new Uint8Array(this.MEM_SIZE);
-                this.mainMemory.fill(0x02);
-            }
-        }
-        else {
-            this.mainMemory = new Uint8Array(this.MEM_SIZE);
-            this.mainMemory.fill(0x02);
-        }
-        this.rom = new iNESFile(nesPath);
-        this.ppu = new PPU(this.mainMemory);
-        this.cpu = new CPU(this.mainMemory, this.ppu);
+        this.counter = 0;
+        let canvas = document.getElementById("screen");
+        this.mainMemory = new Uint8Array(this.MEM_SIZE);
+        this.rom = new iNESFile(romData);
+        this.ppu = new PPU(this, canvas);
+        this.cpu = new CPU(this);
     }
     boot() {
         this.ppu.boot();
         this.rom.load(this.mainMemory, this.ppu.mem);
         this.cpu.boot();
-        this.running = true;
-        while (this.running) {
+        this.step();
+    }
+    step() {
+        NES.drawFrame = false;
+        let error = false;
+        while (!NES.drawFrame) {
             try {
-                this.cpu.step();
+                let cpuCycles = this.cpu.step();
+                for (let j = 0; j < cpuCycles * 3; j++) {
+                    this.ppu.cycle();
+                }
             }
             catch (e) {
                 if (e.name == "Unexpected OpCode") {
                     console.log(e.message);
+                    error = true;
                     break;
                 }
                 throw e;
             }
         }
-        this.fs.writeFileSync(this.MEM_PATH, Buffer.from(this.mainMemory));
-        this.fs.writeFileSync(this.PPU_MEM_PATH, Buffer.from(this.ppu.mem));
+        this.ppu.ctx.paintFrame();
+        if (error) {
+            this.displayMem();
+            this.displayPPUMem();
+        }
+        else {
+            this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
+        }
+    }
+    read(addr) {
+        this.ppu.readReg(addr);
+        return this.mainMemory[addr];
+    }
+    write(addr, data) {
+        this.mainMemory[addr] = data;
+        this.ppu.writeReg(addr);
+    }
+    displayMem() {
+        let str = "";
+        for (let i = 0; i < this.mainMemory.length; i++) {
+            str += this.mainMemory[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("mem").innerHTML = str;
+    }
+    displayPPUMem() {
+        let str = "";
+        for (let i = 0; i < this.ppu.mem.length; i++) {
+            str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("ppuMem").innerHTML = str;
     }
 }
-let nes = new NES("../nestest.nes");
-nes.boot();
+NES.drawFrame = false;
+let nes;
+document.getElementById('file-input')
+    .addEventListener('change', init, false);
+function init(e) {
+    if (nes !== undefined) {
+        window.cancelAnimationFrame(nes.lastAnimFrame);
+    }
+    let file = e.target.files[0];
+    if (!file) {
+        return;
+    }
+    let reader = new FileReader();
+    reader.onload = function (e) {
+        nes = new NES(new Uint8Array(e.target.result));
+        nes.boot();
+    };
+    reader.readAsArrayBuffer(file);
+}
