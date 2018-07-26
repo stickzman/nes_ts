@@ -27,7 +27,7 @@ class NES {
         this.step();
     }
 
-    private counter = 0;
+    public counter = 0;
     private step() {
         NES.drawFrame = false;
         let error = false;
@@ -49,7 +49,7 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        if (error || this.counter < -1) {
+        if (error || this.counter++ < -1) {
             this.displayMem();
             this.displayPPUMem();
         } else {

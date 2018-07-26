@@ -2914,7 +2914,6 @@ class PPU {
                 this.ntPointer.incRow();
             }
             if (this.scanline == 239) {
-                //this.ctx.paintFrame();
                 NES.drawFrame = true;
             }
         }
@@ -2946,10 +2945,10 @@ class PPU {
         //Get PALETTE NUMBER
         let quad;
         if (this.dot % 32 < 16) {
-            quad = (this.scanline % 32 < 16) ? 0 : 1;
+            quad = (this.scanline % 32 < 16) ? 0 : 2;
         }
         else {
-            quad = (this.scanline % 32 < 16) ? 2 : 3;
+            quad = (this.scanline % 32 < 16) ? 1 : 3;
         }
         let palNum;
         mask = 3 << (quad * 2);
@@ -3412,7 +3411,7 @@ class NES {
             }
         }
         this.ppu.ctx.paintFrame();
-        if (error || this.counter < -1) {
+        if (error || this.counter++ < -1) {
             this.displayMem();
             this.displayPPUMem();
         }
