@@ -1,6 +1,7 @@
 class PPU {
     public mem: Uint8Array;
-    private OAM: Uint8Array;
+    public OAM: Uint8Array;
+    private oamAddr: number;
 
     private oddFrame: boolean = false;
     private latch = false;
@@ -276,16 +277,19 @@ class PPU {
         }
     }
 
-    public readReg(addr: number) {
+    public readReg(addr: number): number {
         switch (addr) {
             case this.PPUSTATUS:
                 this.latch = false;
                 break;
+            case this.OAMDATA:
+                return this.OAM[this.oamAddr];
         }
+        return;
     }
 
     public writeReg(addr: number) {
-        let byte = this.nes.read(addr);
+        let byte = this.nes.mainMemory[addr];
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
@@ -334,6 +338,21 @@ class PPU {
                     this.vRamAddr += 32;
                 } else {
                     this.vRamAddr += 1;
+                }
+                break;
+            case this.OAMADDR:
+                this.oamAddr = byte;
+                break;
+            case this.OAMDATA:
+                this.OAM[this.oamAddr++] = byte;
+                if (this.oamAddr > 0xFF) this.oamAddr = 0;
+                break;
+            case this.OAMDMA:
+                let slice = this.nes.mainMemory.slice((byte << 8), ((byte + 1) << 8));
+                this.OAM.set(slice, 0);
+                //Catch up to the 514 CPU cycles used
+                for (let i = 0; i < 514 * 3; i++) {
+                    this.cycle();
                 }
                 break;
         }

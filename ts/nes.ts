@@ -6,7 +6,7 @@ class NES {
     private rom: iNESFile;
     public cpu: CPU;
     private ppu: PPU;
-    private mainMemory: Uint8Array;
+    public mainMemory: Uint8Array;
 
     public static drawFrame: boolean = false;
     public lastAnimFrame;
@@ -49,9 +49,9 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        if (error || this.counter++ < -1) {
+        if (error || this.counter++ > 16) {
             this.displayMem();
-            this.displayPPUMem();
+            this.displayOAMMem();
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
@@ -59,22 +59,37 @@ class NES {
 
     public read(addr: number): number {
         if (addr >= 0x2000 && addr <= 0x3FFF) {
-            //console.log(addr.toString(16));
-            this.ppu.readReg(0x2000 + (addr % 8));
+            let res = this.ppu.readReg(0x2000 + (addr % 8));
+            if (res !== undefined) return res;
         }
         return this.mainMemory[addr];
     }
 
-    public write(addr: number, data: number) {
-        if (addr >= 0x2000 && addr <= 0x3FFF) {
+    //Skip setting register values when reading
+    public readNoReg(addr: number): number {
+        return this.mainMemory[addr];
+    }
 
+    public write(addr: number, data: number) {
+        this.mainMemory[addr] = data;
+        if (addr == 0x4014) {
+            this.ppu.writeReg(addr);
+        }
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
             for (let i = 0x2000; i < 0x3FFF; i += 8) {
                 this.mainMemory[i + (addr % 8)] = data;
             }
             this.ppu.writeReg(0x2000 + (addr % 8));
-            return;
         }
-        this.mainMemory[addr] = data;
+    }
+
+    //Skip setting register values when writing
+    public writeNoReg(addr: number, data: number) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            for (let i = 0x2000; i < 0x3FFF; i += 8) {
+                this.mainMemory[i + (addr % 8)] = data;
+            }
+        }
     }
 
     private displayMem() {
@@ -89,6 +104,14 @@ class NES {
         let str = "";
         for (let i = 0; i < this.ppu.mem.length; i++) {
             str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("ppuMem").innerHTML = str;
+    }
+
+    private displayOAMMem() {
+        let str = "";
+        for (let i = 0; i < this.ppu.OAM.length; i++) {
+            str += this.ppu.OAM[i].toString(16).padStart(2, "0").toUpperCase();
         }
         document.getElementById("ppuMem").innerHTML = str;
     }

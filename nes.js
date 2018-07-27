@@ -2967,10 +2967,13 @@ class PPU {
             case this.PPUSTATUS:
                 this.latch = false;
                 break;
+            case this.OAMDATA:
+                return this.OAM[this.oamAddr];
         }
+        return;
     }
     writeReg(addr) {
-        let byte = this.nes.read(addr);
+        let byte = this.nes.mainMemory[addr];
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
@@ -3031,6 +3034,22 @@ class PPU {
                 }
                 else {
                     this.vRamAddr += 1;
+                }
+                break;
+            case this.OAMADDR:
+                this.oamAddr = byte;
+                break;
+            case this.OAMDATA:
+                this.OAM[this.oamAddr++] = byte;
+                if (this.oamAddr > 0xFF)
+                    this.oamAddr = 0;
+                break;
+            case this.OAMDMA:
+                let slice = this.nes.mainMemory.slice((byte << 8), ((byte + 1) << 8));
+                this.OAM.set(slice, 0);
+                //Catch up to the 514 CPU cycles used
+                for (let i = 0; i < 514 * 3; i++) {
+                    this.cycle();
                 }
                 break;
         }
@@ -3413,9 +3432,9 @@ class NES {
             }
         }
         this.ppu.ctx.paintFrame();
-        if (error || this.counter++ < -1) {
+        if (error || this.counter++ > 16) {
             this.displayMem();
-            this.displayPPUMem();
+            this.displayOAMMem();
         }
         else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
@@ -3423,20 +3442,35 @@ class NES {
     }
     read(addr) {
         if (addr >= 0x2000 && addr <= 0x3FFF) {
-            //console.log(addr.toString(16));
-            this.ppu.readReg(0x2000 + (addr % 8));
+            let res = this.ppu.readReg(0x2000 + (addr % 8));
+            if (res !== undefined)
+                return res;
         }
         return this.mainMemory[addr];
     }
+    //Skip setting register values when reading
+    readNoReg(addr) {
+        return this.mainMemory[addr];
+    }
     write(addr, data) {
+        this.mainMemory[addr] = data;
+        if (addr == 0x4014) {
+            this.ppu.writeReg(addr);
+        }
         if (addr >= 0x2000 && addr <= 0x3FFF) {
             for (let i = 0x2000; i < 0x3FFF; i += 8) {
                 this.mainMemory[i + (addr % 8)] = data;
             }
             this.ppu.writeReg(0x2000 + (addr % 8));
-            return;
         }
-        this.mainMemory[addr] = data;
+    }
+    //Skip setting register values when writing
+    writeNoReg(addr, data) {
+        if (addr >= 0x2000 && addr <= 0x3FFF) {
+            for (let i = 0x2000; i < 0x3FFF; i += 8) {
+                this.mainMemory[i + (addr % 8)] = data;
+            }
+        }
     }
     displayMem() {
         let str = "";
@@ -3449,6 +3483,13 @@ class NES {
         let str = "";
         for (let i = 0; i < this.ppu.mem.length; i++) {
             str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
+        }
+        document.getElementById("ppuMem").innerHTML = str;
+    }
+    displayOAMMem() {
+        let str = "";
+        for (let i = 0; i < this.ppu.OAM.length; i++) {
+            str += this.ppu.OAM[i].toString(16).padStart(2, "0").toUpperCase();
         }
         document.getElementById("ppuMem").innerHTML = str;
     }
