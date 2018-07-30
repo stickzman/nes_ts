@@ -12,7 +12,7 @@ class iNESFile {
     private fourScreenMode: boolean;
     private trainerPresent: boolean;
     private batteryBacked: boolean;
-    private mirrorVertical: boolean;
+    public mirrorVertical: boolean;
     private vsGame: boolean; //Is it a Vs. Unisystem game?
     private isPC10: boolean; //Is it a Playchoice 10 game?
     private nes2_0: boolean; //Is this an iNES 2.0 file

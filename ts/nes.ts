@@ -3,7 +3,7 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
-    private rom: iNESFile;
+    public rom: iNESFile;
     public cpu: CPU;
     private ppu: PPU;
     public mainMemory: Uint8Array;
@@ -51,7 +51,7 @@ class NES {
 
         if (error || this.counter++ > 16) {
             this.displayMem();
-            this.displayOAMMem();
+            this.displayPPUMem();
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }

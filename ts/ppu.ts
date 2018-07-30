@@ -333,7 +333,26 @@ class PPU {
                 this.latch = !this.latch;
                 break;
             case this.PPUDATA:
-                this.mem[this.vRamAddr] = byte;
+                if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
+                    if (this.nes.rom.mirrorVertical) {
+                        this.mem[this.vRamAddr] = byte;
+                        if (this.vRamAddr < 0x2800) {
+                            this.mem[this.vRamAddr + 0x800] = byte;
+                        } else {
+                            this.mem[this.vRamAddr - 0x800] = byte;
+                        }
+                    } else {
+                        this.mem[this.vRamAddr] = byte;
+                        if ((this.vRamAddr - 0x2000) % 0x800 < 0x400) {
+                            this.mem[this.vRamAddr + 0x400] = byte;
+                        } else {
+                            this.mem[this.vRamAddr - 0x400] = byte;
+                        }
+                    }
+                } else {
+                    this.mem[this.vRamAddr] = byte;
+                }
+                //this.mem[this.vRamAddr] = byte;
                 if (this.incAddrBy32) {
                     this.vRamAddr += 32;
                 } else {
