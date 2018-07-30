@@ -347,9 +347,9 @@ class PPU {
                 this.showLeftSprite = (byte & 4) != 0;
                 this.showBkg = (byte & 8) != 0;
                 this.showSprites = (byte & 16) != 0;
-                this.maxRed = (byte & 32) != 0;
-                this.maxGreen = (byte & 64) != 0;
-                this.maxBlue = (byte & 128) != 0;
+                PPU.maxRed = (byte & 32) != 0;
+                PPU.maxGreen = (byte & 64) != 0;
+                PPU.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
                 if (!this.latch) {
