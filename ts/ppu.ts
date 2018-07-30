@@ -9,29 +9,6 @@ class PPU {
     private scanline: number = 0;
     private dot: number = 0;
 
-    public ctx = {
-        ctx: null,
-        imageData: null,
-        x: 0,
-        y: 0,
-        setPixel: function (r: number, g: number, b: number, a: number = 255) {
-            let i = this.y * this.imageData.width * 4 + this.x * 4;
-            this.imageData.data[i++] = r;
-            this.imageData.data[i++] = g;
-            this.imageData.data[i++] = b;
-            this.imageData.data[i] = a;
-            if (++this.x > this.imageData.width - 1) {
-                this.x = 0;
-                if (++this.y > this.imageData.height - 1) {
-                    this.y = 0;
-                }
-            }
-        },
-        paintFrame: function () {
-            this.ctx.putImageData(this.imageData, 0, 0);
-        }
-    }
-
     private attrByte: number;
     private bkgAddr: number;
     private bkgHiByte: number;
@@ -51,9 +28,9 @@ class PPU {
     private showLeftSprite: boolean = false;
     private showBkg: boolean = false;
     private showSprites: boolean = false;
-    private maxRed: boolean = false;
-    private maxGreen: boolean = false;
-    private maxBlue: boolean = false;
+    private static maxRed: boolean = false;
+    private static maxGreen: boolean = false;
+    private static maxBlue: boolean = false;
     //STATUS vars
     private vbl: boolean = false;
 
@@ -102,6 +79,53 @@ class PPU {
             }
         }
     }
+    public ctx = {
+        ctx: null,
+        imageData: null,
+        x: 0,
+        y: 0,
+        setPixel: function (r: number, g: number, b: number) {
+            /*
+            let lowR = r - 25;
+            let lowG = g - 25;
+            let lowB = b - 25;
+            if (PPU.maxRed && g > lowG && b > lowB) {
+                g -= 25;
+                b -= 25;
+            }
+            if (PPU.maxGreen && r > lowR && b > lowB) {
+                r -= 25;
+                b -= 25;
+            }
+            if (PPU.maxBlue && r > lowR && g > lowG) {
+                r -= 25;
+                g -= 25;
+            }
+            */
+            if (PPU.maxGreen || PPU.maxBlue) {
+                r -= 25;
+            }
+            if (PPU.maxRed || PPU.maxBlue) {
+                g -= 25;
+            }
+            if (PPU.maxRed || PPU.maxGreen) {
+                b -= 25;
+            }
+            let i = this.y * this.imageData.width * 4 + this.x * 4;
+            this.imageData.data[i++] = r;
+            this.imageData.data[i++] = g;
+            this.imageData.data[i++] = b;
+            if (++this.x > this.imageData.width - 1) {
+                this.x = 0;
+                if (++this.y > this.imageData.height - 1) {
+                    this.y = 0;
+                }
+            }
+        },
+        paintFrame: function () {
+            this.ctx.putImageData(this.imageData, 0, 0);
+        }
+    }
 
 
     constructor(private nes: NES, private canvas: HTMLCanvasElement) {
@@ -113,6 +137,9 @@ class PPU {
         ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(canvas.width, canvas.height);
         this.ctx.ctx = ctx;
+        for (let i = 3; i < imgData.data.length; i += 4) {
+            imgData.data[i] = 255;
+        }
         this.ctx.imageData = imgData;
     }
 
@@ -352,7 +379,6 @@ class PPU {
                 } else {
                     this.mem[this.vRamAddr] = byte;
                 }
-                //this.mem[this.vRamAddr] = byte;
                 if (this.incAddrBy32) {
                     this.vRamAddr += 32;
                 } else {

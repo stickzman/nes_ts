@@ -2708,28 +2708,6 @@ class PPU {
         this.latch = false;
         this.scanline = 0;
         this.dot = 0;
-        this.ctx = {
-            ctx: null,
-            imageData: null,
-            x: 0,
-            y: 0,
-            setPixel: function (r, g, b, a = 255) {
-                let i = this.y * this.imageData.width * 4 + this.x * 4;
-                this.imageData.data[i++] = r;
-                this.imageData.data[i++] = g;
-                this.imageData.data[i++] = b;
-                this.imageData.data[i] = a;
-                if (++this.x > this.imageData.width - 1) {
-                    this.x = 0;
-                    if (++this.y > this.imageData.height - 1) {
-                        this.y = 0;
-                    }
-                }
-            },
-            paintFrame: function () {
-                this.ctx.putImageData(this.imageData, 0, 0);
-            }
-        };
         this.incAddrBy32 = false; //If false, inc by 1
         this.spritePatAddr = 0;
         this.bkgPatAddr = 0;
@@ -2742,9 +2720,6 @@ class PPU {
         this.showLeftSprite = false;
         this.showBkg = false;
         this.showSprites = false;
-        this.maxRed = false;
-        this.maxGreen = false;
-        this.maxBlue = false;
         //STATUS vars
         this.vbl = false;
         this.PPUCTRL = 0x2000;
@@ -2791,6 +2766,53 @@ class PPU {
                 }
             }
         };
+        this.ctx = {
+            ctx: null,
+            imageData: null,
+            x: 0,
+            y: 0,
+            setPixel: function (r, g, b) {
+                /*
+                let lowR = r - 25;
+                let lowG = g - 25;
+                let lowB = b - 25;
+                if (PPU.maxRed && g > lowG && b > lowB) {
+                    g -= 25;
+                    b -= 25;
+                }
+                if (PPU.maxGreen && r > lowR && b > lowB) {
+                    r -= 25;
+                    b -= 25;
+                }
+                if (PPU.maxBlue && r > lowR && g > lowG) {
+                    r -= 25;
+                    g -= 25;
+                }
+                */
+                if (PPU.maxGreen || PPU.maxBlue) {
+                    r -= 25;
+                }
+                if (PPU.maxRed || PPU.maxBlue) {
+                    g -= 25;
+                }
+                if (PPU.maxRed || PPU.maxGreen) {
+                    b -= 25;
+                }
+                let i = this.y * this.imageData.width * 4 + this.x * 4;
+                this.imageData.data[i++] = r;
+                this.imageData.data[i++] = g;
+                this.imageData.data[i++] = b;
+                if (++this.x > this.imageData.width - 1) {
+                    this.x = 0;
+                    if (++this.y > this.imageData.height - 1) {
+                        this.y = 0;
+                    }
+                }
+            },
+            paintFrame: function () {
+                this.ctx.putImageData(this.imageData, 0, 0);
+            }
+        };
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         let ctx = canvas.getContext("2d");
@@ -2799,6 +2821,9 @@ class PPU {
         ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(canvas.width, canvas.height);
         this.ctx.ctx = ctx;
+        for (let i = 3; i < imgData.data.length; i += 4) {
+            imgData.data[i] = 255;
+        }
         this.ctx.imageData = imgData;
     }
     boot() {
@@ -3051,7 +3076,6 @@ class PPU {
                 else {
                     this.mem[this.vRamAddr] = byte;
                 }
-                //this.mem[this.vRamAddr] = byte;
                 if (this.incAddrBy32) {
                     this.vRamAddr += 32;
                 }
@@ -3096,6 +3120,9 @@ class PPU {
 }
 //CTRL vars
 PPU.baseNTAddr = 0x2000;
+PPU.maxRed = false;
+PPU.maxGreen = false;
+PPU.maxBlue = false;
 let colorData = {};
 colorData[0x00] = {
     r: 84,
@@ -3455,7 +3482,7 @@ class NES {
             }
         }
         this.ppu.ctx.paintFrame();
-        if (error || this.counter++ > 16) {
+        if (error || this.counter++ < -1) {
             this.displayMem();
             this.displayPPUMem();
         }

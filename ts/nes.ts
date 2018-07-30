@@ -49,7 +49,7 @@ class NES {
 
         this.ppu.ctx.paintFrame();
 
-        if (error || this.counter++ > 16) {
+        if (error || this.counter++ < -1) {
             this.displayMem();
             this.displayPPUMem();
         } else {
