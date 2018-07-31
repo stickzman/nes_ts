@@ -4,8 +4,9 @@ class PPU {
     private oamAddr: number;
 
     private oddFrame: boolean = false;
-    private latch = false;
-    private vRamAddr: number;
+    private writeLatch = false;
+    private vRamAddr: number = 0;
+    private initRamAddr: number = 0;
     private scanline: number = 0;
     private dot: number = 0;
 
@@ -15,7 +16,6 @@ class PPU {
     private bkgLoByte: number;
 
     //CTRL vars
-    private static baseNTAddr: number = 0x2000;
     private incAddrBy32: boolean = false; //If false, inc by 1
     private spritePatAddr: number = 0;
     private bkgPatAddr: number = 0;
@@ -44,64 +44,12 @@ class PPU {
     private readonly PPUDATA: number = 0x2007;
     private readonly OAMDMA: number = 0x4014;
 
-    //Render vars
-    private ntPointer = {
-        row: 0, //0-29 (30 rows, each row 8 px height)
-        col: 0, //0-31 (32 cols, each column 8 px width)
-        addr: function () {
-            return this.row * 32 + this.col + PPU.baseNTAddr;
-        },
-        incCol: function() {
-            if (++this.col > 31) {
-                this.col = 0;
-            }
-        },
-        incRow: function() {
-            if (++this.row > 29) {
-                this.row = 0;
-            }
-        }
-    }
-    private atPointer = {
-        row: 0, //0-7.5 (8 rows, each row 32 px height)
-        col: 0, //0-8 (8 cols, each column 32 px width)
-        addr: function () {
-            return this.row * 8 + 0x3C0 + this.col + PPU.baseNTAddr;
-        },
-        incCol: function() {
-            if (++this.col > 7) {
-                this.col = 0;
-            }
-        },
-        incRow: function() {
-            if (++this.row > 7) {
-                this.row = 0;
-            }
-        }
-    }
     public ctx = {
         ctx: null,
         imageData: null,
         x: 0,
         y: 0,
         setPixel: function (r: number, g: number, b: number) {
-            /*
-            let lowR = r - 25;
-            let lowG = g - 25;
-            let lowB = b - 25;
-            if (PPU.maxRed && g > lowG && b > lowB) {
-                g -= 25;
-                b -= 25;
-            }
-            if (PPU.maxGreen && r > lowR && b > lowB) {
-                r -= 25;
-                b -= 25;
-            }
-            if (PPU.maxBlue && r > lowR && g > lowG) {
-                r -= 25;
-                g -= 25;
-            }
-            */
             if (PPU.maxGreen || PPU.maxBlue) {
                 r -= 25;
             }
@@ -128,7 +76,7 @@ class PPU {
     }
 
 
-    constructor(private nes: NES, private canvas: HTMLCanvasElement) {
+    constructor(private nes: NES, canvas: HTMLCanvasElement) {
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         let ctx = canvas.getContext("2d");
@@ -169,7 +117,7 @@ class PPU {
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
-                if (this.scanline == 241 && this.dot == 1) this.setVBL();
+                if (this.scanline == 241 && this.dot == 1 && this.nes.cpu.cycleCount > 29658) this.setVBL();
                 //POST-RENDER
                 break;
             case (this.scanline == 261):
@@ -189,11 +137,8 @@ class PPU {
             }
         }
         //Reset pointers
-        if (this.dot == 0 && this.scanline == 261) {
-            this.atPointer.row = 0;
-            this.atPointer.col = 0;
-            this.ntPointer.row = 0;
-            this.ntPointer.col = 0;
+        if (this.dot == 1 && this.scanline == 261) {
+            if (this.showBkg) this.vRamAddr = this.initRamAddr;
         }
     }
 
@@ -213,11 +158,11 @@ class PPU {
                         break;
                     case 4:
                         //Get attrTable byte
-                        this.attrByte = this.mem[this.atPointer.addr()];
+                        this.attrByte = this.mem[this.getATAddr()];
                         break;
                     case 5:
                         //Get Low BG addr
-                        this.bkgAddr = this.mem[this.ntPointer.addr()] << 4;
+                        this.bkgAddr = this.mem[this.getNTAddr()] << 4;
                         break;
                     case 6:
                         //Get Low BG byte
@@ -239,26 +184,24 @@ class PPU {
                 break;
         }
 
-        if (this.dot <= 256) {
-            //Inc Nametable Pointer
-            if (this.dot % 8 == 0) {
-                this.ntPointer.incCol();
-            }
-            //Inc Attr Table Pointer
-            if (this.dot % 32 == 0 && this.dot != 0) {
-                this.atPointer.incCol();
+        if (this.showBkg) {
+            if (this.dot < 256) {
+                //Inc Nametable Pointer
+                if (this.dot % 8 == 0) {
+                    this.incCoarseX();
+                }
+            } else if (this.dot == 256) {
+                this.resetCoarseX();
+                if (this.scanline % 8 == 7) {
+                    this.incCoarseY();
+                    if (this.scanline == 239) {
+                        this.resetCoarseY();
+                    }
+                }
             }
         }
-        if (this.dot == 256) {
-            if (this.scanline % 32 == 31) {
-                this.atPointer.incRow();
-            }
-            if (this.scanline % 8 == 7) {
-                this.ntPointer.incRow();
-            }
-            if (this.scanline == 239) {
-                NES.drawFrame = true;
-            }
+        if (this.scanline == 239 && this.dot == 256) {
+            NES.drawFrame = true;
         }
     }
 
@@ -307,7 +250,7 @@ class PPU {
     public readReg(addr: number): number {
         switch (addr) {
             case this.PPUSTATUS:
-                this.latch = false;
+                this.writeLatch = false;
                 break;
             case this.OAMDATA:
                 return this.OAM[this.oamAddr];
@@ -320,12 +263,7 @@ class PPU {
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
-                switch (ntBit) {
-                    case 0: PPU.baseNTAddr = 0x2000; break;
-                    case 1: PPU.baseNTAddr = 0x2400; break;
-                    case 2: PPU.baseNTAddr = 0x2800; break;
-                    case 3: PPU.baseNTAddr = 0x2C00; break;
-                }
+                this.initRamAddr = insertInto(this.initRamAddr, ntBit, 12, 2, 0);
                 this.incAddrBy32 = (byte & 4) != 0;
                 if ((byte & 8) != 0) {
                     this.spritePatAddr = 0x1000;
@@ -352,12 +290,13 @@ class PPU {
                 PPU.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
-                if (!this.latch) {
-                    this.vRamAddr = byte << 8;
+                if (!this.writeLatch) {
+                    this.initRamAddr = byte << 8;
                 } else {
-                    this.vRamAddr += byte;
+                    this.initRamAddr += byte;
+                    this.vRamAddr = this.initRamAddr;
                 }
-                this.latch = !this.latch;
+                this.writeLatch = !this.writeLatch;
                 break;
             case this.PPUDATA:
                 if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
@@ -400,7 +339,59 @@ class PPU {
                     this.cycle();
                 }
                 break;
+            case this.PPUSCROLL:
+                if (!this.writeLatch) {
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 5, 8, 3);
+                } else {
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 15, 3, 0);
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 10, 8, 3);
+                }
+                this.writeLatch = !this.writeLatch
+                break;
         }
+    }
+
+    private incCoarseX() {
+        if ((this.vRamAddr & 0x1F) == 31) {
+            //Swap nametable, horizontally
+            this.vRamAddr &= 0xFFE0; //Set X to 0
+            this.vRamAddr ^= 0x400; //Swap NT
+        } else {
+            this.vRamAddr++;
+        }
+    }
+
+    private resetCoarseX() {
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 5, 5, 0);
+    }
+
+    private incCoarseY() {
+        let y = (this.vRamAddr & 0x3E0) >> 5;
+        if (y == 29) {
+            //Swap nametable, vertically
+            y = 0;
+            this.vRamAddr ^= 0x800; //Swap NT
+        } else if (y == 31) {
+            y = 0;
+        } else {
+            y += 1;
+        }
+        let mask = 0xFFFF;
+        mask ^= 0x3E0;
+        //Put y back into vRamAddr
+        this.vRamAddr = (this.vRamAddr & mask) | (y << 5);
+    }
+
+    private resetCoarseY() {
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
+    }
+
+    private getNTAddr(): number {
+        return 0x2000 | (this.vRamAddr & 0xFFF);
+    }
+
+    private getATAddr(): number {
+        return 0x23C0 | (this.vRamAddr & 0x0C00) | ((this.vRamAddr >> 4) & 0x38) | ((this.vRamAddr >> 2) & 0x07);
     }
 
     private setVBL() {

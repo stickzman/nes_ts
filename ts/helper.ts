@@ -15,3 +15,14 @@ function addWrap(reg: number, add: number): number {
     if (reg < 0x00) { reg = 0xFF; }
     return reg;
 }
+
+function insertInto(addr: number, byte: number, i: number, j1: number, j2: number): number {
+    let mask = 0xFFFF;
+    mask ^= (Math.pow(2, (j1 - j2)) - 1) << (i - (j1 - j2));
+    addr &= mask; //Clear relevant bits
+    //Slice/Shift byte
+    byte &= (Math.pow(2, (j1 - j2)) - 1) << j2;
+    byte >>= j2;
+    byte <<= (i - (j1 - j2));
+    return addr | byte;
+}

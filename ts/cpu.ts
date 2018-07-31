@@ -9,6 +9,7 @@ class CPU {
 
     private IRQ: boolean = false; //Interrupt Request signal line
     private NMI: boolean = false; //Non-Maskable Interrupt signal line
+    public cycleCount: number = 0;
 
     private ACC: number;//Accumulator
     private X: number;  //Register X
@@ -91,6 +92,7 @@ class CPU {
         this.PC += op.bytes;
         if (this.PC > 0xFFFF) { this.PC -= 0x10000; }
 
+        this.cycleCount += op.cycles;
         return op.cycles;
     }
 

@@ -8,6 +8,7 @@ class CPU {
         this.NMI_VECT_LOC = 0xFFFA;
         this.IRQ = false; //Interrupt Request signal line
         this.NMI = false; //Non-Maskable Interrupt signal line
+        this.cycleCount = 0;
         this.PC = 0; //Program Counter
         this.flags = {
             carry: false,
@@ -69,6 +70,7 @@ class CPU {
         if (this.PC > 0xFFFF) {
             this.PC -= 0x10000;
         }
+        this.cycleCount += op.cycles;
         return op.cycles;
     }
     requestInterrupt() {
@@ -2609,6 +2611,16 @@ function addWrap(reg, add) {
     }
     return reg;
 }
+function insertInto(addr, byte, i, j1, j2) {
+    let mask = 0xFFFF;
+    mask ^= (Math.pow(2, (j1 - j2)) - 1) << (i - (j1 - j2));
+    addr &= mask; //Clear relevant bits
+    //Slice/Shift byte
+    byte &= (Math.pow(2, (j1 - j2)) - 1) << j2;
+    byte >>= j2;
+    byte <<= (i - (j1 - j2));
+    return addr | byte;
+}
 class iNESFile {
     constructor(buff) {
         //Check if valid iNES file (file starts with 'NES' and character break)
@@ -2703,11 +2715,13 @@ class iNESFile {
 class PPU {
     constructor(nes, canvas) {
         this.nes = nes;
-        this.canvas = canvas;
         this.oddFrame = false;
-        this.latch = false;
+        this.writeLatch = false;
+        this.vRamAddr = 0;
+        this.initRamAddr = 0;
         this.scanline = 0;
         this.dot = 0;
+        //CTRL vars
         this.incAddrBy32 = false; //If false, inc by 1
         this.spritePatAddr = 0;
         this.bkgPatAddr = 0;
@@ -2731,64 +2745,12 @@ class PPU {
         this.PPUADDR = 0x2006;
         this.PPUDATA = 0x2007;
         this.OAMDMA = 0x4014;
-        //Render vars
-        this.ntPointer = {
-            row: 0,
-            col: 0,
-            addr: function () {
-                return this.row * 32 + this.col + PPU.baseNTAddr;
-            },
-            incCol: function () {
-                if (++this.col > 31) {
-                    this.col = 0;
-                }
-            },
-            incRow: function () {
-                if (++this.row > 29) {
-                    this.row = 0;
-                }
-            }
-        };
-        this.atPointer = {
-            row: 0,
-            col: 0,
-            addr: function () {
-                return this.row * 8 + 0x3C0 + this.col + PPU.baseNTAddr;
-            },
-            incCol: function () {
-                if (++this.col > 7) {
-                    this.col = 0;
-                }
-            },
-            incRow: function () {
-                if (++this.row > 7) {
-                    this.row = 0;
-                }
-            }
-        };
         this.ctx = {
             ctx: null,
             imageData: null,
             x: 0,
             y: 0,
             setPixel: function (r, g, b) {
-                /*
-                let lowR = r - 25;
-                let lowG = g - 25;
-                let lowB = b - 25;
-                if (PPU.maxRed && g > lowG && b > lowB) {
-                    g -= 25;
-                    b -= 25;
-                }
-                if (PPU.maxGreen && r > lowR && b > lowB) {
-                    r -= 25;
-                    b -= 25;
-                }
-                if (PPU.maxBlue && r > lowR && g > lowG) {
-                    r -= 25;
-                    g -= 25;
-                }
-                */
                 if (PPU.maxGreen || PPU.maxBlue) {
                     r -= 25;
                 }
@@ -2851,7 +2813,7 @@ class PPU {
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
-                if (this.scanline == 241 && this.dot == 1)
+                if (this.scanline == 241 && this.dot == 1 && this.nes.cpu.cycleCount > 29658)
                     this.setVBL();
                 //POST-RENDER
                 break;
@@ -2872,11 +2834,9 @@ class PPU {
             }
         }
         //Reset pointers
-        if (this.dot == 0 && this.scanline == 261) {
-            this.atPointer.row = 0;
-            this.atPointer.col = 0;
-            this.ntPointer.row = 0;
-            this.ntPointer.col = 0;
+        if (this.dot == 1 && this.scanline == 261) {
+            if (this.showBkg)
+                this.vRamAddr = this.initRamAddr;
         }
     }
     visibleCycle() {
@@ -2896,11 +2856,11 @@ class PPU {
                         break;
                     case 4:
                         //Get attrTable byte
-                        this.attrByte = this.mem[this.atPointer.addr()];
+                        this.attrByte = this.mem[this.getATAddr()];
                         break;
                     case 5:
                         //Get Low BG addr
-                        this.bkgAddr = this.mem[this.ntPointer.addr()] << 4;
+                        this.bkgAddr = this.mem[this.getNTAddr()] << 4;
                         break;
                     case 6:
                         //Get Low BG byte
@@ -2921,26 +2881,25 @@ class PPU {
                 //TODO: Sprite Evaluation
                 break;
         }
-        if (this.dot <= 256) {
-            //Inc Nametable Pointer
-            if (this.dot % 8 == 0) {
-                this.ntPointer.incCol();
+        if (this.showBkg) {
+            if (this.dot < 256) {
+                //Inc Nametable Pointer
+                if (this.dot % 8 == 0) {
+                    this.incCoarseX();
+                }
             }
-            //Inc Attr Table Pointer
-            if (this.dot % 32 == 0 && this.dot != 0) {
-                this.atPointer.incCol();
+            else if (this.dot == 256) {
+                this.resetCoarseX();
+                if (this.scanline % 8 == 7) {
+                    this.incCoarseY();
+                    if (this.scanline == 239) {
+                        this.resetCoarseY();
+                    }
+                }
             }
         }
-        if (this.dot == 256) {
-            if (this.scanline % 32 == 31) {
-                this.atPointer.incRow();
-            }
-            if (this.scanline % 8 == 7) {
-                this.ntPointer.incRow();
-            }
-            if (this.scanline == 239) {
-                NES.drawFrame = true;
-            }
+        if (this.scanline == 239 && this.dot == 256) {
+            NES.drawFrame = true;
         }
     }
     render() {
@@ -2990,7 +2949,7 @@ class PPU {
     readReg(addr) {
         switch (addr) {
             case this.PPUSTATUS:
-                this.latch = false;
+                this.writeLatch = false;
                 break;
             case this.OAMDATA:
                 return this.OAM[this.oamAddr];
@@ -3002,20 +2961,7 @@ class PPU {
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
-                switch (ntBit) {
-                    case 0:
-                        PPU.baseNTAddr = 0x2000;
-                        break;
-                    case 1:
-                        PPU.baseNTAddr = 0x2400;
-                        break;
-                    case 2:
-                        PPU.baseNTAddr = 0x2800;
-                        break;
-                    case 3:
-                        PPU.baseNTAddr = 0x2C00;
-                        break;
-                }
+                this.initRamAddr = insertInto(this.initRamAddr, ntBit, 12, 2, 0);
                 this.incAddrBy32 = (byte & 4) != 0;
                 if ((byte & 8) != 0) {
                     this.spritePatAddr = 0x1000;
@@ -3044,13 +2990,14 @@ class PPU {
                 PPU.maxBlue = (byte & 128) != 0;
                 break;
             case this.PPUADDR:
-                if (!this.latch) {
-                    this.vRamAddr = byte << 8;
+                if (!this.writeLatch) {
+                    this.initRamAddr = byte << 8;
                 }
                 else {
-                    this.vRamAddr += byte;
+                    this.initRamAddr += byte;
+                    this.vRamAddr = this.initRamAddr;
                 }
-                this.latch = !this.latch;
+                this.writeLatch = !this.writeLatch;
                 break;
             case this.PPUDATA:
                 if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
@@ -3099,7 +3046,57 @@ class PPU {
                     this.cycle();
                 }
                 break;
+            case this.PPUSCROLL:
+                if (!this.writeLatch) {
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 5, 8, 3);
+                }
+                else {
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 15, 3, 0);
+                    this.initRamAddr = insertInto(this.initRamAddr, byte, 10, 8, 3);
+                }
+                this.writeLatch = !this.writeLatch;
+                break;
         }
+    }
+    incCoarseX() {
+        if ((this.vRamAddr & 0x1F) == 31) {
+            //Swap nametable, horizontally
+            this.vRamAddr &= 0xFFE0; //Set X to 0
+            this.vRamAddr ^= 0x400; //Swap NT
+        }
+        else {
+            this.vRamAddr++;
+        }
+    }
+    resetCoarseX() {
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 5, 5, 0);
+    }
+    incCoarseY() {
+        let y = (this.vRamAddr & 0x3E0) >> 5;
+        if (y == 29) {
+            //Swap nametable, vertically
+            y = 0;
+            this.vRamAddr ^= 0x800; //Swap NT
+        }
+        else if (y == 31) {
+            y = 0;
+        }
+        else {
+            y += 1;
+        }
+        let mask = 0xFFFF;
+        mask ^= 0x3E0;
+        //Put y back into vRamAddr
+        this.vRamAddr = (this.vRamAddr & mask) | (y << 5);
+    }
+    resetCoarseY() {
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
+    }
+    getNTAddr() {
+        return 0x2000 | (this.vRamAddr & 0xFFF);
+    }
+    getATAddr() {
+        return 0x23C0 | (this.vRamAddr & 0x0C00) | ((this.vRamAddr >> 4) & 0x38) | ((this.vRamAddr >> 2) & 0x07);
     }
     setVBL() {
         this.vbl = true;
@@ -3118,8 +3115,6 @@ class PPU {
         this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xDF));
     }
 }
-//CTRL vars
-PPU.baseNTAddr = 0x2000;
 PPU.maxRed = false;
 PPU.maxGreen = false;
 PPU.maxBlue = false;
