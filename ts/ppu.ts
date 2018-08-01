@@ -7,8 +7,12 @@ class PPU {
     private writeLatch = false;
     private vRamAddr: number = 0;
     private initRamAddr: number = 0;
-    private scanline: number = 0;
+    private scanline: number = 261;
     private dot: number = 0;
+
+    //Shift registers
+    private bkgQ = [];
+    private attrQ = [];
 
     private attrByte: number;
     private bkgAddr: number;
@@ -113,7 +117,6 @@ class PPU {
     public cycle() {
         switch (true) {
             case (this.scanline < 240):
-                if (this.oddFrame && this.dot == 0 && this.scanline == 0) this.dot++;
                 this.visibleCycle();
                 break;
             case (this.scanline < 260):
@@ -140,68 +143,43 @@ class PPU {
         if (this.dot == 1 && this.scanline == 261) {
             if (this.showBkg) this.vRamAddr = this.initRamAddr;
         }
+
+        if (this.scanline == 239 && this.dot == 256) {
+            NES.drawFrame = true;
+        }
     }
 
     public visibleCycle() {
-        if (this.dot == 0) return; //Idle on Cycle 0
+        if (!this.showBkg) return;
         switch (true) {
             case (this.dot <= 256):
-                switch (this.dot % 8) {
-                    case 1:
-                        //Get nameTable addr (handled below switch/case)
-                        break;
-                    case 2:
-                        //Get nameTable byte
-                        break;
-                    case 3:
-                        //Get attrTable addr (handled below switch/case)
-                        break;
-                    case 4:
-                        //Get attrTable byte
-                        this.attrByte = this.mem[this.getATAddr()];
-                        break;
-                    case 5:
-                        //Get Low BG addr
-                        this.bkgAddr = this.mem[this.getNTAddr()] << 4;
-                        break;
-                    case 6:
-                        //Get Low BG byte
-                        this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
-                        break;
-                    case 7:
-                        //Get High BG addr
-                        this.bkgAddr += 8;
-                        break;
-                    case 0:
-                        //Get High BG byte
-                        this.bkgHiByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
-                        this.render();
-                        break;
+                if (this.dot % 8 == 0 && this.dot != 0) {
+                    //Get attrTable byte
+                    this.attrByte = this.mem[this.getATAddr()];
+                    this.bkgAddr = this.mem[this.getNTAddr()] << 4;
+                    //Get Low BG byte
+                    this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
+                    //Get High BG byte
+                    this.bkgHiByte = this.mem[this.bkgAddr + 8 + this.scanline % 8 + this.bkgPatAddr];
+                    this.render();
+
+                    //Inc NT Pointer
+                    if (this.dot < 256) {
+                        this.incCoarseX();
+                    } else {
+                        this.resetCoarseX();
+                        if (this.scanline % 8 == 7) {
+                            this.incCoarseY();
+                            if (this.scanline == 239) {
+                                this.resetCoarseY();
+                            }
+                        }
+                    }
                 }
                 break;
             case (this.dot <= 320):
                 //TODO: Sprite Evaluation
                 break;
-        }
-
-        if (this.showBkg) {
-            if (this.dot < 256) {
-                //Inc Nametable Pointer
-                if (this.dot % 8 == 0) {
-                    this.incCoarseX();
-                }
-            } else if (this.dot == 256) {
-                this.resetCoarseX();
-                if (this.scanline % 8 == 7) {
-                    this.incCoarseY();
-                    if (this.scanline == 239) {
-                        this.resetCoarseY();
-                    }
-                }
-            }
-        }
-        if (this.scanline == 239 && this.dot == 256) {
-            NES.drawFrame = true;
         }
     }
 
@@ -349,6 +327,11 @@ class PPU {
                 this.writeLatch = !this.writeLatch
                 break;
         }
+    }
+
+    private shiftDown(q) {
+        q[0] = q[1];
+        q[1] = null;
     }
 
     private incCoarseX() {
