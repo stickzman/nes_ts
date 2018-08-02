@@ -120,10 +120,12 @@ class PPU {
                     //Get attrTable byte
                     this.attrQ[0] = this.mem[this.getATAddr()];
                     let addr = this.mem[this.getNTAddr()] << 4;
+
+                    let fineY = (this.vRamAddr & 0x7000) >> 12;
                     //Get Low BG byte
-                    let lo = this.mem[addr + this.bkgPatAddr];
+                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
                     //Get High BG byte
-                    let hi = this.mem[addr + 8 + this.bkgPatAddr];
+                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
                     this.bkgQ[0] = this.combinePatData(hi, lo);
 
                     if (this.showBkg) this.incCoarseX();
@@ -131,10 +133,12 @@ class PPU {
                     //Get attrTable byte
                     this.attrQ[1] = this.mem[this.getATAddr()];
                     let addr = this.mem[this.getNTAddr()] << 4;
+
+                    let fineY = (this.vRamAddr & 0x7000) >> 12;
                     //Get Low BG byte
-                    let lo = this.mem[addr + this.bkgPatAddr];
+                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
                     //Get High BG byte
-                    let hi = this.mem[addr + 8 + this.bkgPatAddr];
+                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
                     this.bkgQ[1] = this.combinePatData(hi, lo);
 
                     if (this.showBkg) this.incCoarseX();
@@ -174,10 +178,12 @@ class PPU {
                     //Get attrTable byte
                     this.attrQ[1] = this.mem[this.getATAddr()];
                     let addr = this.mem[this.getNTAddr()] << 4;
+
+                    let fineY = (this.vRamAddr & 0x7000) >> 12;
                     //Get Low BG byte
-                    let lo = this.mem[addr + this.scanline % 8 + this.bkgPatAddr];
+                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
                     //Get High BG byte
-                    let hi = this.mem[addr + 8 + this.scanline % 8 + this.bkgPatAddr];
+                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
 
                     this.bkgQ[1] = this.combinePatData(hi, lo);
 
@@ -186,11 +192,9 @@ class PPU {
                         this.incCoarseX();
                     } else {
                         this.resetCoarseX();
-                        if (this.scanline % 8 == 7) {
-                            this.incCoarseY();
-                            if (this.scanline == 239) {
-                                this.resetCoarseY();
-                            }
+                        this.incY();
+                        if (this.scanline == 239) {
+                            this.resetCoarseY();
                         }
                     }
                 }
@@ -203,11 +207,11 @@ class PPU {
                 this.attrQ[0] = this.mem[this.getATAddr()];
                 let addr = this.mem[this.getNTAddr()] << 4;
 
-                let y = (this.scanline + 1) % 8;
+                let fineY = (this.vRamAddr & 0x7000) >> 12;
                 //Get Low BG byte
-                let lo = this.mem[addr + y + this.bkgPatAddr];
+                let lo = this.mem[addr + fineY + this.bkgPatAddr];
                 //Get High BG byte
-                let hi = this.mem[addr + 8 + y + this.bkgPatAddr];
+                let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
 
                 this.bkgQ[0] = this.combinePatData(hi, lo);
 
@@ -219,11 +223,11 @@ class PPU {
                 this.attrQ[1] = this.mem[this.getATAddr()];
                 let addr = this.mem[this.getNTAddr()] << 4;
 
-                let y = (this.scanline + 1) % 8;
+                let fineY = (this.vRamAddr & 0x7000) >> 12;
                 //Get Low BG byte
-                let lo = this.mem[addr + y + this.bkgPatAddr];
+                let lo = this.mem[addr + fineY + this.bkgPatAddr];
                 //Get High BG byte
-                let hi = this.mem[addr + 8 + y + this.bkgPatAddr];
+                let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
 
                 this.bkgQ[1] = this.combinePatData(hi, lo);
                 if (this.showBkg) this.incCoarseX();
@@ -358,7 +362,6 @@ class PPU {
                 }
                 break;
             case this.PPUSCROLL:
-                //console.log("scroll", byte.toString(16));
                 if (!this.writeLatch) {
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 5, 8, 3);
                 } else {
@@ -400,21 +403,26 @@ class PPU {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 5, 5, 0);
     }
 
-    private incCoarseY() {
-        let y = (this.vRamAddr & 0x3E0) >> 5;
-        if (y == 29) {
-            //Swap nametable, vertically
-            y = 0;
-            this.vRamAddr ^= 0x800; //Swap NT
-        } else if (y == 31) {
-            y = 0;
+    private incY() {
+        if ((this.vRamAddr & 0x7000) != 0x7000) {
+            this.vRamAddr += 0x1000; //If fineY != 7, inc by 1
         } else {
-            y += 1;
+            this.vRamAddr &= 0xFFF; //Reset fineY to 0
+            let y = (this.vRamAddr & 0x3E0) >> 5;
+            if (y == 29) {
+                //Swap nametable, vertically
+                y = 0;
+                this.vRamAddr ^= 0x800; //Swap NT
+            } else if (y == 31) {
+                y = 0;
+            } else {
+                y += 1;
+            }
+            let mask = 0xFFFF;
+            mask ^= 0x3E0;
+            //Put y back into vRamAddr
+            this.vRamAddr = (this.vRamAddr & mask) | (y << 5);
         }
-        let mask = 0xFFFF;
-        mask ^= 0x3E0;
-        //Put y back into vRamAddr
-        this.vRamAddr = (this.vRamAddr & mask) | (y << 5);
     }
 
     private resetCoarseY() {
