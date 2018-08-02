@@ -2872,8 +2872,10 @@ class PPU {
             return;
         switch (true) {
             case (this.dot <= 256):
-                if (this.dot % 8 == 0 && this.dot != 0) {
+                if (this.dot < 256) {
                     this.render();
+                }
+                if (this.dot % 8 == 0 && this.dot != 0) {
                     //Get attrTable byte
                     this.attrQ[1] = this.mem[this.getATAddr()];
                     let addr = this.mem[this.getNTAddr()] << 4;
@@ -2935,9 +2937,7 @@ class PPU {
             //Get Universal Background Color and paint a blank pixel
             let palData = this.mem[0x3F00] & 0x3F;
             let col = colorData[palData];
-            for (let i = 0; i < 8; i++) {
-                this.ctx.setPixel(col.r, col.g, col.b);
-            }
+            this.ctx.setPixel(col.r, col.g, col.b);
             return;
         }
         //Get PALETTE NUMBER
@@ -2951,18 +2951,19 @@ class PPU {
         let palNum;
         let mask = 3 << (quad * 2);
         palNum = (this.attrQ[0] & mask) >> (quad * 2);
-        for (let i = 0; i < 8; i++) {
-            let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][i];
-            let palData = this.mem[palInd] & 0x3F;
-            if (this.greyscale)
-                palData &= 0x30;
-            let col = colorData[palData];
-            this.ctx.setPixel(col.r, col.g, col.b);
+        let x = this.dot % 8;
+        let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][x];
+        let palData = this.mem[palInd] & 0x3F;
+        if (this.greyscale)
+            palData &= 0x30;
+        let col = colorData[palData];
+        this.ctx.setPixel(col.r, col.g, col.b);
+        if (x % 8 == 7) {
+            this.bkgQ[0] = this.bkgQ[1];
+            this.bkgQ[1] = null;
+            this.attrQ[0] = this.attrQ[1];
+            this.attrQ[1] = null;
         }
-        this.bkgQ[0] = this.bkgQ[1];
-        this.bkgQ[1] = null;
-        this.attrQ[0] = this.attrQ[1];
-        this.attrQ[1] = null;
     }
     readReg(addr) {
         switch (addr) {
