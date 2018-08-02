@@ -167,7 +167,12 @@ class PPU {
     }
 
     public visibleCycle() {
-        if (!this.showBkg) return;
+        if (!this.showBkg) {
+            if (this.dot < 256) {
+                this.render();
+            }
+            return;
+        }
         switch (true) {
             case (this.dot <= 256):
                 if (this.dot < 256) {
@@ -361,6 +366,7 @@ class PPU {
                 }
                 break;
             case this.PPUSCROLL:
+                //console.log("scroll", byte.toString(16));
                 if (!this.writeLatch) {
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 5, 8, 3);
                 } else {
