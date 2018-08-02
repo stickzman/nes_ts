@@ -2737,6 +2737,9 @@ class PPU {
         this.showLeftSprite = false;
         this.showBkg = false;
         this.showSprites = false;
+        this.maxRed = false;
+        this.maxGreen = false;
+        this.maxBlue = false;
         //STATUS vars
         this.vbl = false;
         this.PPUCTRL = 0x2000;
@@ -2748,36 +2751,8 @@ class PPU {
         this.PPUADDR = 0x2006;
         this.PPUDATA = 0x2007;
         this.OAMDMA = 0x4014;
-        this.ctx = {
-            ctx: null,
-            imageData: null,
-            x: 0,
-            y: 0,
-            setPixel: function (r, g, b) {
-                if (PPU.maxGreen || PPU.maxBlue) {
-                    r -= 25;
-                }
-                if (PPU.maxRed || PPU.maxBlue) {
-                    g -= 25;
-                }
-                if (PPU.maxRed || PPU.maxGreen) {
-                    b -= 25;
-                }
-                let i = this.y * this.imageData.width * 4 + this.x * 4;
-                this.imageData.data[i++] = r;
-                this.imageData.data[i++] = g;
-                this.imageData.data[i++] = b;
-                if (++this.x > this.imageData.width - 1) {
-                    this.x = 0;
-                    if (++this.y > this.imageData.height - 1) {
-                        this.y = 0;
-                    }
-                }
-            },
-            paintFrame: function () {
-                this.ctx.putImageData(this.imageData, 0, 0);
-            }
-        };
+        this.ctx = null;
+        this.imageData = null;
         this.mem = new Uint8Array(0x4000);
         this.OAM = new Uint8Array(0x100);
         let ctx = canvas.getContext("2d");
@@ -2785,11 +2760,29 @@ class PPU {
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(canvas.width, canvas.height);
-        this.ctx.ctx = ctx;
+        this.ctx = ctx;
         for (let i = 3; i < imgData.data.length; i += 4) {
             imgData.data[i] = 255;
         }
-        this.ctx.imageData = imgData;
+        this.imageData = imgData;
+    }
+    setPixel(r, g, b) {
+        if (this.maxGreen || this.maxBlue) {
+            r -= 25;
+        }
+        if (this.maxRed || this.maxBlue) {
+            g -= 25;
+        }
+        if (this.maxRed || this.maxGreen) {
+            b -= 25;
+        }
+        let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
+        this.imageData.data[i++] = r;
+        this.imageData.data[i++] = g;
+        this.imageData.data[i++] = b;
+    }
+    paintFrame() {
+        this.ctx.putImageData(this.imageData, 0, 0);
     }
     boot() {
         this.nes.write(this.PPUCTRL, 0);
@@ -2941,7 +2934,7 @@ class PPU {
             //Get Universal Background Color and paint a blank pixel
             let palData = this.mem[0x3F00] & 0x3F;
             let col = colorData[palData];
-            this.ctx.setPixel(col.r, col.g, col.b);
+            this.setPixel(col.r, col.g, col.b);
             return;
         }
         //Get PALETTE NUMBER
@@ -2961,7 +2954,7 @@ class PPU {
         if (this.greyscale)
             palData &= 0x30;
         let col = colorData[palData];
-        this.ctx.setPixel(col.r, col.g, col.b);
+        this.setPixel(col.r, col.g, col.b);
         if (x % 8 == 7) {
             this.bkgQ[0] = this.bkgQ[1];
             this.bkgQ[1] = null;
@@ -3008,7 +3001,7 @@ class PPU {
                 this.showLeftSprite = (byte & 4) != 0;
                 this.showBkg = (byte & 8) != 0;
                 this.showSprites = (byte & 16) != 0;
-                PPU.maxRed = (byte & 32) != 0;
+                this.maxRed = (byte & 32) != 0;
                 PPU.maxGreen = (byte & 64) != 0;
                 PPU.maxBlue = (byte & 128) != 0;
                 break;
@@ -3155,9 +3148,6 @@ class PPU {
         this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xDF));
     }
 }
-PPU.maxRed = false;
-PPU.maxGreen = false;
-PPU.maxBlue = false;
 let colorData = {};
 colorData[0x00] = {
     r: 84,
@@ -3516,7 +3506,7 @@ class NES {
                 throw e;
             }
         }
-        this.ppu.ctx.paintFrame();
+        this.ppu.paintFrame();
         if (error || this.counter++ < -1) {
             this.displayMem();
             this.displayPPUMem();

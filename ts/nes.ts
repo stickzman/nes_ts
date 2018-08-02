@@ -47,7 +47,7 @@ class NES {
             }
         }
 
-        this.ppu.ctx.paintFrame();
+        this.ppu.paintFrame();
 
         if (error || this.counter++ < -1) {
             this.displayMem();
