@@ -245,11 +245,12 @@ class PPU {
             return;
         }
         //Get PALETTE NUMBER
+        let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
         let quad: number;
         if (this.dot % 32 < 16) {
-            quad = (this.scanline % 32 < 16) ? 0 : 2;
+            quad = (y % 32 < 16) ? 0 : 2;
         } else {
-            quad = (this.scanline % 32 < 16) ? 1 : 3;
+            quad = (y % 32 < 16) ? 1 : 3;
         }
         let palNum: number;
         let mask = 3 << (quad * 2);
