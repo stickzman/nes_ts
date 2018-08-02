@@ -124,12 +124,34 @@ class PPU {
                 //POST-RENDER
                 break;
             case (this.scanline == 261):
+                //PRE-RENDER
                 if (this.dot == 1) {
                     this.clearVBL();
                     this.clearSprite0();
                     this.clearOverflow();
+                } else if (this.dot == 328) {
+                    //Get attrTable byte
+                    this.attrQ[0] = this.mem[this.getATAddr()];
+                    let addr = this.mem[this.getNTAddr()] << 4;
+                    //Get Low BG byte
+                    let lo = this.mem[addr + this.bkgPatAddr];
+                    //Get High BG byte
+                    let hi = this.mem[addr + 8 + this.bkgPatAddr];
+                    this.bkgQ[0] = this.combinePatData(hi, lo);
+
+                    if (this.showBkg) this.incCoarseX();
+                } else if (this.dot == 336) {
+                    //Get attrTable byte
+                    this.attrQ[1] = this.mem[this.getATAddr()];
+                    let addr = this.mem[this.getNTAddr()] << 4;
+                    //Get Low BG byte
+                    let lo = this.mem[addr + this.bkgPatAddr];
+                    //Get High BG byte
+                    let hi = this.mem[addr + 8 + this.bkgPatAddr];
+                    this.bkgQ[1] = this.combinePatData(hi, lo);
+
+                    if (this.showBkg) this.incCoarseX();
                 }
-                //PRE-RENDER
                 break;
         }
         if (++this.dot > 340) {
@@ -154,14 +176,17 @@ class PPU {
         switch (true) {
             case (this.dot <= 256):
                 if (this.dot % 8 == 0 && this.dot != 0) {
-                    //Get attrTable byte
-                    this.attrByte = this.mem[this.getATAddr()];
-                    this.bkgAddr = this.mem[this.getNTAddr()] << 4;
-                    //Get Low BG byte
-                    this.bkgLoByte = this.mem[this.bkgAddr + this.scanline % 8 + this.bkgPatAddr];
-                    //Get High BG byte
-                    this.bkgHiByte = this.mem[this.bkgAddr + 8 + this.scanline % 8 + this.bkgPatAddr];
                     this.render();
+
+                    //Get attrTable byte
+                    this.attrQ[1] = this.mem[this.getATAddr()];
+                    let addr = this.mem[this.getNTAddr()] << 4;
+                    //Get Low BG byte
+                    let lo = this.mem[addr + this.scanline % 8 + this.bkgPatAddr];
+                    //Get High BG byte
+                    let hi = this.mem[addr + 8 + this.scanline % 8 + this.bkgPatAddr];
+
+                    this.bkgQ[1] = this.combinePatData(hi, lo);
 
                     //Inc NT Pointer
                     if (this.dot < 256) {
@@ -180,6 +205,37 @@ class PPU {
             case (this.dot <= 320):
                 //TODO: Sprite Evaluation
                 break;
+            case (this.dot == 328):{
+                //Get attrTable byte
+                this.attrQ[0] = this.mem[this.getATAddr()];
+                let addr = this.mem[this.getNTAddr()] << 4;
+
+                let y = (this.scanline + 1) % 8;
+                //Get Low BG byte
+                let lo = this.mem[addr + y + this.bkgPatAddr];
+                //Get High BG byte
+                let hi = this.mem[addr + 8 + y + this.bkgPatAddr];
+
+                this.bkgQ[0] = this.combinePatData(hi, lo);
+
+                if (this.showBkg) this.incCoarseX();
+                break;
+            }
+            case (this.dot == 336): {
+                //Get attrTable byte
+                this.attrQ[1] = this.mem[this.getATAddr()];
+                let addr = this.mem[this.getNTAddr()] << 4;
+
+                let y = (this.scanline + 1) % 8;
+                //Get Low BG byte
+                let lo = this.mem[addr + y + this.bkgPatAddr];
+                //Get High BG byte
+                let hi = this.mem[addr + 8 + y + this.bkgPatAddr];
+
+                this.bkgQ[1] = this.combinePatData(hi, lo);
+                if (this.showBkg) this.incCoarseX();
+                break;
+            }
         }
     }
 
@@ -193,19 +249,6 @@ class PPU {
             }
             return;
         }
-        //Combine PATTERN DATA
-        let pByte = [];
-        let mask: number;
-        for (let i = 0; i < 8; i++) {
-            mask = 1 << (7 - i);
-            if (i > 6) {
-                pByte[i] = ((this.bkgHiByte & mask) << 1) +
-                                (this.bkgLoByte & mask);
-            } else {
-                pByte[i] = ((this.bkgHiByte & mask) >> (6 - i)) +
-                                ((this.bkgLoByte & mask) >> (7 - i));
-            }
-        }
         //Get PALETTE NUMBER
         let quad: number;
         if (this.dot % 32 < 16) {
@@ -214,15 +257,20 @@ class PPU {
             quad = (this.scanline % 32 < 16) ? 1 : 3;
         }
         let palNum: number;
-        mask = 3 << (quad * 2);
-        palNum = (this.attrByte & mask) >> (quad * 2);
+        let mask = 3 << (quad * 2);
+        palNum = (this.attrQ[0] & mask) >> (quad * 2);
         for (let i = 0; i < 8; i++) {
-            let palInd = 0x3F00 + palNum * 4 + pByte[i];
+            let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][i];
             let palData = this.mem[palInd] & 0x3F;
             if (this.greyscale) palData &= 0x30;
             let col = colorData[palData];
             this.ctx.setPixel(col.r, col.g, col.b);
         }
+
+        this.bkgQ[0] = this.bkgQ[1];
+        this.bkgQ[1] = null;
+        this.attrQ[0] = this.attrQ[1];
+        this.attrQ[1] = null;
     }
 
     public readReg(addr: number): number {
@@ -329,9 +377,20 @@ class PPU {
         }
     }
 
-    private shiftDown(q) {
-        q[0] = q[1];
-        q[1] = null;
+    private combinePatData(hi: number, lo: number): number[] {
+        let pByte = [];
+        let mask: number;
+        for (let i = 0; i < 8; i++) {
+            mask = 1 << (7 - i);
+            if (i > 6) {
+                pByte[i] = ((hi & mask) << 1) +
+                                (lo & mask);
+            } else {
+                pByte[i] = ((hi & mask) >> (6 - i)) +
+                                ((lo & mask) >> (7 - i));
+            }
+        }
+        return pByte;
     }
 
     private incCoarseX() {
