@@ -7,6 +7,7 @@ class PPU {
     private writeLatch = false;
     private vRamAddr: number = 0;
     private initRamAddr: number = 0;
+    private fineX: number = 0;
     private scanline: number = 261;
     private dot: number = 0;
 
@@ -171,9 +172,6 @@ class PPU {
         }
         switch (true) {
             case (this.dot <= 256):
-                if (this.dot < 256) {
-                    this.render();
-                }
                 if (this.dot % 8 == 0 && this.dot != 0) {
                     //Get attrTable byte
                     this.attrQ[1] = this.mem[this.getATAddr()];
@@ -197,6 +195,9 @@ class PPU {
                             this.resetCoarseY();
                         }
                     }
+                }
+                if (this.dot < 256) {
+                    this.render();
                 }
                 break;
             case (this.dot <= 320):
@@ -247,7 +248,12 @@ class PPU {
         //Get PALETTE NUMBER
         let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
         let quad: number;
-        if (this.dot % 32 < 16) {
+        let bitSelect = this.dot % 8 + this.fineX;
+        if (bitSelect > 7) bitSelect -= 8;
+
+        let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
+
+        if (x % 32 < 16) {
             quad = (y % 32 < 16) ? 0 : 2;
         } else {
             quad = (y % 32 < 16) ? 1 : 3;
@@ -255,14 +261,14 @@ class PPU {
         let palNum: number;
         let mask = 3 << (quad * 2);
         palNum = (this.attrQ[0] & mask) >> (quad * 2);
-        let x = this.dot % 8;
-        let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][x];
+
+        let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
         let palData = this.mem[palInd] & 0x3F;
         if (this.greyscale) palData &= 0x30;
         let col = colorData[palData];
         this.setPixel(col.r, col.g, col.b);
 
-        if (x % 8 == 7) {
+        if (bitSelect % 8 == 7) {
             this.bkgQ[0] = this.bkgQ[1];
             this.bkgQ[1] = null;
             this.attrQ[0] = this.attrQ[1];
@@ -365,6 +371,7 @@ class PPU {
             case this.PPUSCROLL:
                 if (!this.writeLatch) {
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 5, 8, 3);
+                    this.fineX = byte & 7;
                 } else {
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 15, 3, 0);
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 10, 8, 3);
