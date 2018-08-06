@@ -2782,9 +2782,15 @@ class PPU {
             b -= 25;
         }
         let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
-        this.imageData.data[i++] = r;
-        this.imageData.data[i++] = g;
-        this.imageData.data[i++] = b;
+        if (this.imageData.data[i] != r) {
+            this.imageData.data[i] = r;
+        }
+        if (this.imageData.data[++i] != g) {
+            this.imageData.data[i] = g;
+        }
+        if (this.imageData.data[++i] != b) {
+            this.imageData.data[i] = b;
+        }
     }
     paintFrame() {
         this.ctx.putImageData(this.imageData, 0, 0);
