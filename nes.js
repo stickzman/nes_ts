@@ -2709,12 +2709,16 @@ class iNESFile {
                 mem.set(this.pgrRom, 0xC000);
                 ppuMem.set(this.chrRom, 0);
                 break;
+            default: //Unsupported Mapper
+                alert("Warning: Unsupported Mapper\nThis game is not yet supported. "
+                    + "It may not run correctly and will likely crash upon start");
         }
     }
 }
 class PPU {
     constructor(nes, canvas) {
         this.nes = nes;
+        this.oamBuff = [];
         this.oddFrame = false;
         this.writeLatch = false;
         this.vRamAddr = 0;
@@ -2755,8 +2759,8 @@ class PPU {
         this.ctx = null;
         this.imageData = null;
         this.mem = new Uint8Array(0x4000);
-        this.OAM = new Uint8Array(0x100);
-        let ctx = canvas.getContext("2d");
+        this.oam = new Uint8Array(0x100);
+        let ctx = canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
@@ -2974,7 +2978,7 @@ class PPU {
                 this.writeLatch = false;
                 break;
             case this.OAMDATA:
-                return this.OAM[this.oamAddr];
+                return this.oam[this.oamAddr];
         }
         return;
     }
@@ -3056,13 +3060,13 @@ class PPU {
                 this.oamAddr = byte;
                 break;
             case this.OAMDATA:
-                this.OAM[this.oamAddr++] = byte;
+                this.oam[this.oamAddr++] = byte;
                 if (this.oamAddr > 0xFF)
                     this.oamAddr = 0;
                 break;
             case this.OAMDMA:
                 let slice = this.nes.mainMemory.slice((byte << 8), ((byte + 1) << 8));
-                this.OAM.set(slice, 0);
+                this.oam.set(slice, 0);
                 //Catch up to the 514 CPU cycles used
                 for (let i = 0; i < 514 * 3; i++) {
                     this.cycle();
@@ -3521,7 +3525,7 @@ class NES {
         this.ppu.paintFrame();
         if (error || this.counter++ < -1) {
             this.displayMem();
-            this.displayPPUMem();
+            this.displayOAMMem();
         }
         else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
@@ -3575,8 +3579,8 @@ class NES {
     }
     displayOAMMem() {
         let str = "";
-        for (let i = 0; i < this.ppu.OAM.length; i++) {
-            str += this.ppu.OAM[i].toString(16).padStart(2, "0").toUpperCase();
+        for (let i = 0; i < this.ppu.oam.length; i++) {
+            str += this.ppu.oam[i].toString(16).padStart(2, "0").toUpperCase();
         }
         document.getElementById("ppuMem").innerHTML = str;
     }

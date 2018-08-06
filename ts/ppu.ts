@@ -1,6 +1,8 @@
 class PPU {
     public mem: Uint8Array;
-    public OAM: Uint8Array;
+    public oam: Uint8Array;
+    private oamBuff: oamEntry[] = [];
+
     private oamAddr: number;
 
     private oddFrame: boolean = false;
@@ -50,8 +52,8 @@ class PPU {
 
     constructor(private nes: NES, canvas: HTMLCanvasElement) {
         this.mem = new Uint8Array(0x4000);
-        this.OAM = new Uint8Array(0x100);
-        let ctx = canvas.getContext("2d");
+        this.oam = new Uint8Array(0x100);
+        let ctx = canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
@@ -282,7 +284,7 @@ class PPU {
                 this.writeLatch = false;
                 break;
             case this.OAMDATA:
-                return this.OAM[this.oamAddr];
+                return this.oam[this.oamAddr];
         }
         return;
     }
@@ -357,12 +359,12 @@ class PPU {
                 this.oamAddr = byte;
                 break;
             case this.OAMDATA:
-                this.OAM[this.oamAddr++] = byte;
+                this.oam[this.oamAddr++] = byte;
                 if (this.oamAddr > 0xFF) this.oamAddr = 0;
                 break;
             case this.OAMDMA:
                 let slice = this.nes.mainMemory.slice((byte << 8), ((byte + 1) << 8));
-                this.OAM.set(slice, 0);
+                this.oam.set(slice, 0);
                 //Catch up to the 514 CPU cycles used
                 for (let i = 0; i < 514 * 3; i++) {
                     this.cycle();

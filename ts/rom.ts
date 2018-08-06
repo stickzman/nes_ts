@@ -116,6 +116,9 @@ class iNESFile {
                 mem.set(this.pgrRom, 0xC000);
                 ppuMem.set(this.chrRom, 0)
                 break;
+            default: //Unsupported Mapper
+                alert("Warning: Unsupported Mapper\nThis game is not yet supported. "
+                    + "It may not run correctly and will likely crash upon start");
         }
     }
 }

@@ -51,7 +51,7 @@ class NES {
 
         if (error || this.counter++ < -1) {
             this.displayMem();
-            this.displayPPUMem();
+            this.displayOAMMem();
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
@@ -110,8 +110,8 @@ class NES {
 
     private displayOAMMem() {
         let str = "";
-        for (let i = 0; i < this.ppu.OAM.length; i++) {
-            str += this.ppu.OAM[i].toString(16).padStart(2, "0").toUpperCase();
+        for (let i = 0; i < this.ppu.oam.length; i++) {
+            str += this.ppu.oam[i].toString(16).padStart(2, "0").toUpperCase();
         }
         document.getElementById("ppuMem").innerHTML = str;
     }
