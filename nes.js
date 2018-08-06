@@ -2981,7 +2981,7 @@ class PPU {
         if (bitSelect > 7)
             bitSelect -= 8;
         let palData = this.getSpritePix(this.bkgQ[0][bitSelect] != 0);
-        if (palData == null) {
+        if (palData == null || !this.showSprites) {
             //Get PALETTE NUMBER
             let quad;
             let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
@@ -3054,6 +3054,8 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
+                if (this.sprite8x16)
+                    console.log("WARNING: 8x16 sprites not currently supported!");
                 this.masterSlave = (byte & 64) != 0;
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
