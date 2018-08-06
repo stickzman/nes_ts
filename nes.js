@@ -2830,15 +2830,20 @@ class PPU {
                     this.clearOverflow();
                 }
                 else if (this.dot == 328) {
-                    //Get attrTable byte
-                    this.attrQ[0] = this.mem[this.getATAddr()];
-                    let addr = this.mem[this.getNTAddr()] << 4;
-                    let fineY = (this.vRamAddr & 0x7000) >> 12;
-                    //Get Low BG byte
-                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
-                    //Get High BG byte
-                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-                    this.bkgQ[0] = this.combinePatData(hi, lo);
+                    if (this.showLeftBkg) {
+                        //Get attrTable byte
+                        this.attrQ[0] = this.mem[this.getATAddr()];
+                        let addr = this.mem[this.getNTAddr()] << 4;
+                        let fineY = (this.vRamAddr & 0x7000) >> 12;
+                        //Get Low BG byte
+                        let lo = this.mem[addr + fineY + this.bkgPatAddr];
+                        //Get High BG byte
+                        let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+                        this.bkgQ[0] = this.combinePatData(hi, lo);
+                    }
+                    else {
+                        this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
+                    }
                     if (this.showBkg)
                         this.incCoarseX();
                 }
@@ -2943,15 +2948,20 @@ class PPU {
             //console.log(this.oamBuff);
         }
         else if (this.dot == 328) {
-            //Get attrTable byte
-            this.attrQ[0] = this.mem[this.getATAddr()];
-            let addr = this.mem[this.getNTAddr()] << 4;
-            let fineY = (this.vRamAddr & 0x7000) >> 12;
-            //Get Low BG byte
-            let lo = this.mem[addr + fineY + this.bkgPatAddr];
-            //Get High BG byte
-            let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-            this.bkgQ[0] = this.combinePatData(hi, lo);
+            if (this.showLeftBkg) {
+                //Get attrTable byte
+                this.attrQ[0] = this.mem[this.getATAddr()];
+                let addr = this.mem[this.getNTAddr()] << 4;
+                let fineY = (this.vRamAddr & 0x7000) >> 12;
+                //Get Low BG byte
+                let lo = this.mem[addr + fineY + this.bkgPatAddr];
+                //Get High BG byte
+                let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+                this.bkgQ[0] = this.combinePatData(hi, lo);
+            }
+            else {
+                this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
+            }
             if (this.showBkg)
                 this.incCoarseX();
         }
