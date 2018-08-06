@@ -1,11 +1,9 @@
 interface oamEntry {
     x: number,
     y: number,
-    tileIndex: number,
+    patData: number[],
     paletteNum: number,
     priority: boolean,
-    flipHor: boolean,
-    flipVert: boolean
 }
 
 function combineHex(hiByte: number, lowByte: number): number {

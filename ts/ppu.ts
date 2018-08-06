@@ -178,56 +178,8 @@ class PPU {
             }
             return;
         }
-        switch (true) {
-            case (this.dot <= 256):
-                if (this.dot % 8 == 0 && this.dot != 0) {
-                    //Get attrTable byte
-                    this.attrQ[1] = this.mem[this.getATAddr()];
-                    let addr = this.mem[this.getNTAddr()] << 4;
-
-                    let fineY = (this.vRamAddr & 0x7000) >> 12;
-                    //Get Low BG byte
-                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
-                    //Get High BG byte
-                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-
-                    this.bkgQ[1] = this.combinePatData(hi, lo);
-
-                    //Inc NT Pointer
-                    if (this.dot < 256) {
-                        this.incCoarseX();
-                    } else {
-                        this.resetCoarseX();
-                        this.incY();
-                        if (this.scanline == 239) {
-                            this.resetCoarseY();
-                        }
-                    }
-                }
-                if (this.dot < 256) {
-                    this.render();
-                }
-                break;
-            case (this.dot <= 320):
-                //TODO: Sprite Evaluation
-                break;
-            case (this.dot == 328):{
-                //Get attrTable byte
-                this.attrQ[0] = this.mem[this.getATAddr()];
-                let addr = this.mem[this.getNTAddr()] << 4;
-
-                let fineY = (this.vRamAddr & 0x7000) >> 12;
-                //Get Low BG byte
-                let lo = this.mem[addr + fineY + this.bkgPatAddr];
-                //Get High BG byte
-                let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-
-                this.bkgQ[0] = this.combinePatData(hi, lo);
-
-                if (this.showBkg) this.incCoarseX();
-                break;
-            }
-            case (this.dot == 336): {
+        if (this.dot <= 256) {
+            if (this.dot % 8 == 0 && this.dot != 0) {
                 //Get attrTable byte
                 this.attrQ[1] = this.mem[this.getATAddr()];
                 let addr = this.mem[this.getNTAddr()] << 4;
@@ -239,9 +191,79 @@ class PPU {
                 let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
 
                 this.bkgQ[1] = this.combinePatData(hi, lo);
-                if (this.showBkg) this.incCoarseX();
-                break;
+
+                //Inc NT Pointer
+                if (this.dot < 256) {
+                    this.incCoarseX();
+                } else {
+                    this.resetCoarseX();
+                    this.incY();
+                    if (this.scanline == 239) {
+                        this.resetCoarseY();
+                    }
+                }
             }
+            if (this.dot < 256) {
+                this.render();
+            }
+        } else if (this.dot == 257) {
+            //Sprite evaulation for next scanline
+            this.oamBuff = [];
+            for (let i = 0; i < this.oam.length; i += 4) {
+                //If sprite is visible on scanline, add it to 2nd OAM
+                if (this.oam[i] > this.scanline - 8 && this.oam[i] <= this.scanline) {
+                    let entry: oamEntry = {
+                        x: 0,
+                        y: 0,
+                        patData: [],
+                        paletteNum: 0,
+                        priority: false,
+                    };
+                    entry.y = this.oam[i];
+                    entry.x = this.oam[i+3];
+                    entry.paletteNum = this.oam[i+2] & 3;
+                    entry.priority = (this.oam[i+2] & 0x20) == 0;
+                    let offSet = this.scanline - entry.y;
+                    //Flip vertically
+                    if ((this.oam[i+2] & 0x80) != 0) offSet = 7 - offSet;
+                    let addr = this.oam[i+1] << 4;
+                    let lo = this.mem[addr + offSet + this.spritePatAddr];
+                    let hi = this.mem[addr + offSet + this.spritePatAddr + 8];
+                    entry.patData = this.combinePatData(hi, lo);
+                    //Flip horizontally
+                    if (this.oam[i+2] & 0x40) entry.patData = entry.patData.reverse();
+                    this.oamBuff.push(entry);
+                    if (this.oamBuff.length == 8) break;
+                }
+            }
+            //console.log(this.oamBuff);
+        } else if (this.dot == 328) {
+            //Get attrTable byte
+            this.attrQ[0] = this.mem[this.getATAddr()];
+            let addr = this.mem[this.getNTAddr()] << 4;
+
+            let fineY = (this.vRamAddr & 0x7000) >> 12;
+            //Get Low BG byte
+            let lo = this.mem[addr + fineY + this.bkgPatAddr];
+            //Get High BG byte
+            let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+
+            this.bkgQ[0] = this.combinePatData(hi, lo);
+
+            if (this.showBkg) this.incCoarseX();
+        } else if (this.dot == 336) {
+            //Get attrTable byte
+            this.attrQ[1] = this.mem[this.getATAddr()];
+            let addr = this.mem[this.getNTAddr()] << 4;
+
+            let fineY = (this.vRamAddr & 0x7000) >> 12;
+            //Get Low BG byte
+            let lo = this.mem[addr + fineY + this.bkgPatAddr];
+            //Get High BG byte
+            let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+
+            this.bkgQ[1] = this.combinePatData(hi, lo);
+            if (this.showBkg) this.incCoarseX();
         }
     }
 
@@ -253,25 +275,28 @@ class PPU {
             this.setPixel(col.r, col.g, col.b);
             return;
         }
-        //Get PALETTE NUMBER
-        let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
-        let quad: number;
         let bitSelect = this.dot % 8 + this.fineX;
         if (bitSelect > 7) bitSelect -= 8;
+        let palData = this.getSpritePix(this.bkgQ[0][bitSelect] != 0);
 
-        let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
+        if (palData == null) {
+            //Get PALETTE NUMBER
+            let quad: number;
+            let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
+            let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
+            if (x % 32 < 16) {
+                quad = (y % 32 < 16) ? 0 : 2;
+            } else {
+                quad = (y % 32 < 16) ? 1 : 3;
+            }
+            let palNum: number;
+            let mask = 3 << (quad * 2);
+            palNum = (this.attrQ[0] & mask) >> (quad * 2);
 
-        if (x % 32 < 16) {
-            quad = (y % 32 < 16) ? 0 : 2;
-        } else {
-            quad = (y % 32 < 16) ? 1 : 3;
+            let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
+            palData = this.mem[palInd] & 0x3F;
         }
-        let palNum: number;
-        let mask = 3 << (quad * 2);
-        palNum = (this.attrQ[0] & mask) >> (quad * 2);
 
-        let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
-        let palData = this.mem[palInd] & 0x3F;
         if (this.greyscale) palData &= 0x30;
         let col = colorData[palData];
         this.setPixel(col.r, col.g, col.b);
@@ -282,6 +307,21 @@ class PPU {
             this.attrQ[0] = this.attrQ[1];
             this.attrQ[1] = null;
         }
+    }
+
+    public getSpritePix(bkgIsVis) {
+        let entry: oamEntry;
+        for (let i = 0; i < this.oamBuff.length; i++) {
+            if (this.oamBuff[i].x > this.dot - 8 && this.oamBuff[i].x <= this.dot) {
+                entry = this.oamBuff[i];
+            }
+        }
+        if (entry === undefined || (bkgIsVis && !entry.priority)) return null;
+        let pix = entry.patData[this.dot - entry.x];
+        if (pix == 0) return null;
+
+        let palInd = 0x3F00 + entry.paletteNum * 4 + pix;
+        return this.mem[palInd] & 0x3F;
     }
 
     public readReg(addr: number): number {
