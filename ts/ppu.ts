@@ -221,7 +221,7 @@ class PPU {
                     };
                     entry.y = this.oam[i];
                     entry.x = this.oam[i+3];
-                    entry.paletteNum = this.oam[i+2] & 3;
+                    entry.paletteNum = (this.oam[i+2] & 3) + 4;
                     entry.priority = (this.oam[i+2] & 0x20) == 0;
                     let offSet = this.scanline - entry.y;
                     //Flip vertically
