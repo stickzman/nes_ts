@@ -3020,6 +3020,8 @@ class PPU {
         }
     }
     getSpritePix(bkgIsVis) {
+        if (!this.showLeftSprite && this.dot < 8)
+            return null;
         let entry;
         for (let i = 0; i < this.oamBuff.length; i++) {
             if (this.oamBuff[i].x > this.dot - 8 && this.oamBuff[i].x <= this.dot) {
