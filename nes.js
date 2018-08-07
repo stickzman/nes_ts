@@ -1642,7 +1642,13 @@ opTable[0x6C] = {
     cycles: 5,
     execute: function () {
         let indAddr = this.next2Bytes();
-        let addr = combineHex(this.nes.read(indAddr + 1), this.nes.read(indAddr));
+        let addr;
+        if ((indAddr & 0xFF) == 0xFF) {
+            addr = combineHex(this.nes.read(indAddr - 0xFF), this.nes.read(indAddr));
+        }
+        else {
+            addr = combineHex(this.nes.read(indAddr + 1), this.nes.read(indAddr));
+        }
         if (this.debug) {
             console.log(`Jumping to location 0x${addr}...`);
         }
@@ -2621,6 +2627,77 @@ function insertInto(addr, byte, i, j1, j2) {
     byte <<= (i - (j1 - j2));
     return addr | byte;
 }
+class Input {
+    constructor() {
+        this.A = 90;
+        this.B = 88;
+        this.SELECT = 17;
+        this.START = 13;
+        this.UP = 38;
+        this.DOWN = 40;
+        this.LEFT = 37;
+        this.RIGHT = 39;
+        this.strobe = false;
+        this.shiftReg = [];
+        this.flags = {
+            a: false,
+            b: false,
+            select: false,
+            start: false,
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
+    }
+    setStrobe(on) {
+        this.strobe = on;
+        if (!on) {
+            this.shiftReg = [];
+            let keys = Object.getOwnPropertyNames(this.flags);
+            for (let i = 0; i < keys.length; i++) {
+                this.shiftReg.push(+this.flags[keys[i]]);
+            }
+        }
+    }
+    read() {
+        if (this.strobe)
+            return +this.flags.a;
+        if (this.shiftReg.length == 0)
+            return 1;
+        return this.shiftReg.shift();
+    }
+    //Sets the button flag, returns if the key pressed was used
+    setBtn(keyCode, isDown) {
+        switch (keyCode) {
+            case this.A:
+                this.flags.a = isDown;
+                return true;
+            case this.B:
+                this.flags.b = isDown;
+                return true;
+            case this.SELECT:
+                this.flags.select = isDown;
+                return true;
+            case this.START:
+                this.flags.start = isDown;
+                return true;
+            case this.UP:
+                this.flags.up = isDown;
+                return true;
+            case this.DOWN:
+                this.flags.down = isDown;
+                return true;
+            case this.LEFT:
+                this.flags.left = isDown;
+                return true;
+            case this.RIGHT:
+                this.flags.right = isDown;
+                return true;
+        }
+        return false;
+    }
+}
 class iNESFile {
     constructor(buff) {
         //Check if valid iNES file (file starts with 'NES' and character break)
@@ -3551,77 +3628,6 @@ colorData[0x3F] = {
     g: 0,
     b: 0
 };
-class Input {
-    constructor() {
-        this.A = 90;
-        this.B = 88;
-        this.SELECT = 17;
-        this.START = 13;
-        this.UP = 38;
-        this.DOWN = 40;
-        this.LEFT = 37;
-        this.RIGHT = 39;
-        this.strobe = false;
-        this.shiftReg = [];
-        this.flags = {
-            a: false,
-            b: false,
-            select: false,
-            start: false,
-            up: false,
-            down: false,
-            left: false,
-            right: false
-        };
-    }
-    setStrobe(on) {
-        this.strobe = on;
-        if (!on) {
-            this.shiftReg = [];
-            let keys = Object.getOwnPropertyNames(this.flags);
-            for (let i = 0; i < keys.length; i++) {
-                this.shiftReg.push(+this.flags[keys[i]]);
-            }
-        }
-    }
-    read() {
-        if (this.strobe)
-            return +this.flags.a;
-        if (this.shiftReg.length == 0)
-            return 1;
-        return this.shiftReg.shift();
-    }
-    //Sets the button flag, returns if the key pressed was used
-    setBtn(keyCode, isDown) {
-        switch (keyCode) {
-            case this.A:
-                this.flags.a = isDown;
-                return true;
-            case this.B:
-                this.flags.b = isDown;
-                return true;
-            case this.SELECT:
-                this.flags.select = isDown;
-                return true;
-            case this.START:
-                this.flags.start = isDown;
-                return true;
-            case this.UP:
-                this.flags.up = isDown;
-                return true;
-            case this.DOWN:
-                this.flags.down = isDown;
-                return true;
-            case this.LEFT:
-                this.flags.left = isDown;
-                return true;
-            case this.RIGHT:
-                this.flags.right = isDown;
-                return true;
-        }
-        return false;
-    }
-}
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
 /// <reference path="input.ts" />
