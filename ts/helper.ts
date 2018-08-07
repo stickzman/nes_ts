@@ -1,6 +1,5 @@
 interface oamEntry {
     x: number,
-    y: number,
     patData: number[],
     paletteNum: number,
     priority: boolean,

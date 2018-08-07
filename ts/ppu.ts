@@ -216,32 +216,49 @@ class PPU {
             this.oamBuff = [];
             for (let i = 0; i < this.oam.length; i += 4) {
                 //If sprite is visible on scanline, add it to 2nd OAM
-                if (this.oam[i] > this.scanline - 8 && this.oam[i] <= this.scanline) {
-                    let entry: oamEntry = {
-                        x: 0,
-                        y: 0,
-                        patData: [],
-                        paletteNum: 0,
-                        priority: false,
-                    };
-                    entry.y = this.oam[i];
-                    entry.x = this.oam[i+3];
-                    entry.paletteNum = (this.oam[i+2] & 3) + 4;
-                    entry.priority = (this.oam[i+2] & 0x20) == 0;
-                    let offSet = this.scanline - entry.y;
-                    //Flip vertically
-                    if ((this.oam[i+2] & 0x80) != 0) offSet = 7 - offSet;
-                    let addr = this.oam[i+1] << 4;
-                    let lo = this.mem[addr + offSet + this.spritePatAddr];
-                    let hi = this.mem[addr + offSet + this.spritePatAddr + 8];
-                    entry.patData = this.combinePatData(hi, lo);
-                    //Flip horizontally
-                    if (this.oam[i+2] & 0x40) entry.patData = entry.patData.reverse();
-                    this.oamBuff.push(entry);
-                    if (this.oamBuff.length == 8) break;
+                if (this.oam[i] <= this.scanline) {
+                    if (this.oam[i] > this.scanline - 8 || (this.oam[i] > this.scanline - 16 && this.sprite8x16)) {
+                        let entry: oamEntry = {
+                            x: 0,
+                            patData: [],
+                            paletteNum: 0,
+                            priority: false,
+                        };
+                        entry.x = this.oam[i+3];
+                        entry.paletteNum = (this.oam[i+2] & 3) + 4;
+                        entry.priority = (this.oam[i+2] & 0x20) == 0;
+                        let offSet = this.scanline - this.oam[i];
+                        //Flip vertically
+                        if ((this.oam[i+2] & 0x80) != 0) {
+                            if (this.sprite8x16) {
+                                offSet = 15 - offSet;
+                            } else {
+                                offSet = 7 - offSet;
+                            }
+                        }
+                        let addr: number;
+                        let lo: number;
+                        let hi: number;
+                        if (this.sprite8x16) {
+                            addr = this.oam[i+1] >> 1;
+                            if (offSet > 7) offSet +=8;
+                            addr = addr << 5;
+                            addr += ((this.oam[i+1] & 1) == 0) ? 0 : 0x1000;
+                            lo = this.mem[addr + offSet];
+                            hi = this.mem[addr + offSet + 8];
+                        } else {
+                            addr = this.oam[i+1] << 4;
+                            lo = this.mem[addr + offSet + this.spritePatAddr];
+                            hi = this.mem[addr + offSet + this.spritePatAddr + 8];
+                        }
+                        entry.patData = this.combinePatData(hi, lo);
+                        //Flip horizontally
+                        if (this.oam[i+2] & 0x40) entry.patData = entry.patData.reverse();
+                        this.oamBuff.push(entry);
+                        if (this.oamBuff.length == 8) break;
+                    }
                 }
             }
-            //console.log(this.oamBuff);
         } else if (this.dot == 328) {
             if (this.showLeftBkg) {
                 //Get attrTable byte
@@ -363,7 +380,7 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
-                if (this.sprite8x16) console.log("WARNING: 8x16 sprites not currently supported!");
+                //if (this.sprite8x16) console.log("WARNING: 8x16 sprites not currently supported!");
                 this.masterSlave = (byte & 64) != 0;
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
