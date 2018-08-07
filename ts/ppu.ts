@@ -172,7 +172,7 @@ class PPU {
         }
 
         if (this.scanline == 239 && this.dot == 256) {
-            NES.drawFrame = true;
+            this.nes.drawFrame = true;
         }
     }
 

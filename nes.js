@@ -2875,7 +2875,7 @@ class PPU {
                 this.vRamAddr = this.initRamAddr;
         }
         if (this.scanline == 239 && this.dot == 256) {
-            NES.drawFrame = true;
+            this.nes.drawFrame = true;
         }
     }
     visibleCycle() {
@@ -3551,17 +3551,102 @@ colorData[0x3F] = {
     g: 0,
     b: 0
 };
+class Input {
+    constructor() {
+        this.A = 90;
+        this.B = 88;
+        this.SELECT = 17;
+        this.START = 13;
+        this.UP = 38;
+        this.DOWN = 40;
+        this.LEFT = 37;
+        this.RIGHT = 39;
+        this.strobe = false;
+        this.shiftReg = [];
+        this.flags = {
+            a: false,
+            b: false,
+            select: false,
+            start: false,
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
+    }
+    setStrobe(on) {
+        this.strobe = on;
+        if (!on) {
+            this.shiftReg = [];
+            let keys = Object.getOwnPropertyNames(this.flags);
+            for (let i = 0; i < keys.length; i++) {
+                this.shiftReg.push(+this.flags[keys[i]]);
+            }
+        }
+    }
+    read() {
+        if (this.strobe)
+            return +this.flags.a;
+        if (this.shiftReg.length == 0)
+            return 1;
+        return this.shiftReg.shift();
+    }
+    //Sets the button flag, returns if the key pressed was used
+    setBtn(keyCode, isDown) {
+        switch (keyCode) {
+            case this.A:
+                this.flags.a = isDown;
+                return true;
+            case this.B:
+                this.flags.b = isDown;
+                return true;
+            case this.SELECT:
+                this.flags.select = isDown;
+                return true;
+            case this.START:
+                this.flags.start = isDown;
+                return true;
+            case this.UP:
+                this.flags.up = isDown;
+                return true;
+            case this.DOWN:
+                this.flags.down = isDown;
+                return true;
+            case this.LEFT:
+                this.flags.left = isDown;
+                return true;
+            case this.RIGHT:
+                this.flags.right = isDown;
+                return true;
+        }
+        return false;
+    }
+}
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
+/// <reference path="input.ts" />
 class NES {
     constructor(romData) {
         this.MEM_SIZE = 0x10000;
+        this.drawFrame = false;
         this.counter = 0;
         let canvas = document.getElementById("screen");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
+        //Set up input listeners
+        this.input = new Input();
+        document.addEventListener("keydown", function (e) {
+            if (this.input.setBtn(e.keyCode, true)) {
+                e.preventDefault();
+            }
+        }.bind(this));
+        document.addEventListener("keyup", function (e) {
+            if (this.input.setBtn(e.keyCode, false)) {
+                e.preventDefault();
+            }
+        }.bind(this));
     }
     boot() {
         this.ppu.boot();
@@ -3570,9 +3655,9 @@ class NES {
         this.step();
     }
     step() {
-        NES.drawFrame = false;
+        this.drawFrame = false;
         let error = false;
-        while (!NES.drawFrame) {
+        while (!this.drawFrame) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
@@ -3603,6 +3688,9 @@ class NES {
             if (res !== undefined)
                 return res;
         }
+        if (addr == 0x4016) {
+            return this.input.read();
+        }
         return this.mainMemory[addr];
     }
     //Skip setting register values when reading
@@ -3611,6 +3699,9 @@ class NES {
     }
     write(addr, data) {
         this.mainMemory[addr] = data;
+        if (addr == 0x4016) {
+            this.input.setStrobe((data & 1) != 0);
+        }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
         }
@@ -3651,7 +3742,6 @@ class NES {
         document.getElementById("ppuMem").innerHTML = str;
     }
 }
-NES.drawFrame = false;
 let nes;
 document.getElementById('file-input')
     .addEventListener('change', init, false);

@@ -1,14 +1,16 @@
 /// <reference path="rom.ts" />
 /// <reference path="ppu.ts" />
+/// <reference path="input.ts" />
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
     public rom: iNESFile;
     public cpu: CPU;
     private ppu: PPU;
+    private input: Input;
     public mainMemory: Uint8Array;
 
-    public static drawFrame: boolean = false;
+    public drawFrame: boolean = false;
     public lastAnimFrame;
 
     constructor(romData: Uint8Array) {
@@ -17,6 +19,19 @@ class NES {
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
+
+        //Set up input listeners
+        this.input = new Input();
+        document.addEventListener("keydown", function (e) {
+            if (this.input.setBtn(e.keyCode, true)) {
+                e.preventDefault();
+            }
+        }.bind(this));
+        document.addEventListener("keyup", function (e) {
+            if (this.input.setBtn(e.keyCode, false)) {
+                e.preventDefault();
+            }
+        }.bind(this));
     }
 
     public boot() {
@@ -29,9 +44,9 @@ class NES {
 
     public counter = 0;
     private step() {
-        NES.drawFrame = false;
+        this.drawFrame = false;
         let error = false;
-        while (!NES.drawFrame) {
+        while (!this.drawFrame) {
             try {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
@@ -62,6 +77,9 @@ class NES {
             let res = this.ppu.readReg(0x2000 + (addr % 8));
             if (res !== undefined) return res;
         }
+        if (addr == 0x4016) {
+            return this.input.read();
+        }
         return this.mainMemory[addr];
     }
 
@@ -72,6 +90,9 @@ class NES {
 
     public write(addr: number, data: number) {
         this.mainMemory[addr] = data;
+        if (addr == 0x4016) {
+            this.input.setStrobe((data & 1) != 0);
+        }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
         }
