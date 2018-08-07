@@ -2813,8 +2813,10 @@ class iNESFile {
 class PPU {
     constructor(nes, canvas) {
         this.nes = nes;
+        this.canvas = canvas;
         this.oamBuff = [];
         this.sprite0Active = false;
+        this.scale = 1;
         this.oddFrame = false;
         this.writeLatch = false;
         this.vRamAddr = 0;
@@ -2856,11 +2858,21 @@ class PPU {
         this.imageData = null;
         this.mem = new Uint8Array(0x4000);
         this.oam = new Uint8Array(0x100);
-        let ctx = canvas.getContext("2d", { alpha: false });
+        this.updateScale(this.scale);
+    }
+    updateScale(scale) {
+        if (scale < 1 || scale % 1 != 0) {
+            console.log("Display scale must a positive integer");
+            return;
+        }
+        this.scale = scale;
+        this.canvas.width = 256 * scale;
+        this.canvas.height = 240 * scale;
+        let ctx = this.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
-        let imgData = ctx.createImageData(canvas.width, canvas.height);
+        let imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
         this.ctx = ctx;
         for (let i = 3; i < imgData.data.length; i += 4) {
             imgData.data[i] = 255;
@@ -2877,15 +2889,28 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
+        //let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
+        let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
         if (this.imageData.data[i] != r) {
-            this.imageData.data[i] = r;
+            for (let row = 0; row < this.scale; row++) {
+                for (let col = 0; col < this.scale; col++) {
+                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = r;
+                }
+            }
         }
         if (this.imageData.data[++i] != g) {
-            this.imageData.data[i] = g;
+            for (let row = 0; row < this.scale; row++) {
+                for (let col = 0; col < this.scale; col++) {
+                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = g;
+                }
+            }
         }
         if (this.imageData.data[++i] != b) {
-            this.imageData.data[i] = b;
+            for (let row = 0; row < this.scale; row++) {
+                for (let col = 0; col < this.scale; col++) {
+                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = b;
+                }
+            }
         }
     }
     paintFrame() {

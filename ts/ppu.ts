@@ -5,6 +5,8 @@ class PPU {
     private sprite0Active: boolean = false;
     private oamAddr: number;
 
+    private scale: number = 1;
+
     private oddFrame: boolean = false;
     private writeLatch = false;
     private vRamAddr: number = 0;
@@ -50,14 +52,25 @@ class PPU {
     private ctx = null;
     private imageData = null;
 
-    constructor(private nes: NES, canvas: HTMLCanvasElement) {
+    constructor(private nes: NES, private canvas: HTMLCanvasElement) {
         this.mem = new Uint8Array(0x4000);
         this.oam = new Uint8Array(0x100);
-        let ctx = canvas.getContext("2d", { alpha: false });
+        this.updateScale(this.scale);
+    }
+
+    public updateScale(scale: number) {
+        if (scale < 1 || scale % 1 != 0) {
+            console.log("Display scale must a positive integer");
+            return;
+        }
+        this.scale = scale;
+        this.canvas.width = 256 * scale;
+        this.canvas.height = 240 * scale;
+        let ctx = this.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
-        let imgData = ctx.createImageData(canvas.width, canvas.height);
+        let imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
         this.ctx = ctx;
         for (let i = 3; i < imgData.data.length; i += 4) {
             imgData.data[i] = 255;
@@ -75,16 +88,29 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
-        if (this.imageData.data[i] != r) {
-            this.imageData.data[i] = r;
-        }
-        if (this.imageData.data[++i] != g) {
-            this.imageData.data[i] = g;
-        }
-        if (this.imageData.data[++i] != b) {
-            this.imageData.data[i] = b;
-        }
+        //let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
+        let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
+            if (this.imageData.data[i] != r) {
+                for (let row = 0; row < this.scale; row++) {
+                    for (let col = 0; col < this.scale; col++) {
+                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = r;
+                    }
+                }
+            }
+            if (this.imageData.data[++i] != g) {
+                for (let row = 0; row < this.scale; row++) {
+                    for (let col = 0; col < this.scale; col++) {
+                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = g;
+                    }
+                }
+            }
+            if (this.imageData.data[++i] != b) {
+                for (let row = 0; row < this.scale; row++) {
+                    for (let col = 0; col < this.scale; col++) {
+                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = b;
+                    }
+                }
+            }
     }
 
     public paintFrame () {
