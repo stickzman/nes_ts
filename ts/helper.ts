@@ -3,6 +3,7 @@ interface oamEntry {
     patData: number[],
     paletteNum: number,
     priority: boolean,
+    isSprite0: boolean
 }
 
 function combineHex(hiByte: number, lowByte: number): number {

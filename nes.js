@@ -2814,6 +2814,7 @@ class PPU {
     constructor(nes, canvas) {
         this.nes = nes;
         this.oamBuff = [];
+        this.sprite0Active = false;
         this.oddFrame = false;
         this.writeLatch = false;
         this.vRamAddr = 0;
@@ -3009,6 +3010,7 @@ class PPU {
         }
         else if (this.dot == 257) {
             //Sprite evaulation for next scanline
+            this.sprite0Active = false;
             this.oamBuff = [];
             for (let i = 0; i < this.oam.length; i += 4) {
                 //If sprite is visible on scanline, add it to 2nd OAM
@@ -3019,7 +3021,12 @@ class PPU {
                             patData: [],
                             paletteNum: 0,
                             priority: false,
+                            isSprite0: false
                         };
+                        if (i == 0) {
+                            entry.isSprite0 = true;
+                            this.sprite0Active = true;
+                        }
                         entry.x = this.oam[i + 3];
                         entry.paletteNum = (this.oam[i + 2] & 3) + 4;
                         entry.priority = (this.oam[i + 2] & 0x20) == 0;
@@ -3150,8 +3157,27 @@ class PPU {
                 break;
             }
         }
-        if (entry === undefined || (bkgIsVis && !entry.priority))
+        if (entry === undefined)
             return null;
+        if (bkgIsVis) {
+            if (entry.isSprite0) {
+                this.setSprite0();
+            }
+            else {
+                if (this.sprite0Active) {
+                    for (let i = 0; i < this.oamBuff.length; i++) {
+                        if (this.oamBuff[i].isSprite0) {
+                            if (this.oamBuff[i].patData[this.dot - this.oamBuff[i].x] != 0) {
+                                this.setSprite0();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!entry.priority)
+                return null;
+        }
         let palInd = 0x3F00 + entry.paletteNum * 4 + pix;
         return this.mem[palInd] & 0x3F;
     }
@@ -3333,19 +3359,22 @@ class PPU {
     }
     setVBL() {
         this.vbl = true;
-        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) | 0x80));
+        this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) | 0x80));
         if (this.vBlankNMI)
             this.nes.cpu.requestNMInterrupt();
     }
     clearVBL() {
         this.vbl = false;
-        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0x7F));
+        this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0x7F));
     }
     clearSprite0() {
-        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xBF));
+        this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0xBF));
+    }
+    setSprite0() {
+        this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) | 0x40));
     }
     clearOverflow() {
-        this.nes.write(this.PPUSTATUS, (this.nes.read(this.PPUSTATUS) & 0xDF));
+        this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0xDF));
     }
 }
 let colorData = {};
