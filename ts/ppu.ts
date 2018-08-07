@@ -345,6 +345,7 @@ class PPU {
         if (!this.showLeftSprite && this.dot < 8) return null;
         let entry: oamEntry;
         let pix: number;
+        let sprite0Pix: number;
         for (let i = 0; i < this.oamBuff.length; i++) {
             if (this.oamBuff[i].x > this.dot - 8 && this.oamBuff[i].x <= this.dot) {
                 entry = this.oamBuff[i];
@@ -354,25 +355,24 @@ class PPU {
                     pix = undefined;
                     continue;
                 }
+                if (entry.isSprite0) sprite0Pix = pix;
+                if (bkgIsVis && this.sprite0Active && sprite0Pix == undefined) {
+                    //Finish searching secondary OAM for sprite0 only
+                    for (i; i < this.oamBuff.length; i++){
+                        if (this.oamBuff[i].x > this.dot - 8 &&
+                                this.oamBuff[i].x <= this.dot &&
+                                this.oamBuff[i].isSprite0) {
+                            sprite0Pix = this.oamBuff[i].patData[this.dot - this.oamBuff[i].x];
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
         if (entry === undefined) return null;
         if (bkgIsVis) {
-            if (entry.isSprite0) {
-                this.setSprite0();
-            } else {
-                if (this.sprite0Active) {
-                    for (let i = 0; i < this.oamBuff.length; i++) {
-                        if (this.oamBuff[i].isSprite0) {
-                            if (this.oamBuff[i].patData[this.dot - this.oamBuff[i].x] != 0) {
-                                this.setSprite0();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
+            if (sprite0Pix !== undefined && sprite0Pix != 0) this.setSprite0();
             if (!entry.priority) return null;
         }
 
