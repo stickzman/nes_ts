@@ -1947,14 +1947,15 @@ opTable[0xFC] = {
     cycles: 4,
     execute: function () { }
 };
-//LAX
+//LAX, Load ACC and X with memory
 opTable[0xA3] = {
     name: "LAX (ind, X)",
     bytes: 2,
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1964,7 +1965,8 @@ opTable[0xB3] = {
     cycles: 5,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1974,7 +1976,8 @@ opTable[0xA7] = {
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1984,7 +1987,8 @@ opTable[0xB7] = {
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
@@ -1994,59 +1998,57 @@ opTable[0xAF] = {
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
 opTable[0xBF] = {
-    name: "LAX (abs)",
+    name: "LAX (abs, Y)",
     bytes: 3,
     cycles: 4,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.ACC = this.X + this.nes.read(addr);
+        this.X = this.nes.read(addr);
+        this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
     }
 };
 //AND X with ACC and store result in memory
 opTable[0x87] = {
-    name: "AAX (zpg)",
+    name: "SAX (zpg)",
     bytes: 2,
     cycles: 3,
     execute: function () {
         let addr = this.getZPageRef();
         this.nes.write(addr, this.ACC & this.X);
-        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x97] = {
-    name: "AAX (zpg, Y)",
+    name: "SAX (zpg, Y)",
     bytes: 2,
     cycles: 4,
     execute: function () {
         let addr = this.getZPageRef(this.Y);
         this.nes.write(addr, this.ACC & this.X);
-        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x83] = {
-    name: "AAX (ind, X)",
+    name: "SAX (ind, X)",
     bytes: 2,
     cycles: 6,
     execute: function () {
         let addr = this.getIndrXRef();
         this.nes.write(addr, this.ACC & this.X);
-        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 opTable[0x8F] = {
-    name: "AAX (abs)",
+    name: "SAX (abs)",
     bytes: 3,
     cycles: 4,
     execute: function () {
         let addr = this.getRef();
         this.nes.write(addr, this.ACC & this.X);
-        this.updateNumStateFlags(this.nes.read(addr));
     }
 };
 //DCP
@@ -2057,8 +2059,10 @@ opTable[0xC7] = {
     cycles: 5,
     execute: function () {
         let addr = this.getZPageRef();
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xD7] = {
@@ -2067,8 +2071,10 @@ opTable[0xD7] = {
     cycles: 6,
     execute: function () {
         let addr = this.getZPageRef(this.X);
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xCF] = {
@@ -2077,28 +2083,34 @@ opTable[0xCF] = {
     cycles: 6,
     execute: function () {
         let addr = this.getRef();
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xDF] = {
-    name: "DCP (zpg, X)",
+    name: "DCP (abs, X)",
     bytes: 3,
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.X);
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xDB] = {
-    name: "DCP (zpg, Y)",
+    name: "DCP (abs, Y)",
     bytes: 3,
     cycles: 7,
     execute: function () {
         let addr = this.getRef(this.Y);
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xC3] = {
@@ -2107,8 +2119,10 @@ opTable[0xC3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrXRef();
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 opTable[0xD3] = {
@@ -2117,8 +2131,10 @@ opTable[0xD3] = {
     cycles: 8,
     execute: function () {
         let addr = this.getIndrYRef();
-        this.nes.write(addr, this.nes.read(addr) - 1);
-        CMP.call(this, this.nes.read(addr), this.ACC);
+        let num = this.nes.read(addr) - 1;
+        if (num < 0)
+            num = 0xFF;
+        CMP.call(this, num, this.ACC);
     }
 };
 //ISC
@@ -2226,7 +2242,7 @@ opTable[0x0F] = {
     bytes: 3,
     cycles: 6,
     execute: function () {
-        let addr = this.getZPageRef();
+        let addr = this.getRef();
         this.flags.carry = (this.nes.read(addr) >= 0x80);
         this.nes.write(addr, this.nes.read(addr) << 1);
         this.nes.write(addr, this.nes.read(addr) - ((this.flags.carry) ? 0x100 : 0));
