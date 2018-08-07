@@ -3135,15 +3135,20 @@ class PPU {
         if (!this.showLeftSprite && this.dot < 8)
             return null;
         let entry;
+        let pix;
         for (let i = 0; i < this.oamBuff.length; i++) {
             if (this.oamBuff[i].x > this.dot - 8 && this.oamBuff[i].x <= this.dot) {
                 entry = this.oamBuff[i];
+                pix = entry.patData[this.dot - entry.x];
+                if (pix == 0) {
+                    entry = undefined;
+                    pix = undefined;
+                    continue;
+                }
+                break;
             }
         }
         if (entry === undefined || (bkgIsVis && !entry.priority))
-            return null;
-        let pix = entry.patData[this.dot - entry.x];
-        if (pix == 0)
             return null;
         let palInd = 0x3F00 + entry.paletteNum * 4 + pix;
         return this.mem[palInd] & 0x3F;
