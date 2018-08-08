@@ -5,7 +5,7 @@ class PPU {
     private sprite0Active: boolean = false;
     private oamAddr: number;
 
-    private scale: number = 1;
+    private scale: number = 2;
 
     private oddFrame: boolean = false;
     private writeLatch = false;
@@ -88,7 +88,6 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        //let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
         let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
             if (this.imageData.data[i] != r) {
                 for (let row = 0; row < this.scale; row++) {

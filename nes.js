@@ -2645,70 +2645,126 @@ function insertInto(addr, byte, i, j1, j2) {
 }
 class Input {
     constructor() {
-        this.A = 90;
-        this.B = 88;
+        //P1 controls
+        this.A = 18;
+        this.B = 32;
         this.SELECT = 17;
         this.START = 13;
-        this.UP = 38;
-        this.DOWN = 40;
-        this.LEFT = 37;
-        this.RIGHT = 39;
-        this.strobe = false;
-        this.shiftReg = [];
-        this.flags = {
-            a: false,
-            b: false,
-            select: false,
-            start: false,
-            up: false,
-            down: false,
-            left: false,
-            right: false
+        this.UP = 87;
+        this.DOWN = 83;
+        this.LEFT = 65;
+        this.RIGHT = 68;
+        //P2 controls
+        this.A2 = 78;
+        this.B2 = 77;
+        this.SELECT2 = 17;
+        this.START2 = 13;
+        this.UP2 = 38;
+        this.DOWN2 = 40;
+        this.LEFT2 = 37;
+        this.RIGHT2 = 39;
+        this.p1 = {
+            buttons: {
+                a: false,
+                b: false,
+                select: false,
+                start: false,
+                up: false,
+                down: false,
+                left: false,
+                right: false
+            },
+            strobe: false,
+            shiftReg: []
+        };
+        this.p2 = {
+            buttons: {
+                a: false,
+                b: false,
+                select: false,
+                start: false,
+                up: false,
+                down: false,
+                left: false,
+                right: false
+            },
+            strobe: false,
+            shiftReg: []
         };
     }
     setStrobe(on) {
-        this.strobe = on;
+        this.p1.strobe = on;
+        this.p2.strobe = on;
         if (!on) {
-            this.shiftReg = [];
-            let keys = Object.getOwnPropertyNames(this.flags);
+            this.p1.shiftReg = [];
+            this.p2.shiftReg = [];
+            let keys = Object.getOwnPropertyNames(this.p1.buttons);
             for (let i = 0; i < keys.length; i++) {
-                this.shiftReg.push(+this.flags[keys[i]]);
+                this.p1.shiftReg.push(+this.p1.buttons[keys[i]]);
+                this.p2.shiftReg.push(+this.p2.buttons[keys[i]]);
             }
         }
     }
-    read() {
-        if (this.strobe)
-            return +this.flags.a;
-        if (this.shiftReg.length == 0)
+    read(addr) {
+        let p = (addr == 0x4016) ? this.p1 : this.p2;
+        if (p.strobe)
+            return +p.buttons.a;
+        if (p.shiftReg.length == 0)
             return 1;
-        return this.shiftReg.shift();
+        return p.shiftReg.shift();
     }
     //Sets the button flag, returns if the key pressed was used
     setBtn(keyCode, isDown) {
+        let p1 = this.p1.buttons;
+        let p2 = this.p2.buttons;
         switch (keyCode) {
             case this.A:
-                this.flags.a = isDown;
+                p1.a = isDown;
                 return true;
             case this.B:
-                this.flags.b = isDown;
+                p1.b = isDown;
                 return true;
             case this.SELECT:
-                this.flags.select = isDown;
+                p1.select = isDown;
                 return true;
             case this.START:
-                this.flags.start = isDown;
+                p1.start = isDown;
                 return true;
             case this.UP:
-                this.flags.up = isDown;
+                p1.up = isDown;
                 return true;
             case this.DOWN:
-                this.flags.down = isDown;
+                p1.down = isDown;
                 return true;
             case this.LEFT:
-                this.flags.left = isDown;
+                p1.left = isDown;
                 return true;
             case this.RIGHT:
-                this.flags.right = isDown;
+                p1.right = isDown;
+                return true;
+            case this.A2:
+                p2.a = isDown;
+                return true;
+            case this.B2:
+                p2.b = isDown;
+                return true;
+            case this.SELECT2:
+                p2.select = isDown;
+                return true;
+            case this.START2:
+                p2.start = isDown;
+                return true;
+            case this.UP2:
+                p2.up = isDown;
+                return true;
+            case this.DOWN2:
+                p2.down = isDown;
+                return true;
+            case this.LEFT2:
+                p2.left = isDown;
+                return true;
+            case this.RIGHT2:
+                p2.right = isDown;
                 return true;
         }
         return false;
@@ -2816,7 +2872,7 @@ class PPU {
         this.canvas = canvas;
         this.oamBuff = [];
         this.sprite0Active = false;
-        this.scale = 1;
+        this.scale = 2;
         this.oddFrame = false;
         this.writeLatch = false;
         this.vRamAddr = 0;
@@ -2889,7 +2945,6 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        //let i = this.scanline * this.imageData.width * 4 + this.dot * 4;
         let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
         if (this.imageData.data[i] != r) {
             for (let row = 0; row < this.scale; row++) {
@@ -3790,8 +3845,8 @@ class NES {
             if (res !== undefined)
                 return res;
         }
-        if (addr == 0x4016) {
-            return this.input.read();
+        if (addr == 0x4016 || addr == 0x4017) {
+            return this.input.read(addr);
         }
         return this.mainMemory[addr];
     }

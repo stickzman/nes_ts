@@ -77,8 +77,8 @@ class NES {
             let res = this.ppu.readReg(0x2000 + (addr % 8));
             if (res !== undefined) return res;
         }
-        if (addr == 0x4016) {
-            return this.input.read();
+        if (addr == 0x4016 || addr == 0x4017) {
+            return this.input.read(addr);
         }
         return this.mainMemory[addr];
     }
