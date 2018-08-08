@@ -19,6 +19,52 @@ class Input {
     private readonly LEFT2: number = 37;
     private readonly RIGHT2: number = 39;
 
+    private defaultBind = {
+        p1: {
+            a:      {code: 18, name: "Alt"},
+            b:      {code: 32, name: "Space"},
+            select: {code: 17, name: "Control"},
+            start:  {code: 13, name: "Enter"},
+            up:     {code: 87, name: "W"},
+            down:   {code: 83, name: "S"},
+            left:   {code: 65, name: "A"},
+            right:  {code: 68, name: "D"},
+        },
+        p2: {
+            a:      {code: 78, name: "N"},
+            b:      {code: 77, name: "M"},
+            select: {code: 17, name: "Control"},
+            start:  {code: 13, name: "Enter"},
+            up:     {code: 38, name: "ArrowUp"},
+            down:   {code: 40, name: "ArrowDown"},
+            left:   {code: 37, name: "ArrowLeft"},
+            right:  {code: 39, name: "ArrowRight"},
+        }
+    };
+
+    public bindings = {
+        p1: {
+            a:      {code: 18, name: "Alt"},
+            b:      {code: 32, name: "Space"},
+            select: {code: 17, name: "Control"},
+            start:  {code: 13, name: "Enter"},
+            up:     {code: 87, name: "W"},
+            down:   {code: 83, name: "S"},
+            left:   {code: 65, name: "A"},
+            right:  {code: 68, name: "D"},
+        },
+        p2: {
+            a:      {code: 78, name: "N"},
+            b:      {code: 77, name: "M"},
+            select: {code: 17, name: "Control"},
+            start:  {code: 13, name: "Enter"},
+            up:     {code: 38, name: "ArrowUp"},
+            down:   {code: 40, name: "ArrowDown"},
+            left:   {code: 37, name: "ArrowLeft"},
+            right:  {code: 39, name: "ArrowRight"},
+        }
+    }
+
     private p1 = {
         buttons: {
             a: false,
@@ -76,57 +122,77 @@ class Input {
     public setBtn(keyCode: number, isDown: boolean): boolean {
         let p1 = this.p1.buttons;
         let p2 = this.p2.buttons;
+        let bind1 = this.bindings.p1;
+        let bind2 = this.bindings.p2;
         switch (keyCode) {
-            case this.A:
+            case bind1.a.code:
                 p1.a = isDown;
                 return true;
-            case this.B:
+            case bind1.b.code:
                 p1.b = isDown;
                 return true;
-            case this.SELECT:
+            case bind1.select.code:
                 p1.select = isDown;
                 return true;
-            case this.START:
+            case bind1.start.code:
                 p1.start = isDown;
                 return true;
-            case this.UP:
+            case bind1.up.code:
                 p1.up = isDown;
                 return true;
-            case this.DOWN:
+            case bind1.down.code:
                 p1.down = isDown;
                 return true;
-            case this.LEFT:
+            case bind1.left.code:
                 p1.left = isDown;
                 return true;
-            case this.RIGHT:
+            case bind1.right.code:
                 p1.right = isDown;
                 return true;
-            case this.A2:
+            case bind2.a.code:
                 p2.a = isDown;
                 return true;
-            case this.B2:
+            case bind2.b.code:
                 p2.b = isDown;
                 return true;
-            case this.SELECT2:
+            case bind2.select.code:
                 p2.select = isDown;
                 return true;
-            case this.START2:
+            case bind2.start.code:
                 p2.start = isDown;
                 return true;
-            case this.UP2:
+            case bind2.up.code:
                 p2.up = isDown;
                 return true;
-            case this.DOWN2:
+            case bind2.down.code:
                 p2.down = isDown;
                 return true;
-            case this.LEFT2:
+            case bind2.left.code:
                 p2.left = isDown;
                 return true;
-            case this.RIGHT2:
+            case bind2.right.code:
                 p2.right = isDown;
                 return true;
         }
         return false;
+    }
+
+    public reset() {
+        this.bindings = this.defaultBind;
+        let table = $("#p1Controls > table");
+        let btns = $("#p1Controls > table > tbody > tr > td:nth-child(2) > button");
+        let bind = this.bindings.p1;
+        let keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            btns[i].innerHTML = bind[keys[i]].name;
+        }
+        table = $("#p2Controls > table");
+        btns = $("#p2Controls > table > tbody > tr > td:nth-child(2) > button");
+        bind = this.bindings.p2;
+        keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            btns[i].innerHTML = bind[keys[i]].name;
+        }
     }
 
 }

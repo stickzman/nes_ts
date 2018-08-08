@@ -2663,6 +2663,50 @@ class Input {
         this.DOWN2 = 40;
         this.LEFT2 = 37;
         this.RIGHT2 = 39;
+        this.defaultBind = {
+            p1: {
+                a: { code: 18, name: "Alt" },
+                b: { code: 32, name: "Space" },
+                select: { code: 17, name: "Control" },
+                start: { code: 13, name: "Enter" },
+                up: { code: 87, name: "W" },
+                down: { code: 83, name: "S" },
+                left: { code: 65, name: "A" },
+                right: { code: 68, name: "D" },
+            },
+            p2: {
+                a: { code: 78, name: "N" },
+                b: { code: 77, name: "M" },
+                select: { code: 17, name: "Control" },
+                start: { code: 13, name: "Enter" },
+                up: { code: 38, name: "ArrowUp" },
+                down: { code: 40, name: "ArrowDown" },
+                left: { code: 37, name: "ArrowLeft" },
+                right: { code: 39, name: "ArrowRight" },
+            }
+        };
+        this.bindings = {
+            p1: {
+                a: { code: 18, name: "Alt" },
+                b: { code: 32, name: "Space" },
+                select: { code: 17, name: "Control" },
+                start: { code: 13, name: "Enter" },
+                up: { code: 87, name: "W" },
+                down: { code: 83, name: "S" },
+                left: { code: 65, name: "A" },
+                right: { code: 68, name: "D" },
+            },
+            p2: {
+                a: { code: 78, name: "N" },
+                b: { code: 77, name: "M" },
+                select: { code: 17, name: "Control" },
+                start: { code: 13, name: "Enter" },
+                up: { code: 38, name: "ArrowUp" },
+                down: { code: 40, name: "ArrowDown" },
+                left: { code: 37, name: "ArrowLeft" },
+                right: { code: 39, name: "ArrowRight" },
+            }
+        };
         this.p1 = {
             buttons: {
                 a: false,
@@ -2717,57 +2761,76 @@ class Input {
     setBtn(keyCode, isDown) {
         let p1 = this.p1.buttons;
         let p2 = this.p2.buttons;
+        let bind1 = this.bindings.p1;
+        let bind2 = this.bindings.p2;
         switch (keyCode) {
-            case this.A:
+            case bind1.a.code:
                 p1.a = isDown;
                 return true;
-            case this.B:
+            case bind1.b.code:
                 p1.b = isDown;
                 return true;
-            case this.SELECT:
+            case bind1.select.code:
                 p1.select = isDown;
                 return true;
-            case this.START:
+            case bind1.start.code:
                 p1.start = isDown;
                 return true;
-            case this.UP:
+            case bind1.up.code:
                 p1.up = isDown;
                 return true;
-            case this.DOWN:
+            case bind1.down.code:
                 p1.down = isDown;
                 return true;
-            case this.LEFT:
+            case bind1.left.code:
                 p1.left = isDown;
                 return true;
-            case this.RIGHT:
+            case bind1.right.code:
                 p1.right = isDown;
                 return true;
-            case this.A2:
+            case bind2.a.code:
                 p2.a = isDown;
                 return true;
-            case this.B2:
+            case bind2.b.code:
                 p2.b = isDown;
                 return true;
-            case this.SELECT2:
+            case bind2.select.code:
                 p2.select = isDown;
                 return true;
-            case this.START2:
+            case bind2.start.code:
                 p2.start = isDown;
                 return true;
-            case this.UP2:
+            case bind2.up.code:
                 p2.up = isDown;
                 return true;
-            case this.DOWN2:
+            case bind2.down.code:
                 p2.down = isDown;
                 return true;
-            case this.LEFT2:
+            case bind2.left.code:
                 p2.left = isDown;
                 return true;
-            case this.RIGHT2:
+            case bind2.right.code:
                 p2.right = isDown;
                 return true;
         }
         return false;
+    }
+    reset() {
+        this.bindings = this.defaultBind;
+        let table = $("#p1Controls > table");
+        let btns = $("#p1Controls > table > tbody > tr > td:nth-child(2) > button");
+        let bind = this.bindings.p1;
+        let keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            btns[i].innerHTML = bind[keys[i]].name;
+        }
+        table = $("#p2Controls > table");
+        btns = $("#p2Controls > table > tbody > tr > td:nth-child(2) > button");
+        bind = this.bindings.p2;
+        keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            btns[i].innerHTML = bind[keys[i]].name;
+        }
     }
 }
 class iNESFile {
@@ -3785,7 +3848,7 @@ colorData[0x3F] = {
 /// <reference path="ppu.ts" />
 /// <reference path="input.ts" />
 class NES {
-    constructor(romData) {
+    constructor(romData, input) {
         this.MEM_SIZE = 0x10000;
         this.drawFrame = false;
         this.counter = 0;
@@ -3795,12 +3858,7 @@ class NES {
         this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
         //Set up input listeners
-        NES.input = new Input();
-    }
-    updateBtn(e) {
-        if (NES.input.setBtn(e.keyCode, (e.type == "keydown") ? true : false)) {
-            e.preventDefault();
-        }
+        this.input = input;
     }
     boot() {
         this.ppu.boot();
@@ -3843,7 +3901,7 @@ class NES {
                 return res;
         }
         if (addr == 0x4016 || addr == 0x4017) {
-            return NES.input.read(addr);
+            return this.input.read(addr);
         }
         return this.mainMemory[addr];
     }
@@ -3854,7 +3912,7 @@ class NES {
     write(addr, data) {
         this.mainMemory[addr] = data;
         if (addr == 0x4016) {
-            NES.input.setStrobe((data & 1) != 0);
+            this.input.setStrobe((data & 1) != 0);
         }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
@@ -3896,7 +3954,20 @@ class NES {
         document.getElementById("ppuMem").innerHTML = str;
     }
 }
+//Initialize NES
 let nes;
+let input = new Input();
+document.addEventListener("keydown", function (e) {
+    if (input.setBtn(e.keyCode, true)) {
+        e.preventDefault();
+    }
+});
+document.addEventListener("keyup", function (e) {
+    if (input.setBtn(e.keyCode, false)) {
+        e.preventDefault();
+    }
+});
+buildControlTable();
 document.getElementById('file-input')
     .addEventListener('change', init, false);
 function init(e) {
@@ -3910,14 +3981,64 @@ function init(e) {
     let reader = new FileReader();
     reader.onload = function (e) {
         let firstBoot = nes == undefined;
-        nes = new NES(new Uint8Array(e.target.result));
+        nes = new NES(new Uint8Array(e.target.result), input);
         if (firstBoot) {
-            document.addEventListener("keydown", nes.updateBtn);
-            document.addEventListener("keyup", nes.updateBtn);
             document.getElementById("greyscale")
                 .disabled = false;
         }
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
+}
+function buildControlTable() {
+    for (let j = 0; j < 2; j++) {
+        let div;
+        let keys;
+        let bindings;
+        let table = document.createElement("table");
+        if (j == 0) {
+            div = document.getElementById("p1Controls");
+            keys = Object.getOwnPropertyNames(input.bindings.p1);
+            bindings = input.bindings.p1;
+        }
+        else {
+            div = document.getElementById("p2Controls");
+            keys = Object.getOwnPropertyNames(input.bindings.p2);
+            bindings = input.bindings.p2;
+        }
+        for (let i = 0; i < keys.length; i++) {
+            let tr = table.insertRow();
+            let nameCell = tr.insertCell();
+            let btnCell = tr.insertCell();
+            nameCell.innerHTML = keys[i];
+            let btn = document.createElement("button");
+            btn.id = keys[i] + ((j == 0) ? 1 : 2);
+            btn.innerHTML = bindings[keys[i]].name;
+            btn.addEventListener("click", function (e) {
+                let button = e.target;
+                button.innerText = "Press any key...";
+                document.addEventListener("keydown", function (e2) {
+                    button.innerText = e2.key;
+                    if (e2.key.length == 1)
+                        button.innerText = button.innerText.toUpperCase();
+                    if (e2.code == "Space")
+                        button.innerText = e2.code;
+                    bindings[keys[i]].code = e2.keyCode;
+                    bindings[keys[i]].name = button.innerText;
+                    //Delete this listener
+                    document.removeEventListener("keydown", arguments.callee);
+                });
+            });
+            btnCell.appendChild(btn);
+        }
+        div.appendChild(table);
+    }
+    let div = document.getElementById("controls");
+    let defBtn = document.createElement("button");
+    defBtn.innerText = "Restore Defaults";
+    defBtn.addEventListener("click", function (e) {
+        input.reset();
+    });
+    div.appendChild(document.createElement('br'));
+    div.appendChild(defBtn);
 }

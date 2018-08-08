@@ -4,7 +4,7 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
-    private static input: Input;
+    public input: Input;
     public rom: iNESFile;
     public cpu: CPU;
     public ppu: PPU;
@@ -13,7 +13,7 @@ class NES {
     public drawFrame: boolean = false;
     public lastAnimFrame;
 
-    constructor(romData: Uint8Array) {
+    constructor(romData: Uint8Array, input: Input) {
         let canvas = <HTMLCanvasElement>document.getElementById("screen");
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
@@ -21,13 +21,7 @@ class NES {
         this.cpu = new CPU(this);
 
         //Set up input listeners
-        NES.input = new Input();
-    }
-
-    private updateBtn(e) {
-        if (NES.input.setBtn(e.keyCode, (e.type == "keydown") ? true : false)) {
-            e.preventDefault();
-        }
+        this.input = input;
     }
 
     public boot() {
@@ -57,7 +51,7 @@ class NES {
                 throw e;
             }
         }
-        
+
         this.ppu.paintFrame();
 
         if (error || this.counter++ < -1) {
@@ -74,7 +68,7 @@ class NES {
             if (res !== undefined) return res;
         }
         if (addr == 0x4016 || addr == 0x4017) {
-            return NES.input.read(addr);
+            return this.input.read(addr);
         }
         return this.mainMemory[addr];
     }
@@ -87,7 +81,7 @@ class NES {
     public write(addr: number, data: number) {
         this.mainMemory[addr] = data;
         if (addr == 0x4016) {
-            NES.input.setStrobe((data & 1) != 0);
+            this.input.setStrobe((data & 1) != 0);
         }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
@@ -135,7 +129,21 @@ class NES {
 }
 
 
+
+//Initialize NES
 let nes;
+let input = new Input();
+document.addEventListener("keydown", function (e) {
+    if (input.setBtn(e.keyCode, true)) {
+        e.preventDefault();
+    }
+});
+document.addEventListener("keyup", function (e) {
+    if (input.setBtn(e.keyCode, false)) {
+        e.preventDefault();
+    }
+});
+buildControlTable();
 
 document.getElementById('file-input')
   .addEventListener('change', init, false);
@@ -151,14 +159,65 @@ function init(e) {
     let reader = new FileReader();
     reader.onload = function(e) {
         let firstBoot = nes == undefined;
-        nes = new NES(new Uint8Array(e.target.result));
+        nes = new NES(new Uint8Array(e.target.result), input);
         if (firstBoot) {
-            document.addEventListener("keydown", nes.updateBtn);
-            document.addEventListener("keyup", nes.updateBtn);
             (<HTMLInputElement>document.getElementById("greyscale"))
                 .disabled = false;
         }
         nes.boot();
     }
     reader.readAsArrayBuffer(file);
+}
+
+
+function buildControlTable() {
+    for (let j = 0; j < 2; j++) {
+        let div;
+        let keys;
+        let bindings;
+        let table = document.createElement("table");
+        if (j == 0) {
+            div = document.getElementById("p1Controls");
+            keys = Object.getOwnPropertyNames(input.bindings.p1);
+            bindings = input.bindings.p1;
+        } else {
+            div = document.getElementById("p2Controls");
+            keys = Object.getOwnPropertyNames(input.bindings.p2);
+            bindings = input.bindings.p2;
+        }
+        for (let i = 0; i < keys.length; i++) {
+            let tr = table.insertRow();
+            let nameCell = tr.insertCell();
+            let btnCell = tr.insertCell();
+
+            nameCell.innerHTML = keys[i];
+            let btn = document.createElement("button");
+            btn.id = keys[i] + ((j == 0) ? 1 : 2);
+            btn.innerHTML = bindings[keys[i]].name;
+            btn.addEventListener("click", function (e) {
+                let button = <HTMLButtonElement>e.target;
+                button.innerText = "Press any key...";
+                document.addEventListener("keydown", function(e2) {
+                    button.innerText = e2.key;
+                    if (e2.key.length == 1)
+                        button.innerText = button.innerText.toUpperCase();
+                    if (e2.code == "Space") button.innerText = e2.code;
+                    bindings[keys[i]].code = e2.keyCode;
+                    bindings[keys[i]].name = button.innerText;
+                    //Delete this listener
+                    document.removeEventListener("keydown", arguments.callee);
+                });
+            })
+            btnCell.appendChild(btn);
+        }
+        div.appendChild(table);
+    }
+    let div = document.getElementById("controls");
+    let defBtn = document.createElement("button");
+    defBtn.innerText = "Restore Defaults"
+    defBtn.addEventListener("click", function (e) {
+        input.reset();
+    })
+    div.appendChild(document.createElement('br'));
+    div.appendChild(defBtn);
 }
