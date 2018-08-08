@@ -7,6 +7,8 @@ class PPU {
 
     private scale: number = 2;
 
+    private internalReadBuff: number = 0;
+
     private oddFrame: boolean = false;
     private writeLatch = false;
     private vRamAddr: number = 0;
@@ -412,6 +414,10 @@ class PPU {
                 break;
             case this.OAMDATA:
                 return this.oam[this.oamAddr];
+            case this.PPUDATA:
+                let res = this.internalReadBuff;
+                this.internalReadBuff = this.mem[this.vRamAddr];
+                return res;
         }
         return;
     }
@@ -434,8 +440,8 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
-                //if (this.sprite8x16) console.log("WARNING: 8x16 sprites not currently supported!");
                 this.masterSlave = (byte & 64) != 0;
+                if (this.masterSlave) console.log("WARNING: masterSlave mode not currently supported!");
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:

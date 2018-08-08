@@ -66,7 +66,7 @@ class NES {
 
         if (error || this.counter++ < -1) {
             this.displayMem();
-            this.displayOAMMem();
+            this.displayPPUMem();
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }

@@ -2861,8 +2861,7 @@ class iNESFile {
                 ppuMem.set(this.chrRom, 0);
                 break;
             default: //Unsupported Mapper
-                alert("Warning: Unsupported Mapper\nThis game is not yet supported. "
-                    + "It may not run correctly and will likely crash upon start");
+                alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
         }
     }
 }
@@ -2873,6 +2872,7 @@ class PPU {
         this.oamBuff = [];
         this.sprite0Active = false;
         this.scale = 2;
+        this.internalReadBuff = 0;
         this.oddFrame = false;
         this.writeLatch = false;
         this.vRamAddr = 0;
@@ -3269,6 +3269,10 @@ class PPU {
                 break;
             case this.OAMDATA:
                 return this.oam[this.oamAddr];
+            case this.PPUDATA:
+                let res = this.internalReadBuff;
+                this.internalReadBuff = this.mem[this.vRamAddr];
+                return res;
         }
         return;
     }
@@ -3292,8 +3296,9 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
-                //if (this.sprite8x16) console.log("WARNING: 8x16 sprites not currently supported!");
                 this.masterSlave = (byte & 64) != 0;
+                if (this.masterSlave)
+                    console.log("WARNING: masterSlave mode not currently supported!");
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:
@@ -3833,7 +3838,7 @@ class NES {
         this.ppu.paintFrame();
         if (error || this.counter++ < -1) {
             this.displayMem();
-            this.displayOAMMem();
+            this.displayPPUMem();
         }
         else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
