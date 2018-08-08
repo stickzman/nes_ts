@@ -4,10 +4,10 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
+    private static input: Input;
     public rom: iNESFile;
     public cpu: CPU;
-    private ppu: PPU;
-    private input: Input;
+    public ppu: PPU;
     public mainMemory: Uint8Array;
 
     public drawFrame: boolean = false;
@@ -21,17 +21,13 @@ class NES {
         this.cpu = new CPU(this);
 
         //Set up input listeners
-        this.input = new Input();
-        document.addEventListener("keydown", function (e) {
-            if (this.input.setBtn(e.keyCode, true)) {
-                e.preventDefault();
-            }
-        }.bind(this));
-        document.addEventListener("keyup", function (e) {
-            if (this.input.setBtn(e.keyCode, false)) {
-                e.preventDefault();
-            }
-        }.bind(this));
+        NES.input = new Input();
+    }
+
+    private updateBtn(e) {
+        if (NES.input.setBtn(e.keyCode, (e.type == "keydown") ? true : false)) {
+            e.preventDefault();
+        }
     }
 
     public boot() {
@@ -61,7 +57,7 @@ class NES {
                 throw e;
             }
         }
-
+        
         this.ppu.paintFrame();
 
         if (error || this.counter++ < -1) {
@@ -78,7 +74,7 @@ class NES {
             if (res !== undefined) return res;
         }
         if (addr == 0x4016 || addr == 0x4017) {
-            return this.input.read(addr);
+            return NES.input.read(addr);
         }
         return this.mainMemory[addr];
     }
@@ -91,7 +87,7 @@ class NES {
     public write(addr: number, data: number) {
         this.mainMemory[addr] = data;
         if (addr == 0x4016) {
-            this.input.setStrobe((data & 1) != 0);
+            NES.input.setStrobe((data & 1) != 0);
         }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
@@ -154,7 +150,14 @@ function init(e) {
     }
     let reader = new FileReader();
     reader.onload = function(e) {
+        let firstBoot = nes == undefined;
         nes = new NES(new Uint8Array(e.target.result));
+        if (firstBoot) {
+            document.addEventListener("keydown", nes.updateBtn);
+            document.addEventListener("keyup", nes.updateBtn);
+            (<HTMLInputElement>document.getElementById("greyscale"))
+                .disabled = false;
+        }
         nes.boot();
     }
     reader.readAsArrayBuffer(file);

@@ -30,6 +30,7 @@ class PPU {
     private vBlankNMI: boolean = false;
     //MASK vars
     private greyscale: boolean = false;
+    public static forceGreyscale: boolean = false;
     private showLeftBkg: boolean = false;
     private showLeftSprite: boolean = false;
     private showBkg: boolean = false;
@@ -37,8 +38,6 @@ class PPU {
     private maxRed: boolean = false;
     private maxGreen: boolean = false;
     private maxBlue: boolean = false;
-    //STATUS vars
-    private vbl: boolean = false;
 
     private readonly PPUCTRL: number = 0x2000;
     private readonly PPUMASK: number = 0x2001;
@@ -356,7 +355,7 @@ class PPU {
             palData = this.mem[palInd] & 0x3F;
         }
 
-        if (this.greyscale) palData &= 0x30;
+        if (PPU.forceGreyscale || this.greyscale) palData &= 0x30;
         let col = colorData[palData];
         this.setPixel(col.r, col.g, col.b);
 
@@ -582,13 +581,11 @@ class PPU {
     }
 
     private setVBL() {
-        this.vbl = true;
         this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) | 0x80));
         if (this.vBlankNMI) this.nes.cpu.requestNMInterrupt();
     }
 
     private clearVBL() {
-        this.vbl = false;
         this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0x7F));
     }
 

@@ -2899,8 +2899,6 @@ class PPU {
         this.maxRed = false;
         this.maxGreen = false;
         this.maxBlue = false;
-        //STATUS vars
-        this.vbl = false;
         this.PPUCTRL = 0x2000;
         this.PPUMASK = 0x2001;
         this.PPUSTATUS = 0x2002;
@@ -3209,7 +3207,7 @@ class PPU {
             let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
             palData = this.mem[palInd] & 0x3F;
         }
-        if (this.greyscale)
+        if (PPU.forceGreyscale || this.greyscale)
             palData &= 0x30;
         let col = colorData[palData];
         this.setPixel(col.r, col.g, col.b);
@@ -3444,13 +3442,11 @@ class PPU {
         return 0x23C0 | (this.vRamAddr & 0x0C00) | ((this.vRamAddr >> 4) & 0x38) | ((this.vRamAddr >> 2) & 0x07);
     }
     setVBL() {
-        this.vbl = true;
         this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) | 0x80));
         if (this.vBlankNMI)
             this.nes.cpu.requestNMInterrupt();
     }
     clearVBL() {
-        this.vbl = false;
         this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0x7F));
     }
     clearSprite0() {
@@ -3463,6 +3459,7 @@ class PPU {
         this.nes.write(this.PPUSTATUS, (this.nes.readNoReg(this.PPUSTATUS) & 0xDF));
     }
 }
+PPU.forceGreyscale = false;
 let colorData = {};
 colorData[0x00] = {
     r: 84,
@@ -3798,17 +3795,12 @@ class NES {
         this.ppu = new PPU(this, canvas);
         this.cpu = new CPU(this);
         //Set up input listeners
-        this.input = new Input();
-        document.addEventListener("keydown", function (e) {
-            if (this.input.setBtn(e.keyCode, true)) {
-                e.preventDefault();
-            }
-        }.bind(this));
-        document.addEventListener("keyup", function (e) {
-            if (this.input.setBtn(e.keyCode, false)) {
-                e.preventDefault();
-            }
-        }.bind(this));
+        NES.input = new Input();
+    }
+    updateBtn(e) {
+        if (NES.input.setBtn(e.keyCode, (e.type == "keydown") ? true : false)) {
+            e.preventDefault();
+        }
     }
     boot() {
         this.ppu.boot();
@@ -3851,7 +3843,7 @@ class NES {
                 return res;
         }
         if (addr == 0x4016 || addr == 0x4017) {
-            return this.input.read(addr);
+            return NES.input.read(addr);
         }
         return this.mainMemory[addr];
     }
@@ -3862,7 +3854,7 @@ class NES {
     write(addr, data) {
         this.mainMemory[addr] = data;
         if (addr == 0x4016) {
-            this.input.setStrobe((data & 1) != 0);
+            NES.input.setStrobe((data & 1) != 0);
         }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);
@@ -3917,7 +3909,14 @@ function init(e) {
     }
     let reader = new FileReader();
     reader.onload = function (e) {
+        let firstBoot = nes == undefined;
         nes = new NES(new Uint8Array(e.target.result));
+        if (firstBoot) {
+            document.addEventListener("keydown", nes.updateBtn);
+            document.addEventListener("keyup", nes.updateBtn);
+            document.getElementById("greyscale")
+                .disabled = false;
+        }
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
