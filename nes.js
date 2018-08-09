@@ -2645,24 +2645,6 @@ function insertInto(addr, byte, i, j1, j2) {
 }
 class Input {
     constructor() {
-        //P1 controls
-        this.A = 18;
-        this.B = 32;
-        this.SELECT = 17;
-        this.START = 13;
-        this.UP = 87;
-        this.DOWN = 83;
-        this.LEFT = 65;
-        this.RIGHT = 68;
-        //P2 controls
-        this.A2 = 78;
-        this.B2 = 77;
-        this.SELECT2 = 17;
-        this.START2 = 13;
-        this.UP2 = 38;
-        this.DOWN2 = 40;
-        this.LEFT2 = 37;
-        this.RIGHT2 = 39;
         this.defaultBind = {
             p1: {
                 a: { code: 18, name: "Alt" },
@@ -2685,28 +2667,7 @@ class Input {
                 right: { code: 39, name: "ArrowRight" },
             }
         };
-        this.bindings = {
-            p1: {
-                a: { code: 18, name: "Alt" },
-                b: { code: 32, name: "Space" },
-                select: { code: 17, name: "Control" },
-                start: { code: 13, name: "Enter" },
-                up: { code: 87, name: "W" },
-                down: { code: 83, name: "S" },
-                left: { code: 65, name: "A" },
-                right: { code: 68, name: "D" },
-            },
-            p2: {
-                a: { code: 78, name: "N" },
-                b: { code: 77, name: "M" },
-                select: { code: 17, name: "Control" },
-                start: { code: 13, name: "Enter" },
-                up: { code: 38, name: "ArrowUp" },
-                down: { code: 40, name: "ArrowDown" },
-                left: { code: 37, name: "ArrowLeft" },
-                right: { code: 39, name: "ArrowRight" },
-            }
-        };
+        this.bindings = this.defaultBind;
         this.p1 = {
             buttons: {
                 a: false,
@@ -2817,19 +2778,52 @@ class Input {
     }
     reset() {
         this.bindings = this.defaultBind;
-        let table = $("#p1Controls > table");
-        let btns = $("#p1Controls > table > tbody > tr > td:nth-child(2) > button");
+        let btns = $("#p1Controls > table > tr > td:nth-child(2) > button");
         let bind = this.bindings.p1;
         let keys = Object.getOwnPropertyNames(bind);
         for (let i = 0; i < keys.length; i++) {
             btns[i].innerHTML = bind[keys[i]].name;
         }
-        table = $("#p2Controls > table");
-        btns = $("#p2Controls > table > tbody > tr > td:nth-child(2) > button");
+        btns = $("#p2Controls > table > tr > td:nth-child(2) > button");
         bind = this.bindings.p2;
         keys = Object.getOwnPropertyNames(bind);
         for (let i = 0; i < keys.length; i++) {
             btns[i].innerHTML = bind[keys[i]].name;
+        }
+    }
+    buildControlTable(div, p1 = true) {
+        let pStr = (p1) ? "p1" : "p2";
+        let bind = this.bindings[pStr];
+        let table = $(document.createElement("table"));
+        let keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            let btn = $(document.createElement("button"));
+            btn.html(bind[keys[i]].name);
+            btn.on("click", function () {
+                btn.html("Press any key...");
+                $(document).one("keydown", function (e) {
+                    btn.html(e.key);
+                    if (e.key.length == 1)
+                        btn.html(btn.html().toUpperCase());
+                    if (e.keyCode == 32)
+                        btn.html("Space");
+                    bind[keys[i]].code = e.keyCode;
+                    bind[keys[i]].name = btn.html();
+                });
+            });
+            let tr = $(document.createElement("tr"));
+            tr.append(`<td>${keys[i]}</td>`);
+            let td = $(document.createElement("td"));
+            td.append(btn);
+            table.append(tr.append(td));
+        }
+        div.append(table);
+        if (!p1) {
+            let defBtn = $(document.createElement("button"));
+            defBtn.html("Restore Defaults");
+            defBtn.on("click", input.reset.bind(this));
+            div.after(defBtn);
+            div.after("<br>");
         }
     }
 }
@@ -3937,39 +3931,39 @@ class NES {
         for (let i = 0; i < this.mainMemory.length; i++) {
             str += this.mainMemory[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("mem").innerHTML = str;
+        $("#mem").html(str);
     }
     displayPPUMem() {
         let str = "";
         for (let i = 0; i < this.ppu.mem.length; i++) {
             str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("ppuMem").innerHTML = str;
+        $("#ppuMem").html(str);
     }
     displayOAMMem() {
         let str = "";
         for (let i = 0; i < this.ppu.oam.length; i++) {
             str += this.ppu.oam[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("ppuMem").innerHTML = str;
+        $("#ppuMem").html(str);
     }
 }
 //Initialize NES
 let nes;
 let input = new Input();
-document.addEventListener("keydown", function (e) {
+$(document).on("keydown", function (e) {
     if (input.setBtn(e.keyCode, true)) {
         e.preventDefault();
     }
 });
-document.addEventListener("keyup", function (e) {
+$(document).on("keyup", function (e) {
     if (input.setBtn(e.keyCode, false)) {
         e.preventDefault();
     }
 });
-buildControlTable();
-document.getElementById('file-input')
-    .addEventListener('change', init, false);
+input.buildControlTable($("#p1Controls"));
+input.buildControlTable($("#p2Controls"), false);
+$('#file-input').change(init);
 function init(e) {
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
@@ -3983,62 +3977,9 @@ function init(e) {
         let firstBoot = nes == undefined;
         nes = new NES(new Uint8Array(e.target.result), input);
         if (firstBoot) {
-            document.getElementById("greyscale")
-                .disabled = false;
+            $("#greyscale").prop("disabled", false);
         }
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
-}
-function buildControlTable() {
-    for (let j = 0; j < 2; j++) {
-        let div;
-        let keys;
-        let bindings;
-        let table = document.createElement("table");
-        if (j == 0) {
-            div = document.getElementById("p1Controls");
-            keys = Object.getOwnPropertyNames(input.bindings.p1);
-            bindings = input.bindings.p1;
-        }
-        else {
-            div = document.getElementById("p2Controls");
-            keys = Object.getOwnPropertyNames(input.bindings.p2);
-            bindings = input.bindings.p2;
-        }
-        for (let i = 0; i < keys.length; i++) {
-            let tr = table.insertRow();
-            let nameCell = tr.insertCell();
-            let btnCell = tr.insertCell();
-            nameCell.innerHTML = keys[i];
-            let btn = document.createElement("button");
-            btn.id = keys[i] + ((j == 0) ? 1 : 2);
-            btn.innerHTML = bindings[keys[i]].name;
-            btn.addEventListener("click", function (e) {
-                let button = e.target;
-                button.innerText = "Press any key...";
-                document.addEventListener("keydown", function captureKey(e2) {
-                    button.innerText = e2.key;
-                    if (e2.key.length == 1)
-                        button.innerText = button.innerText.toUpperCase();
-                    if (e2.code == "Space")
-                        button.innerText = e2.code;
-                    bindings[keys[i]].code = e2.keyCode;
-                    bindings[keys[i]].name = button.innerText;
-                    //Delete this listener
-                    document.removeEventListener("keydown", captureKey);
-                });
-            });
-            btnCell.appendChild(btn);
-        }
-        div.appendChild(table);
-    }
-    let div = document.getElementById("controls");
-    let defBtn = document.createElement("button");
-    defBtn.innerText = "Restore Defaults";
-    defBtn.addEventListener("click", function (e) {
-        input.reset();
-    });
-    div.appendChild(document.createElement('br'));
-    div.appendChild(defBtn);
 }

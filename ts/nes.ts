@@ -108,7 +108,7 @@ class NES {
         for (let i = 0; i < this.mainMemory.length; i++) {
             str += this.mainMemory[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("mem").innerHTML = str;
+        $("#mem").html(str);
     }
 
     private displayPPUMem() {
@@ -116,7 +116,7 @@ class NES {
         for (let i = 0; i < this.ppu.mem.length; i++) {
             str += this.ppu.mem[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("ppuMem").innerHTML = str;
+        $("#ppuMem").html(str);
     }
 
     private displayOAMMem() {
@@ -124,7 +124,7 @@ class NES {
         for (let i = 0; i < this.ppu.oam.length; i++) {
             str += this.ppu.oam[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        document.getElementById("ppuMem").innerHTML = str;
+        $("#ppuMem").html(str);
     }
 }
 
@@ -133,20 +133,21 @@ class NES {
 //Initialize NES
 let nes;
 let input = new Input();
-document.addEventListener("keydown", function (e) {
+$(document).on("keydown", function (e) {
     if (input.setBtn(e.keyCode, true)) {
         e.preventDefault();
     }
 });
-document.addEventListener("keyup", function (e) {
+$(document).on("keyup", function (e) {
     if (input.setBtn(e.keyCode, false)) {
         e.preventDefault();
     }
 });
-buildControlTable();
 
-document.getElementById('file-input')
-  .addEventListener('change', init, false);
+input.buildControlTable($("#p1Controls"));
+input.buildControlTable($("#p2Controls"), false);
+
+$('#file-input').change(init);
 
 function init(e) {
     if (nes !== undefined) {
@@ -161,63 +162,9 @@ function init(e) {
         let firstBoot = nes == undefined;
         nes = new NES(new Uint8Array(e.target.result), input);
         if (firstBoot) {
-            (<HTMLInputElement>document.getElementById("greyscale"))
-                .disabled = false;
+            $("#greyscale").prop("disabled", false);
         }
         nes.boot();
     }
     reader.readAsArrayBuffer(file);
-}
-
-
-function buildControlTable() {
-    for (let j = 0; j < 2; j++) {
-        let div;
-        let keys;
-        let bindings;
-        let table = document.createElement("table");
-        if (j == 0) {
-            div = document.getElementById("p1Controls");
-            keys = Object.getOwnPropertyNames(input.bindings.p1);
-            bindings = input.bindings.p1;
-        } else {
-            div = document.getElementById("p2Controls");
-            keys = Object.getOwnPropertyNames(input.bindings.p2);
-            bindings = input.bindings.p2;
-        }
-        for (let i = 0; i < keys.length; i++) {
-            let tr = table.insertRow();
-            let nameCell = tr.insertCell();
-            let btnCell = tr.insertCell();
-
-            nameCell.innerHTML = keys[i];
-            let btn = document.createElement("button");
-            btn.id = keys[i] + ((j == 0) ? 1 : 2);
-            btn.innerHTML = bindings[keys[i]].name;
-            btn.addEventListener("click", function (e) {
-                let button = <HTMLButtonElement>e.target;
-                button.innerText = "Press any key...";
-                document.addEventListener("keydown", function captureKey(e2) {
-                    button.innerText = e2.key;
-                    if (e2.key.length == 1)
-                        button.innerText = button.innerText.toUpperCase();
-                    if (e2.code == "Space") button.innerText = e2.code;
-                    bindings[keys[i]].code = e2.keyCode;
-                    bindings[keys[i]].name = button.innerText;
-                    //Delete this listener
-                    document.removeEventListener("keydown", captureKey);
-                });
-            })
-            btnCell.appendChild(btn);
-        }
-        div.appendChild(table);
-    }
-    let div = document.getElementById("controls");
-    let defBtn = document.createElement("button");
-    defBtn.innerText = "Restore Defaults"
-    defBtn.addEventListener("click", function (e) {
-        input.reset();
-    })
-    div.appendChild(document.createElement('br'));
-    div.appendChild(defBtn);
 }

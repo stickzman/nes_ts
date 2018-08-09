@@ -1,24 +1,4 @@
 class Input {
-    //P1 controls
-    private readonly A: number = 18;
-    private readonly B: number = 32;
-    private readonly SELECT: number = 17;
-    private readonly START: number = 13;
-    private readonly UP: number = 87;
-    private readonly DOWN: number = 83;
-    private readonly LEFT: number = 65;
-    private readonly RIGHT: number = 68;
-
-    //P2 controls
-    private readonly A2: number = 78;
-    private readonly B2: number = 77;
-    private readonly SELECT2: number = 17;
-    private readonly START2: number = 13;
-    private readonly UP2: number = 38;
-    private readonly DOWN2: number = 40;
-    private readonly LEFT2: number = 37;
-    private readonly RIGHT2: number = 39;
-
     private defaultBind = {
         p1: {
             a:      {code: 18, name: "Alt"},
@@ -42,28 +22,7 @@ class Input {
         }
     };
 
-    public bindings = {
-        p1: {
-            a:      {code: 18, name: "Alt"},
-            b:      {code: 32, name: "Space"},
-            select: {code: 17, name: "Control"},
-            start:  {code: 13, name: "Enter"},
-            up:     {code: 87, name: "W"},
-            down:   {code: 83, name: "S"},
-            left:   {code: 65, name: "A"},
-            right:  {code: 68, name: "D"},
-        },
-        p2: {
-            a:      {code: 78, name: "N"},
-            b:      {code: 77, name: "M"},
-            select: {code: 17, name: "Control"},
-            start:  {code: 13, name: "Enter"},
-            up:     {code: 38, name: "ArrowUp"},
-            down:   {code: 40, name: "ArrowDown"},
-            left:   {code: 37, name: "ArrowLeft"},
-            right:  {code: 39, name: "ArrowRight"},
-        }
-    }
+    public bindings = this.defaultBind;
 
     private p1 = {
         buttons: {
@@ -179,19 +138,51 @@ class Input {
 
     public reset() {
         this.bindings = this.defaultBind;
-        let table = $("#p1Controls > table");
-        let btns = $("#p1Controls > table > tbody > tr > td:nth-child(2) > button");
+        let btns = $("#p1Controls > table > tr > td:nth-child(2) > button");
         let bind = this.bindings.p1;
         let keys = Object.getOwnPropertyNames(bind);
         for (let i = 0; i < keys.length; i++) {
             btns[i].innerHTML = bind[keys[i]].name;
         }
-        table = $("#p2Controls > table");
-        btns = $("#p2Controls > table > tbody > tr > td:nth-child(2) > button");
+        btns = $("#p2Controls > table > tr > td:nth-child(2) > button");
         bind = this.bindings.p2;
         keys = Object.getOwnPropertyNames(bind);
         for (let i = 0; i < keys.length; i++) {
             btns[i].innerHTML = bind[keys[i]].name;
+        }
+    }
+
+    public buildControlTable(div: JQuery, p1: boolean = true) {
+        let pStr = (p1) ? "p1" : "p2";
+        let bind = this.bindings[pStr];
+        let table = $(document.createElement("table"));
+        let keys = Object.getOwnPropertyNames(bind);
+        for (let i = 0; i < keys.length; i++) {
+            let btn = $(document.createElement("button"));
+            btn.html(bind[keys[i]].name);
+            btn.on("click", function() {
+                btn.html("Press any key...");
+                $(document).one("keydown", function(e) {
+                    btn.html(e.key);
+                    if (e.key.length == 1) btn.html(btn.html().toUpperCase());
+                    if (e.keyCode == 32) btn.html("Space");
+                    bind[keys[i]].code = e.keyCode;
+                    bind[keys[i]].name = btn.html();
+                })
+            });
+            let tr = $(document.createElement("tr"));
+            tr.append(`<td>${keys[i]}</td>`);
+            let td = $(document.createElement("td"));
+            td.append(btn);
+            table.append(tr.append(td));
+        }
+        div.append(table);
+        if (!p1) {
+            let defBtn = $(document.createElement("button"));
+            defBtn.html("Restore Defaults")
+            defBtn.on("click", input.reset.bind(this));
+            div.after(defBtn);
+            div.after("<br>");
         }
     }
 
