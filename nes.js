@@ -4017,7 +4017,7 @@ function buildControlTable() {
             btn.addEventListener("click", function (e) {
                 let button = e.target;
                 button.innerText = "Press any key...";
-                document.addEventListener("keydown", function (e2) {
+                document.addEventListener("keydown", function captureKey(e2) {
                     button.innerText = e2.key;
                     if (e2.key.length == 1)
                         button.innerText = button.innerText.toUpperCase();
@@ -4026,7 +4026,7 @@ function buildControlTable() {
                     bindings[keys[i]].code = e2.keyCode;
                     bindings[keys[i]].name = button.innerText;
                     //Delete this listener
-                    document.removeEventListener("keydown", arguments.callee);
+                    document.removeEventListener("keydown", captureKey);
                 });
             });
             btnCell.appendChild(btn);
