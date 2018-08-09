@@ -2667,7 +2667,8 @@ class Input {
                 right: { code: 39, name: "ArrowRight" },
             }
         };
-        this.bindings = this.defaultBind;
+        this.bindings = (localStorage.getItem("bindings") == null) ?
+            this.defaultBind : JSON.parse(localStorage.getItem("bindings"));
         this.p1 = {
             buttons: {
                 a: false,
@@ -2790,6 +2791,7 @@ class Input {
         for (let i = 0; i < keys.length; i++) {
             btns[i].innerHTML = bind[keys[i]].name;
         }
+        localStorage.setItem("bindings", JSON.stringify(this.bindings));
     }
     buildControlTable(div, p1 = true) {
         let pStr = (p1) ? "p1" : "p2";
@@ -2802,6 +2804,7 @@ class Input {
             btn.on("click", function () {
                 btn.html("Press any key...");
                 $(document).one("keydown", function (e) {
+                    //Capture new key binding
                     btn.html(e.key);
                     if (e.key.length == 1)
                         btn.html(btn.html().toUpperCase());
@@ -2809,8 +2812,9 @@ class Input {
                         btn.html("Space");
                     bind[keys[i]].code = e.keyCode;
                     bind[keys[i]].name = btn.html();
-                });
-            });
+                    localStorage.setItem("bindings", JSON.stringify(this.bindings));
+                }.bind(this));
+            }.bind(this));
             let tr = $(document.createElement("tr"));
             tr.append(`<td>${keys[i]}</td>`);
             let td = $(document.createElement("td"));
