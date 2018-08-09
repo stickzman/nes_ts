@@ -3845,10 +3845,9 @@ class NES {
         this.MEM_SIZE = 0x10000;
         this.drawFrame = false;
         this.counter = 0;
-        let canvas = $("#screen")[0];
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this, canvas);
+        this.ppu = new PPU(this);
         this.cpu = new CPU(this);
         //Set up input listeners
         this.input = input;
@@ -3951,7 +3950,7 @@ class NES {
 let nes;
 PPU.canvas = $("#screen")[0];
 PPU.canvas.getContext('2d', { alpha: false });
-$("#scale").change(function (e) {
+$("#scale").change(function () {
     PPU.updateScale(parseInt($("#scale")[0].value));
 });
 let input = new Input();

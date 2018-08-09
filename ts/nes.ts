@@ -14,10 +14,9 @@ class NES {
     public lastAnimFrame;
 
     constructor(romData: Uint8Array, input: Input) {
-        let canvas = <HTMLCanvasElement>$("#screen")[0];
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
-        this.ppu = new PPU(this, canvas);
+        this.ppu = new PPU(this);
         this.cpu = new CPU(this);
 
         //Set up input listeners
@@ -135,7 +134,7 @@ let nes;
 PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
 PPU.canvas.getContext('2d', { alpha: false });
 
-$("#scale").change(function(e) {
+$("#scale").change(function() {
     PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
 });
 
