@@ -14,7 +14,7 @@ class NES {
     public lastAnimFrame;
 
     constructor(romData: Uint8Array, input: Input) {
-        let canvas = <HTMLCanvasElement>document.getElementById("screen");
+        let canvas = <HTMLCanvasElement>$("#screen")[0];
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this, canvas);
@@ -132,6 +132,13 @@ class NES {
 
 //Initialize NES
 let nes;
+PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
+PPU.canvas.getContext('2d', { alpha: false });
+
+$("#scale").change(function(e) {
+    PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
+});
+
 let input = new Input();
 $(document).on("keydown", function (e) {
     if (input.setBtn(e.keyCode, true)) {
@@ -146,6 +153,7 @@ $(document).on("keyup", function (e) {
 
 input.buildControlTable($("#p1Controls"));
 input.buildControlTable($("#p2Controls"), false);
+
 
 $('#file-input').change(init);
 

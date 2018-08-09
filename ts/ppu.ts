@@ -5,8 +5,6 @@ class PPU {
     private sprite0Active: boolean = false;
     private oamAddr: number;
 
-    private scale: number = 2;
-
     private internalReadBuff: number = 0;
 
     private oddFrame: boolean = false;
@@ -49,34 +47,36 @@ class PPU {
     private readonly PPUDATA: number = 0x2007;
     private readonly OAMDMA: number = 0x4014;
 
+    private static ctx = null;
+    private static imageData = null;
+    private static scale: number = 2;
+    public static canvas: HTMLCanvasElement;
 
-    private ctx = null;
-    private imageData = null;
 
-    constructor(private nes: NES, private canvas: HTMLCanvasElement) {
+    constructor(private nes: NES) {
         this.mem = new Uint8Array(0x4000);
         this.oam = new Uint8Array(0x100);
-        this.updateScale(this.scale);
+        PPU.updateScale(PPU.scale);
     }
 
-    public updateScale(scale: number) {
+    public static updateScale(scale: number) {
         if (scale < 1 || scale % 1 != 0) {
             console.log("Display scale must a positive integer");
             return;
         }
-        this.scale = scale;
-        this.canvas.width = 256 * scale;
-        this.canvas.height = 240 * scale;
-        let ctx = this.canvas.getContext("2d", { alpha: false });
+        PPU.scale = scale;
+        PPU.canvas.width = 256 * scale;
+        PPU.canvas.height = 240 * scale;
+        let ctx = PPU.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
-        let imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        this.ctx = ctx;
+        let imgData = ctx.createImageData(PPU.canvas.width, PPU.canvas.height);
+        PPU.ctx = ctx;
         for (let i = 3; i < imgData.data.length; i += 4) {
             imgData.data[i] = 255;
         }
-        this.imageData = imgData;
+        PPU.imageData = imgData;
     }
 
     private setPixel (r: number, g: number, b: number) {
@@ -89,32 +89,32 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
-            if (this.imageData.data[i] != r) {
-                for (let row = 0; row < this.scale; row++) {
-                    for (let col = 0; col < this.scale; col++) {
-                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = r;
+        let i = (this.scanline * PPU.imageData.width * 4 + this.dot * 4) * PPU.scale;
+            if (PPU.imageData.data[i] != r) {
+                for (let row = 0; row < PPU.scale; row++) {
+                    for (let col = 0; col < PPU.scale; col++) {
+                        PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = r;
                     }
                 }
             }
-            if (this.imageData.data[++i] != g) {
-                for (let row = 0; row < this.scale; row++) {
-                    for (let col = 0; col < this.scale; col++) {
-                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = g;
+            if (PPU.imageData.data[++i] != g) {
+                for (let row = 0; row < PPU.scale; row++) {
+                    for (let col = 0; col < PPU.scale; col++) {
+                        PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = g;
                     }
                 }
             }
-            if (this.imageData.data[++i] != b) {
-                for (let row = 0; row < this.scale; row++) {
-                    for (let col = 0; col < this.scale; col++) {
-                        this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = b;
+            if (PPU.imageData.data[++i] != b) {
+                for (let row = 0; row < PPU.scale; row++) {
+                    for (let col = 0; col < PPU.scale; col++) {
+                        PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = b;
                     }
                 }
             }
     }
 
     public paintFrame () {
-        this.ctx.putImageData(this.imageData, 0, 0);
+        PPU.ctx.putImageData(PPU.imageData, 0, 0);
     }
 
     public boot() {

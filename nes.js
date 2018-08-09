@@ -2923,12 +2923,10 @@ class iNESFile {
     }
 }
 class PPU {
-    constructor(nes, canvas) {
+    constructor(nes) {
         this.nes = nes;
-        this.canvas = canvas;
         this.oamBuff = [];
         this.sprite0Active = false;
-        this.scale = 2;
         this.internalReadBuff = 0;
         this.oddFrame = false;
         this.writeLatch = false;
@@ -2965,30 +2963,28 @@ class PPU {
         this.PPUADDR = 0x2006;
         this.PPUDATA = 0x2007;
         this.OAMDMA = 0x4014;
-        this.ctx = null;
-        this.imageData = null;
         this.mem = new Uint8Array(0x4000);
         this.oam = new Uint8Array(0x100);
-        this.updateScale(this.scale);
+        PPU.updateScale(PPU.scale);
     }
-    updateScale(scale) {
+    static updateScale(scale) {
         if (scale < 1 || scale % 1 != 0) {
             console.log("Display scale must a positive integer");
             return;
         }
-        this.scale = scale;
-        this.canvas.width = 256 * scale;
-        this.canvas.height = 240 * scale;
-        let ctx = this.canvas.getContext("2d", { alpha: false });
+        PPU.scale = scale;
+        PPU.canvas.width = 256 * scale;
+        PPU.canvas.height = 240 * scale;
+        let ctx = PPU.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
-        let imgData = ctx.createImageData(this.canvas.width, this.canvas.height);
-        this.ctx = ctx;
+        let imgData = ctx.createImageData(PPU.canvas.width, PPU.canvas.height);
+        PPU.ctx = ctx;
         for (let i = 3; i < imgData.data.length; i += 4) {
             imgData.data[i] = 255;
         }
-        this.imageData = imgData;
+        PPU.imageData = imgData;
     }
     setPixel(r, g, b) {
         if (this.maxGreen || this.maxBlue) {
@@ -3000,31 +2996,31 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        let i = (this.scanline * this.imageData.width * 4 + this.dot * 4) * this.scale;
-        if (this.imageData.data[i] != r) {
-            for (let row = 0; row < this.scale; row++) {
-                for (let col = 0; col < this.scale; col++) {
-                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = r;
+        let i = (this.scanline * PPU.imageData.width * 4 + this.dot * 4) * PPU.scale;
+        if (PPU.imageData.data[i] != r) {
+            for (let row = 0; row < PPU.scale; row++) {
+                for (let col = 0; col < PPU.scale; col++) {
+                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = r;
                 }
             }
         }
-        if (this.imageData.data[++i] != g) {
-            for (let row = 0; row < this.scale; row++) {
-                for (let col = 0; col < this.scale; col++) {
-                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = g;
+        if (PPU.imageData.data[++i] != g) {
+            for (let row = 0; row < PPU.scale; row++) {
+                for (let col = 0; col < PPU.scale; col++) {
+                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = g;
                 }
             }
         }
-        if (this.imageData.data[++i] != b) {
-            for (let row = 0; row < this.scale; row++) {
-                for (let col = 0; col < this.scale; col++) {
-                    this.imageData.data[i + row * this.imageData.width * 4 + col * 4] = b;
+        if (PPU.imageData.data[++i] != b) {
+            for (let row = 0; row < PPU.scale; row++) {
+                for (let col = 0; col < PPU.scale; col++) {
+                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = b;
                 }
             }
         }
     }
     paintFrame() {
-        this.ctx.putImageData(this.imageData, 0, 0);
+        PPU.ctx.putImageData(PPU.imageData, 0, 0);
     }
     boot() {
         this.nes.write(this.PPUCTRL, 0);
@@ -3517,6 +3513,9 @@ class PPU {
     }
 }
 PPU.forceGreyscale = false;
+PPU.ctx = null;
+PPU.imageData = null;
+PPU.scale = 2;
 let colorData = {};
 colorData[0x00] = {
     r: 84,
@@ -3846,7 +3845,7 @@ class NES {
         this.MEM_SIZE = 0x10000;
         this.drawFrame = false;
         this.counter = 0;
-        let canvas = document.getElementById("screen");
+        let canvas = $("#screen")[0];
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.rom = new iNESFile(romData);
         this.ppu = new PPU(this, canvas);
@@ -3950,6 +3949,11 @@ class NES {
 }
 //Initialize NES
 let nes;
+PPU.canvas = $("#screen")[0];
+PPU.canvas.getContext('2d', { alpha: false });
+$("#scale").change(function (e) {
+    PPU.updateScale(parseInt($("#scale")[0].value));
+});
 let input = new Input();
 $(document).on("keydown", function (e) {
     if (input.setBtn(e.keyCode, true)) {
