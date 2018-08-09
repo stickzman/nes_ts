@@ -166,11 +166,7 @@ function init(e) {
     }
     let reader = new FileReader();
     reader.onload = function(e) {
-        let firstBoot = nes == undefined;
         nes = new NES(new Uint8Array(e.target.result), input);
-        if (firstBoot) {
-            $("#greyscale").prop("disabled", false);
-        }
         nes.boot();
     }
     reader.readAsArrayBuffer(file);
