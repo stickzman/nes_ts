@@ -3889,7 +3889,8 @@ class NES {
 //Initialize NES
 let nes;
 PPU.canvas = $("#screen")[0];
-PPU.canvas.getContext('2d', { alpha: false });
+PPU.updateScale(2);
+//PPU.canvas.getContext('2d', { alpha: false });
 $("#scale").change(function () {
     PPU.updateScale(parseInt($("#scale")[0].value));
 });
