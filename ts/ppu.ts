@@ -602,16 +602,6 @@ class PPU {
     }
 }
 
-
-//Palette Data Start
-interface colorData {
-    [code: string]: {
-        r: number,
-        g: number,
-        b: number
-    }
-}
-
 let colorData = [{
     "r": 102,
     "g": 102,
