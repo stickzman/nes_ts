@@ -3888,26 +3888,27 @@ class NES {
 }
 //Initialize NES
 let nes;
-PPU.canvas = $("#screen")[0];
-PPU.updateScale(2);
-//PPU.canvas.getContext('2d', { alpha: false });
-$("#scale").change(function () {
-    PPU.updateScale(parseInt($("#scale")[0].value));
-});
 let input = new Input();
-$(document).on("keydown", function (e) {
-    if (input.setBtn(e.keyCode, true)) {
-        e.preventDefault();
-    }
+$(document).ready(function () {
+    PPU.canvas = $("#screen")[0];
+    PPU.updateScale(2);
+    $("#scale").change(function () {
+        PPU.updateScale(parseInt($("#scale")[0].value));
+    });
+    $(document).on("keydown", function (e) {
+        if (input.setBtn(e.keyCode, true)) {
+            e.preventDefault();
+        }
+    });
+    $(document).on("keyup", function (e) {
+        if (input.setBtn(e.keyCode, false)) {
+            e.preventDefault();
+        }
+    });
+    input.buildControlTable($("#p1Controls"));
+    input.buildControlTable($("#p2Controls"), false);
+    $('#file-input').change(init);
 });
-$(document).on("keyup", function (e) {
-    if (input.setBtn(e.keyCode, false)) {
-        e.preventDefault();
-    }
-});
-input.buildControlTable($("#p1Controls"));
-input.buildControlTable($("#p2Controls"), false);
-$('#file-input').change(init);
 function init(e) {
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
