@@ -153,7 +153,6 @@ $(document).on("keyup", function (e) {
 input.buildControlTable($("#p1Controls"));
 input.buildControlTable($("#p2Controls"), false);
 
-
 $('#file-input').change(init);
 
 function init(e) {
