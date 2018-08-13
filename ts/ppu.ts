@@ -406,6 +406,22 @@ class PPU {
         return this.mem[palInd] & 0x3F;
     }
 
+    public write(addr: number, data: number) {
+        if (addr >= 0x3F00) {
+            //Mirror Palette RAM
+            for (let i = 0x3F00; i < 0x4000; i += 0x20) {
+                this.mem[i + (addr % 0x20)] = data;
+            }
+        } else if (addr >= 0x2000 && addr <= 0x2EFF) {
+            //Mirror Nametables
+            this.mem[addr + 0x1000] = data;
+        } else if (addr >= 0x3000 && addr < 0x3F00) {
+            //Mirror Nametables
+            this.mem[addr - 0x1000] = data;
+        }
+        this.mem[addr] = data;
+    }
+
     public readReg(addr: number): number {
         switch (addr) {
             case this.PPUSTATUS:
@@ -465,22 +481,22 @@ class PPU {
             case this.PPUDATA:
                 if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
                     if (this.nes.rom.mirrorVertical) {
-                        this.mem[this.vRamAddr] = byte;
+                        this.write(this.vRamAddr, byte);
                         if (this.vRamAddr < 0x2800) {
-                            this.mem[this.vRamAddr + 0x800] = byte;
+                            this.write(this.vRamAddr + 0x800, byte);
                         } else {
-                            this.mem[this.vRamAddr - 0x800] = byte;
+                            this.write(this.vRamAddr - 0x800, byte);
                         }
                     } else {
-                        this.mem[this.vRamAddr] = byte;
+                        this.write(this.vRamAddr, byte);
                         if ((this.vRamAddr - 0x2000) % 0x800 < 0x400) {
-                            this.mem[this.vRamAddr + 0x400] = byte;
+                            this.write(this.vRamAddr + 0x400, byte);
                         } else {
-                            this.mem[this.vRamAddr - 0x400] = byte;
+                            this.write(this.vRamAddr - 0x400, byte);
                         }
                     }
                 } else {
-                    this.mem[this.vRamAddr] = byte;
+                    this.write(this.vRamAddr, byte);
                 }
                 if (this.incAddrBy32) {
                     this.vRamAddr += 32;
