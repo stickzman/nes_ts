@@ -91,6 +91,11 @@ class NES {
             }
             this.ppu.writeReg(0x2000 + (addr % 8));
         }
+        if (addr < 0x2000) {
+            for (let i = 0; i < 0x2000; i += 0x800) {
+                this.mainMemory[i + (addr % 0x800)] = data;
+            }
+        }
     }
 
     //Skip setting register values when writing
