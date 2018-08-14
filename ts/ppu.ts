@@ -273,7 +273,7 @@ class PPU {
                         let hi: number;
                         if (this.sprite8x16) {
                             addr = this.oam[i+1] >> 1;
-                            if (offSet > 7) offSet +=8;
+                            if (offSet > 7) offSet += 8;
                             addr = addr << 5;
                             addr += ((this.oam[i+1] & 1) == 0) ? 0 : 0x1000;
                             lo = this.mem[addr + offSet];

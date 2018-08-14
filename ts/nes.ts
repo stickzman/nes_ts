@@ -19,6 +19,10 @@ class NES {
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
 
+        $(document).on("keydown", function (e) {
+            if (e.keyCode == 84) this.cpu.debug = true;
+        }.bind(this));
+
         //Set up input listeners
         this.input = input;
     }
@@ -52,6 +56,7 @@ class NES {
         }
 
         this.ppu.paintFrame();
+        this.cpu.debug = false;
 
         if (error || this.counter > 20) {
             this.displayMem();

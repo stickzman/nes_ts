@@ -67,7 +67,6 @@ class CPU {
 
 
         let op = opTable[opCode];       //Decode
-        //console.log(op.name, "at", this.PC.toString(16));
 
         if (op === undefined) {
             let e = new Error(`Encountered unknown opCode: [0x${
@@ -2167,15 +2166,28 @@ opTable[0x8F] = {
 
 //DCP
 //Subtract 1 from memory content, then CMP with ACC
+function DCP(addr: number) {
+    this.nes.mainMemory[addr] = this.nes.mainMemory[addr] - 1;
+    let flipBits = this.nes.mainMemory[addr] ^ 0xFF;
+    if (flipBits == 0) flipBits++;
+    let res = flipBits + this.ACC;
+    //Wrap res and set/clear carry flag
+    if (res > 0xFF) {
+        this.flags.carry = true;
+        res -= 0x100;
+    } else {
+        this.flags.carry = false;
+    }
+    //Set/clear negative + zero flags
+    this.updateNumStateFlags(res);
+}
 opTable[0xC7] = {
     name: "DCP (zpg)",
     bytes: 2,
     cycles: 5,
     execute: function() {
         let addr = this.getZPageRef();
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xD7] = {
@@ -2184,9 +2196,7 @@ opTable[0xD7] = {
     cycles: 6,
     execute: function() {
         let addr = this.getZPageRef(this.X);
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xCF] = {
@@ -2195,9 +2205,7 @@ opTable[0xCF] = {
     cycles: 6,
     execute: function() {
         let addr = this.getRef();
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xDF] = {
@@ -2206,9 +2214,7 @@ opTable[0xDF] = {
     cycles: 7,
     execute: function() {
         let addr = this.getRef(this.X);
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xDB] = {
@@ -2217,9 +2223,7 @@ opTable[0xDB] = {
     cycles: 7,
     execute: function() {
         let addr = this.getRef(this.Y);
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xC3] = {
@@ -2228,9 +2232,7 @@ opTable[0xC3] = {
     cycles: 8,
     execute: function() {
         let addr = this.getIndrXRef();
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 opTable[0xD3] = {
@@ -2239,9 +2241,7 @@ opTable[0xD3] = {
     cycles: 8,
     execute: function() {
         let addr = this.getIndrYRef();
-        let num = this.nes.read(addr) - 1;
-        if (num < 0) num = 0xFF;
-        CMP.call(this, num, this.ACC);
+        DCP.call(this, addr);
     }
 }
 
