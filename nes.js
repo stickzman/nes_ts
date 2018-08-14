@@ -3344,6 +3344,12 @@ class PPU {
             case this.PPUDATA:
                 let res = this.internalReadBuff;
                 this.internalReadBuff = this.mem[this.vRamAddr];
+                if (this.incAddrBy32) {
+                    this.vRamAddr += 32;
+                }
+                else {
+                    this.vRamAddr++;
+                }
                 return res;
         }
         return;
