@@ -35,57 +35,55 @@ class iNESFile {
         this.chrPages = buff[5]; //CHR size
 
         //Split byte 6 into mapper # and settings byte
-        let hexStr = buff[6].toString(16);
-        this.mapNum = parseInt(hexStr[0], 16);
+        let byte: number = buff[6];
+        let mask: number = 0xF << 4;
+        this.mapNum = (byte & mask) >> 4;
         //Parse settings
-        let lowNib = parseInt(hexStr[1], 16);
-        let mask = 1;
-        this.mirrorVertical = (lowNib & mask) != 0;
+        mask = 1;
+        this.mirrorVertical = (byte & mask) != 0;
         mask = 1 << 1;
-        this.batteryBacked = (lowNib & mask) != 0;
+        this.batteryBacked = (byte & mask) != 0;
         mask = 1 << 2;
-        this.trainerPresent = (lowNib & mask) != 0;
+        this.trainerPresent = (byte & mask) != 0;
         mask = 1 << 3;
-        this.fourScreenMode = (lowNib & mask) != 0;
+        this.fourScreenMode = (byte & mask) != 0;
 
         //Byte 7
-        hexStr = buff[7].toString(16);
-        //Get the hiByte of the mapper #
-        let hiNib = parseInt(hexStr[0], 16);
-        hiNib = hiNib << 4;
-        this.mapNum = this.mapNum | hiNib;
-        //Get additional settings
-        lowNib = parseInt(hexStr[1], 16);
-        mask = 1;
-        this.vsGame = (lowNib & mask) != 0;
-        mask = 1 << 1;
-        this.isPC10 = (lowNib & mask) != 0;
+        byte = buff[7];
+        //Check if this is an iNes 2.0 header
         mask = 3 << 2;
-        this.nes2_0 = (lowNib & mask) == 2;
+        this.nes2_0 = ((byte & mask) >> 2) == 2;
 
         if (this.nes2_0) {
+            mask = 0xF << 4;
+            //Get the hiByte of the mapper #
+            this.mapNum = this.mapNum | (byte & mask);
+            //Get additional settings
+            mask = 1;
+            this.vsGame = (byte & mask) != 0;
+            mask = 1 << 1;
+            this.isPC10 = (byte & mask) != 0;
             //TODO: Parse byte 8
             //Byte 9
-            hexStr = buff[9].toString(16);
-            hiNib = parseInt(hexStr[0], 16);
-            lowNib = parseInt(hexStr[1], 16);
-            this.chrPages = ((hiNib << 4) & this.chrPages);
-            this.pgrPages = ((lowNib << 4) & this.pgrPages);
+            byte = buff[9];
+            mask = 0xF;
+            this.pgrPages = ((byte & mask) << 4) | this.pgrPages;
+            mask <<= 4;
+            this.chrPages = (byte & mask) | this.chrPages;
             //Byte 10
-            hexStr = buff[10].toString(16);
-            hiNib = parseInt(hexStr[0], 16);
-            lowNib = parseInt(hexStr[1], 16);
-            this.pgrRamBattSize = hiNib;
-            this.pgrRamSize = lowNib;
+            byte = buff[10];
+            mask = 0xF;
+            this.pgrRamSize = byte & mask;
+            mask <<= 4;
+            this.pgrRamBattSize = (byte & mask) >> 4;
             //Byte 11
-            hexStr = buff[11].toString(16);
-            hiNib = parseInt(hexStr[0], 16);
-            lowNib = parseInt(hexStr[1], 16);
-            this.chrRamBattSize = hiNib;
-            this.chrRamSize = lowNib;
+            byte = buff[11];
+            mask = 0xF;
+            this.chrRamSize = byte & mask;
+            mask <<= 4;
+            this.chrRamBattSize = (byte & mask) >> 4;
             //Byte 12
-            hexStr = buff[12].toString(16);
-            let byte = parseInt(hexStr, 16);
+            byte = buff[12];
             mask = 1;
             this.isPAL = (byte & mask) != 0;
             mask = 1 << 1;
