@@ -409,8 +409,15 @@ class PPU {
     public write(addr: number, data: number) {
         if (addr >= 0x3F00) {
             //Mirror Palette RAM
-            for (let i = 0x3F00; i < 0x4000; i += 0x20) {
-                this.mem[i + (addr % 0x20)] = data;
+            if (addr % 4 == 0) {
+                //Special case for background colors
+                for (let i = 0x3F00; i < 0x4000; i += 0x10) {
+                    this.mem[i + (addr % 0x10)] = data;
+                }
+            } else {
+                for (let i = 0x3F00; i < 0x4000; i += 0x20) {
+                    this.mem[i + (addr % 0x20)] = data;
+                }
             }
         } else if (addr >= 0x2000 && addr <= 0x2EFF) {
             //Mirror Nametables
