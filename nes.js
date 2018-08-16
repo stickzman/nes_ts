@@ -3480,6 +3480,7 @@ class PPU {
     }
     resetCoarseX() {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 5, 5, 0);
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 11, 11, 10);
     }
     incY() {
         if ((this.vRamAddr & 0x7000) != 0x7000) {
@@ -3507,6 +3508,7 @@ class PPU {
     }
     resetCoarseY() {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 15, 15, 11);
     }
     getNTAddr() {
         return 0x2000 | (this.vRamAddr & 0xFFF);

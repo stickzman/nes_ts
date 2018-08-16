@@ -565,6 +565,7 @@ class PPU {
 
     private resetCoarseX() {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 5, 5, 0);
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 11, 11, 10);
     }
 
     private incY() {
@@ -591,6 +592,7 @@ class PPU {
 
     private resetCoarseY() {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
+        this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 15, 15, 11);
     }
 
     private getNTAddr(): number {
