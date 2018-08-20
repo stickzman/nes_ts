@@ -2846,6 +2846,7 @@ class NROM extends Mapper {
         //Start loading memory
         let startLoc = 0x10;
         if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
             this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
             startLoc += 0x200;
         }
@@ -3845,6 +3846,8 @@ class NES {
         this.input = input;
     }
     boot() {
+        if (this.rom.mapper == undefined)
+            return;
         this.ppu.boot();
         this.rom.mapper.load();
         this.cpu.boot();
@@ -3898,6 +3901,12 @@ class NES {
         this.mainMemory[addr] = data;
         if (addr == 0x4016) {
             this.input.setStrobe((data & 1) != 0);
+        }
+        if (addr >= 0x4020) {
+            //Notify mapper of potential register writes. Don't write value
+            //if function returns false.
+            if (!this.rom.mapper.notifyWrite(addr, data))
+                return;
         }
         if (addr == 0x4014) {
             this.ppu.writeReg(addr);

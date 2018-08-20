@@ -22,6 +22,7 @@ class NROM extends Mapper {
         //Start loading memory
         let startLoc = 0x10;
         if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
             this.trainerData = new Uint8Array(
                 buff.slice(startLoc, startLoc + 0x200));
             startLoc += 0x200;
