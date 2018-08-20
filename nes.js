@@ -2826,8 +2826,45 @@ class Input {
         }
     }
 }
+class Mapper {
+    constructor(header, cpuMem, ppuMem) {
+        this.header = header;
+        this.cpuMem = cpuMem;
+        this.ppuMem = ppuMem;
+    }
+    //Allow mapper to watch sections of cpuMem. Return true or false to allow
+    //nes to actually write new value to cpuMem
+    notifyWrite(addr, byte) {
+        return true;
+    }
+    load() { }
+}
+//Mapper 0
+class NROM extends Mapper {
+    constructor(buff, header, cpuMem, ppuMem) {
+        super(header, cpuMem, ppuMem);
+        //Start loading memory
+        let startLoc = 0x10;
+        if (header.trainerPresent) {
+            this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
+            startLoc += 0x200;
+        }
+        this.pgrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x4000 * header.pgrPages));
+        startLoc += 0x4000 * header.pgrPages;
+        this.chrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x2000 * header.chrPages));
+        startLoc += 0x2000 * header.chrPages;
+    }
+    load() {
+        this.cpuMem.set(this.pgrRom, 0x8000);
+        if (this.header.pgrPages == 1) {
+            this.cpuMem.set(this.pgrRom, 0xC000);
+        }
+        this.ppuMem.set(this.chrRom, 0);
+    }
+}
+/// <reference path="mapper.ts" />
 class iNESFile {
-    constructor(buff) {
+    constructor(buff, nes) {
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E)
             throw Error("Corrupted iNES file!"); //N
@@ -2894,25 +2931,10 @@ class iNESFile {
             //TODO: Byte 13 (Vs. Hardware)
             //TODO: Byte 14 (Misc. ROMs)
         }
-        //Start loading memory
-        let startLoc = 0x10;
-        if (this.trainerPresent) {
-            this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
-            startLoc += 0x200;
-        }
-        this.pgrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x4000 * this.pgrPages));
-        startLoc += 0x4000 * this.pgrPages;
-        this.chrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x2000 * this.chrPages));
-        startLoc += 0x2000 * this.chrPages;
-    }
-    load(mem, ppuMem) {
+        //Initiate Mapper
         switch (this.mapNum) {
-            case 0: //NROM
-                mem.set(this.pgrRom, 0x8000);
-                if (this.pgrPages == 1) {
-                    mem.set(this.pgrRom, 0xC000);
-                }
-                ppuMem.set(this.chrRom, 0);
+            case 0:
+                this.mapper = new NROM(buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
@@ -3812,9 +3834,9 @@ class NES {
         this.drawFrame = false;
         this.counter = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
-        this.rom = new iNESFile(romData);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
+        this.rom = new iNESFile(romData, this);
         $(document).on("keydown", function (e) {
             if (e.keyCode == 84)
                 this.cpu.debug = true;
@@ -3824,7 +3846,7 @@ class NES {
     }
     boot() {
         this.ppu.boot();
-        this.rom.load(this.mainMemory, this.ppu.mem);
+        this.rom.mapper.load();
         this.cpu.boot();
         this.step();
     }

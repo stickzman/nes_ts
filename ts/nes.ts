@@ -15,9 +15,9 @@ class NES {
 
     constructor(romData: Uint8Array, input: Input) {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
-        this.rom = new iNESFile(romData);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
+        this.rom = new iNESFile(romData, this);
 
         $(document).on("keydown", function (e) {
             if (e.keyCode == 84) this.cpu.debug = true;
@@ -29,7 +29,7 @@ class NES {
 
     public boot() {
         this.ppu.boot();
-        this.rom.load(this.mainMemory, this.ppu.mem);
+        this.rom.mapper.load();
         this.cpu.boot();
 
         this.step();
