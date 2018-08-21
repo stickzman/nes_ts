@@ -1,37 +1,61 @@
-<div id="container" style="float:left;">
-    <input type="file" id="file-input" accept=".nes"/>
-    <div id="vOptions" style="float:right;">
-        <input type="checkbox" id="greyscale" onclick="PPU.forceGreyscale = this.checked"> Grayscale
-        <label style="padding-left:20px">Scale: </label>
-        <select id="scale">
-            <option value="1">x1 (Native)</option>
-            <option value="2" selected>x2</option>
-            <option value="3">x3</option>
-            <option value="4">x4</option>
-            <option value="5">x5</option>
-        </select>
-    </div>
-    <div>
+<style>
+    #container {
+        width: 40rem;
+        margin: 0 auto;
+        text-align: center;
+    }
+    #topBar {
+        margin-bottom: 28px;
+        min-width: 500px;
+    }
+    
+    .container {
+        display: inline-block;
+        padding: 15px;
+    }
+
+    table {
+        margin: auto;
+    }
+
+</style>
+
+<div id="container">
+    <div class="container">
+        <div id="topBar">
+            <input type="file" id="file-input" accept=".nes" style="float:left;"/>
+            <div id="vOptions" style="float:right;">
+                <input type="checkbox" id="greyscale" onclick="PPU.forceGreyscale = this.checked"> Grayscale
+                <label style="padding-left:20px">Scale: </label>
+                <select id="scale">
+                    <option value="1">x1 (Native)</option>
+                    <option value="2" selected>x2</option>
+                    <option value="3">x3</option>
+                    <option value="4">x4</option>
+                    <option value="5">x5</option>
+                </select>
+            </div>
+        </div>
         <canvas id="screen"></canvas>
     </div>
-</div>
-<div style="clear: both;">
-    <div>
-        Main Memory:
-        <textarea id="mem" name="mem" rows="8" cols="80"></textarea>
+    <div style="clear: both;">
+        <div>
+            Main Memory:
+            <textarea id="mem" name="mem" rows="8" cols="80"></textarea>
+        </div>
+        <div>
+            PPU Memory:
+            <textarea id="ppuMem" name="ppuMem" rows="8" cols="80"></textarea>
+        </div>
     </div>
-    <div>
-        PPU Memory:
-        <textarea id="ppuMem" name="ppuMem" rows="8" cols="80"></textarea>
-    </div>
-</div>
 
-<div id="controls">
-    P1 Controls (Click to update):
-    <div id="p1Controls"></div>
-    <br>
-    P2 Controls (Click to update):
-    <div id="p2Controls"></div>
+    <div id="controls" class="container">
+        P1 Controls (Click to update):
+        <div id="p1Controls"></div>
+        <br>
+        P2 Controls (Click to update):
+        <div id="p2Controls"></div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="nes.js"></script>
 </div>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-<script src="nes.js"></script>
