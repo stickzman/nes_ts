@@ -361,9 +361,7 @@ class PPU {
 
         if (bitSelect % 8 == 7) {
             this.bkgQ[0] = this.bkgQ[1];
-            this.bkgQ[1] = null;
             this.attrQ[0] = this.attrQ[1];
-            this.attrQ[1] = null;
         }
     }
 
