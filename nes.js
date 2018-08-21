@@ -3373,6 +3373,8 @@ class PPU {
         if (!this.showBkg) {
             //Get Universal Background Color and paint a blank pixel
             let palData = this.mem[0x3F00] & 0x3F;
+            if (PPU.forceGreyscale || this.greyscale)
+                palData &= 0x30;
             let col = colorData[palData];
             this.setPixel(col.r, col.g, col.b);
             return;
