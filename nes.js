@@ -3209,7 +3209,7 @@ class PPU {
                     else {
                         this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
                     }
-                    if (this.showBkg)
+                    if (this.showBkg || this.showSprites)
                         this.incCoarseX();
                 }
                 else if (this.dot == 336) {
@@ -3222,7 +3222,7 @@ class PPU {
                     //Get High BG byte
                     let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
                     this.bkgQ[1] = this.combinePatData(hi, lo);
-                    if (this.showBkg)
+                    if (this.showBkg || this.showSprites)
                         this.incCoarseX();
                 }
                 break;
@@ -3236,7 +3236,7 @@ class PPU {
         }
         //Reset pointers
         if (this.dot == 1 && this.scanline == 261) {
-            if (this.showBkg)
+            if (this.showBkg || this.showSprites)
                 this.vRamAddr = this.initRamAddr;
         }
         if (this.scanline == 239 && this.dot == 256) {
@@ -3244,7 +3244,7 @@ class PPU {
         }
     }
     visibleCycle() {
-        if (!this.showBkg) {
+        if (!this.showBkg && !this.showSprites) {
             if (this.dot < 256) {
                 this.render();
             }
@@ -3352,7 +3352,7 @@ class PPU {
             else {
                 this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
             }
-            if (this.showBkg)
+            if (this.showBkg || this.showSprites)
                 this.incCoarseX();
         }
         else if (this.dot == 336) {
@@ -3365,25 +3365,33 @@ class PPU {
             //Get High BG byte
             let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
             this.bkgQ[1] = this.combinePatData(hi, lo);
-            if (this.showBkg)
+            if (this.showBkg || this.showSprites)
                 this.incCoarseX();
         }
     }
     render() {
         if (!this.showBkg) {
             //Get Universal Background Color and paint a blank pixel
-            let palData = this.mem[0x3F00] & 0x3F;
+            var uBkgData = this.mem[0x3F00] & 0x3F;
             if (PPU.forceGreyscale || this.greyscale)
-                palData &= 0x30;
-            let col = colorData[palData];
-            this.setPixel(col.r, col.g, col.b);
-            return;
+                uBkgData &= 0x30;
+            if (!this.showSprites) {
+                let col = colorData[uBkgData];
+                this.setPixel(col.r, col.g, col.b);
+                return;
+            }
         }
         let bitSelect = this.dot % 8 + this.fineX;
         if (bitSelect > 7)
             bitSelect -= 8;
-        let palData = this.getSpritePix(this.bkgQ[0][bitSelect] != 0);
+        let palData = this.getSpritePix(this.showBkg && this.bkgQ[0][bitSelect] != 0);
+        if (!this.showBkg && palData == null) {
+            let col = colorData[uBkgData];
+            this.setPixel(col.r, col.g, col.b);
+            return;
+        }
         if (palData == null || !this.showSprites) {
+            //Get background pixel
             //Get PALETTE NUMBER
             let quad;
             let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
