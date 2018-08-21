@@ -92,6 +92,7 @@ class iNESFile {
         //Initiate Mapper
         switch(this.mapNum) {
             case 0: this.mapper = new NROM(buff, this, nes.mainMemory, nes.ppu.mem); break;
+            case 1: this.mapper = new MMC1(buff, this, nes.mainMemory, nes.ppu.mem); break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
         }
