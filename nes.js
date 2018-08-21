@@ -2943,9 +2943,21 @@ class MMC1 extends Mapper {
                     this.prgBankMode = (data & 0xC) >> 2;
                     switch (data & 3) {
                         case 2:
+                            if (!this.header.mirrorVertical) {
+                                let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
+                                let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
+                                this.ppuMem.set(topRight, 0x2800);
+                                this.ppuMem.set(topLeft, 0x2400);
+                            }
                             this.header.mirrorVertical = true;
                             break;
                         case 3:
+                            if (this.header.mirrorVertical) {
+                                let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
+                                let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
+                                this.ppuMem.set(topRight, 0x2800);
+                                this.ppuMem.set(topLeft, 0x2400);
+                            }
                             this.header.mirrorVertical = false;
                             break;
                         default:
