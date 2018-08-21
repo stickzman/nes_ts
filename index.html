@@ -1,6 +1,5 @@
 <style>
-    #container {
-        width: 40rem;
+    #main {
         margin: 0 auto;
         text-align: center;
     }
@@ -8,7 +7,7 @@
         margin-bottom: 28px;
         min-width: 500px;
     }
-    
+
     .container {
         display: inline-block;
         padding: 15px;
@@ -20,7 +19,7 @@
 
 </style>
 
-<div id="container">
+<div id="main">
     <div class="container">
         <div id="topBar">
             <input type="file" id="file-input" accept=".nes" style="float:left;"/>
@@ -38,13 +37,13 @@
         </div>
         <canvas id="screen"></canvas>
     </div>
-    <div style="clear: both;">
+    <div>
         <div>
-            Main Memory:
+            Main Memory:<br>
             <textarea id="mem" name="mem" rows="8" cols="80"></textarea>
         </div>
         <div>
-            PPU Memory:
+            PPU Memory:<br>
             <textarea id="ppuMem" name="ppuMem" rows="8" cols="80"></textarea>
         </div>
     </div>
