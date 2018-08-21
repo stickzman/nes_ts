@@ -4092,13 +4092,18 @@ $(document).ready(function () {
     });
     input.buildControlTable($("#p1Controls"));
     input.buildControlTable($("#p2Controls"), false);
-    $('#file-input').change(init);
+    $('#file-input').change(function (e) {
+        init(e.target.files[0]);
+    });
 });
-function init(e) {
+function fileDropHandler(e) {
+    e.preventDefault();
+    init(e.dataTransfer.files[0]);
+}
+function init(file) {
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
     }
-    let file = e.target.files[0];
     if (!file) {
         return;
     }

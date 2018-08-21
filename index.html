@@ -19,7 +19,7 @@
 
 </style>
 
-<div id="main">
+<div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
     <div class="container">
         <div id="topBar">
             <input type="file" id="file-input" accept=".nes" style="float:left;"/>
