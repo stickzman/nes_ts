@@ -1,6 +1,8 @@
+/// <reference path="helper.ts" />
 /// <reference path="mapper.ts" />
 class iNESFile {
     public mapper: Mapper;
+    public id: string;
 
     public pgrPages: number; //Num of 1 x 16kB pages for PGR mem
     public chrPages: number; //Num of 1 x 8kB pages for CHR mem
@@ -23,6 +25,7 @@ class iNESFile {
     public bothFormats: boolean; //Will the game adjust to both NTSC and PAL?
 
     constructor(buff: Uint8Array, nes: NES) {
+        this.id = md5(buff.toString());
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E) throw Error("Corrupted iNES file!"); //N
         if (buff[1] !== 0x45) throw Error("Corrupted iNES file!"); //E

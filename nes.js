@@ -2978,9 +2978,11 @@ class MMC1 extends Mapper {
         this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xC000);
     }
 }
+/// <reference path="helper.ts" />
 /// <reference path="mapper.ts" />
 class iNESFile {
     constructor(buff, nes) {
+        this.id = md5(buff.toString());
         //Check if valid iNES file (file starts with 'NES' and character break)
         if (buff[0] !== 0x4E)
             throw Error("Corrupted iNES file!"); //N
@@ -3964,6 +3966,16 @@ class NES {
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
         this.rom = new iNESFile(romData, this);
+        if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
+            //Parse memory str
+            let arr = localStorage.getItem(this.rom.id).split(",");
+            let buff = new Uint8Array(0x2000);
+            for (let i = 0; i < buff.length; i++) {
+                buff[i] = parseInt(arr[i]);
+            }
+            //Load battery-backed RAM
+            this.mainMemory.set(buff, 0x6000);
+        }
         $(document).on("keydown", function (e) {
             if (e.keyCode == 84)
                 this.cpu.debug = true;
@@ -3999,7 +4011,6 @@ class NES {
             }
         }
         this.ppu.paintFrame();
-        this.cpu.debug = false;
         if (error || this.counter > 100) {
             this.displayMem();
             this.displayPPUMem();
@@ -4082,6 +4093,11 @@ class NES {
 //Initialize NES
 let nes;
 let input = new Input();
+window.onbeforeunload = function () {
+    if (nes !== undefined) {
+        saveRAM();
+    }
+};
 $(document).ready(function () {
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
@@ -4104,6 +4120,12 @@ $(document).ready(function () {
         init(e.target.files[0]);
     });
 });
+//Save any battery-backed RAM
+function saveRAM() {
+    if (!nes.rom.batteryBacked)
+        return;
+    localStorage.setItem(nes.rom.id, nes.mainMemory.slice(0x6000, 0x8000).toString());
+}
 function fileDropHandler(e) {
     e.preventDefault();
     init(e.dataTransfer.files[0]);
@@ -4114,6 +4136,7 @@ function init(file) {
     }
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
+        saveRAM();
     }
     let reader = new FileReader();
     reader.onload = function (e) {

@@ -1,3 +1,5 @@
+declare function md5(input: string): string;
+
 interface oamEntry {
     x: number,
     patData: number[],
