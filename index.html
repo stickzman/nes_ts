@@ -10,6 +10,12 @@
     #debugDisplay {
         display: none;
     }
+    #vOptions {
+        float: right;
+    }
+    #file-input {
+        float: left;
+    }
 
     .container {
         display: inline-block;
@@ -22,15 +28,19 @@
     body {
         font-family: sans-serif;
     }
+    span {
+        font-size: 75%;
+    }
 
 </style>
 
 <div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
-    <h1 class="title">Dan Ahl's NES Emulator</h1>
+    <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
+    <h4>by Dan Ahl</h4>
     <div class="container">
         <div id="topBar">
-            <input type="file" id="file-input" accept=".nes" style="float:left;"/>
-            <div id="vOptions" style="float:right;">
+            <input type="file" id="file-input" accept=".nes"/>
+            <div id="vOptions">
                 <input type="checkbox" id="greyscale" onclick="PPU.forceGreyscale = this.checked"> Grayscale
                 <label style="padding-left:20px">Scale: </label>
                 <select id="scale">
