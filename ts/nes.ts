@@ -182,11 +182,11 @@ function fileDropHandler(e) {
 }
 
 function init(file) {
-    if (nes !== undefined) {
-        window.cancelAnimationFrame(nes.lastAnimFrame);
-    }
     if (!file) {
         return;
+    }
+    if (nes !== undefined) {
+        window.cancelAnimationFrame(nes.lastAnimFrame);
     }
     let reader = new FileReader();
     reader.onload = function(e) {

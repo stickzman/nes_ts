@@ -4109,11 +4109,11 @@ function fileDropHandler(e) {
     init(e.dataTransfer.files[0]);
 }
 function init(file) {
-    if (nes !== undefined) {
-        window.cancelAnimationFrame(nes.lastAnimFrame);
-    }
     if (!file) {
         return;
+    }
+    if (nes !== undefined) {
+        window.cancelAnimationFrame(nes.lastAnimFrame);
     }
     let reader = new FileReader();
     reader.onload = function (e) {
