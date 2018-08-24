@@ -5,6 +5,9 @@ class PPU {
     private sprite0Active: boolean = false;
     private oamAddr: number;
 
+    public mirrorVertical: boolean;
+    public singleScreenMirror: boolean = false;
+
     private internalReadBuff: number = 0;
 
     private oddFrame: boolean = false;
@@ -500,7 +503,14 @@ class PPU {
                 break;
             case this.PPUDATA:
                 if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
-                    if (this.nes.rom.mirrorVertical) {
+                    if (this.singleScreenMirror) {
+                        let addr = this.vRamAddr - 0x2000;
+                        addr %= 0x400;
+                        for (let i = 0x2000; i < 0x3000; i += 0x400) {
+                            this.write(i + addr, byte);
+
+                        }
+                    } else if (this.mirrorVertical) {
                         this.write(this.vRamAddr, byte);
                         if (this.vRamAddr < 0x2800) {
                             this.write(this.vRamAddr + 0x800, byte);

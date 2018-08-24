@@ -11,7 +11,7 @@ class iNESFile {
     public fourScreenMode: boolean;
     public trainerPresent: boolean;
     public batteryBacked: boolean;
-    public mirrorVertical: boolean;
+    //public mirrorVertical: boolean;
     public vsGame: boolean; //Is it a Vs. Unisystem game?
     public isPC10: boolean; //Is it a Playchoice 10 game?
     public nes2_0: boolean; //Is this an iNES 2.0 file
@@ -40,7 +40,7 @@ class iNESFile {
         this.mapNum = (byte & mask) >> 4;
         //Parse settings
         mask = 1;
-        this.mirrorVertical = (byte & mask) != 0;
+        nes.ppu.mirrorVertical = (byte & mask) != 0;
         mask = 1 << 1;
         this.batteryBacked = (byte & mask) != 0;
         mask = 1 << 2;
@@ -94,8 +94,8 @@ class iNESFile {
 
         //Initiate Mapper
         switch(this.mapNum) {
-            case 0: this.mapper = new NROM(buff, this, nes.mainMemory, nes.ppu.mem); break;
-            case 1: this.mapper = new MMC1(buff, this, nes.mainMemory, nes.ppu.mem); break;
+            case 0: this.mapper = new NROM(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
+            case 1: this.mapper = new MMC1(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
         }

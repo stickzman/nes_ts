@@ -2827,7 +2827,8 @@ class Input {
     }
 }
 class Mapper {
-    constructor(header, cpuMem, ppuMem) {
+    constructor(nes, header, cpuMem, ppuMem) {
+        this.nes = nes;
         this.header = header;
         this.cpuMem = cpuMem;
         this.ppuMem = ppuMem;
@@ -2841,13 +2842,12 @@ class Mapper {
 }
 //Mapper 0
 class NROM extends Mapper {
-    constructor(buff, header, cpuMem, ppuMem) {
-        super(header, cpuMem, ppuMem);
+    constructor(nes, buff, header, cpuMem, ppuMem) {
+        super(nes, header, cpuMem, ppuMem);
         //Start loading memory
         let startLoc = 0x10;
         if (header.trainerPresent) {
             console.log("Trainer Data not yet supported.");
-            this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
             startLoc += 0x200;
         }
         this.pgrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x4000 * header.pgrPages));
@@ -2864,8 +2864,8 @@ class NROM extends Mapper {
 }
 //Mapper 1
 class MMC1 extends Mapper {
-    constructor(buff, header, cpuMem, ppuMem) {
-        super(header, cpuMem, ppuMem);
+    constructor(nes, buff, header, cpuMem, ppuMem) {
+        super(nes, header, cpuMem, ppuMem);
         this.pgrRom = [];
         this.chrRom = [];
         //0/1: switch 32 KB at $8000, ignoring low bit of bank number
@@ -2879,7 +2879,6 @@ class MMC1 extends Mapper {
         let startLoc = 0x10;
         if (header.trainerPresent) {
             console.log("Trainer Data not yet supported.");
-            this.trainerData = new Uint8Array(buff.slice(startLoc, startLoc + 0x200));
             startLoc += 0x200;
         }
         for (let i = 0; i < header.pgrPages; i++) {
@@ -2890,10 +2889,11 @@ class MMC1 extends Mapper {
             this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
             startLoc += 0x2000;
         }
+        nes.ppu.singleScreenMirror = true;
     }
     notifyWrite(addr, data) {
         if (addr >= 0x8000) {
-            if ((data & 80) != 0) {
+            if ((data & 0x80) != 0) {
                 this.shiftReg = 1 << 4;
                 this.prgBankMode = 3;
             }
@@ -2935,34 +2935,32 @@ class MMC1 extends Mapper {
                     }
                     else {
                         this.ppuMem.set(this.chrRom[(data & 0xE)], 0);
+                        this.ppuMem.set(this.chrRom[(data & 0xE) + 1], 0x1000);
                     }
                 }
                 else {
                     //Control Register
                     this.chrRom4KB = (data & 0x10) != 0;
                     this.prgBankMode = (data & 0xC) >> 2;
-                    switch (data & 3) {
-                        case 2:
-                            if (!this.header.mirrorVertical) {
-                                let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
-                                let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
-                                this.ppuMem.set(topRight, 0x2800);
-                                this.ppuMem.set(topLeft, 0x2400);
-                            }
-                            this.header.mirrorVertical = true;
-                            break;
-                        case 3:
-                            if (this.header.mirrorVertical) {
-                                let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
-                                let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
-                                this.ppuMem.set(topRight, 0x2800);
-                                this.ppuMem.set(topLeft, 0x2400);
-                            }
-                            this.header.mirrorVertical = false;
-                            break;
-                        default:
-                            console.log("Single screen mirroring not currently supported!");
+                    if ((data & 1) == 0) {
+                        if (!this.nes.ppu.mirrorVertical) {
+                            let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
+                            let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
+                            this.ppuMem.set(topRight, 0x2800);
+                            this.ppuMem.set(topLeft, 0x2400);
+                        }
+                        this.nes.ppu.mirrorVertical = true;
                     }
+                    else {
+                        if (this.nes.ppu.mirrorVertical) {
+                            let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
+                            let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
+                            this.ppuMem.set(topRight, 0x2800);
+                            this.ppuMem.set(topLeft, 0x2400);
+                        }
+                        this.nes.ppu.mirrorVertical = false;
+                    }
+                    this.nes.ppu.singleScreenMirror = (data & (1 << 1)) == 0;
                 }
             }
             else {
@@ -2976,6 +2974,12 @@ class MMC1 extends Mapper {
     load() {
         this.cpuMem.set(this.pgrRom[0], 0x8000);
         this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xC000);
+        if (this.chrRom.length == 0)
+            return;
+        this.ppuMem.set(this.chrRom[0], 0);
+        if (this.chrRom.length == 1)
+            return;
+        this.ppuMem.set(this.chrRom[1], 0x1000);
     }
 }
 /// <reference path="helper.ts" />
@@ -3000,7 +3004,7 @@ class iNESFile {
         this.mapNum = (byte & mask) >> 4;
         //Parse settings
         mask = 1;
-        this.mirrorVertical = (byte & mask) != 0;
+        nes.ppu.mirrorVertical = (byte & mask) != 0;
         mask = 1 << 1;
         this.batteryBacked = (byte & mask) != 0;
         mask = 1 << 2;
@@ -3052,10 +3056,10 @@ class iNESFile {
         //Initiate Mapper
         switch (this.mapNum) {
             case 0:
-                this.mapper = new NROM(buff, this, nes.mainMemory, nes.ppu.mem);
+                this.mapper = new NROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             case 1:
-                this.mapper = new MMC1(buff, this, nes.mainMemory, nes.ppu.mem);
+                this.mapper = new MMC1(nes, buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
@@ -3067,6 +3071,7 @@ class PPU {
         this.nes = nes;
         this.oamBuff = [];
         this.sprite0Active = false;
+        this.singleScreenMirror = false;
         this.internalReadBuff = 0;
         this.oddFrame = false;
         this.writeLatch = false;
@@ -3553,7 +3558,14 @@ class PPU {
                 break;
             case this.PPUDATA:
                 if (this.vRamAddr >= 0x2000 && this.vRamAddr <= 0x3000) {
-                    if (this.nes.rom.mirrorVertical) {
+                    if (this.singleScreenMirror) {
+                        let addr = this.vRamAddr - 0x2000;
+                        addr %= 0x400;
+                        for (let i = 0x2000; i < 0x3000; i += 0x400) {
+                            this.write(i + addr, byte);
+                        }
+                    }
+                    else if (this.mirrorVertical) {
                         this.write(this.vRamAddr, byte);
                         if (this.vRamAddr < 0x2800) {
                             this.write(this.vRamAddr + 0x800, byte);
@@ -4011,7 +4023,7 @@ class NES {
             }
         }
         this.ppu.paintFrame();
-        if (error || this.counter > 100) {
+        if (error || this.counter > 500) {
             this.displayMem();
             this.displayPPUMem();
         }
