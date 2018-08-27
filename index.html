@@ -22,6 +22,15 @@
         padding: 15px;
     }
 
+    sup.notification {
+        margin-left: 2px;
+        margin-bottom: 3px;
+        height: 5px;
+        width: 5px;
+        background-color: red;
+        border-radius: 50%;
+        display: none;
+    }
     table {
         margin: auto;
     }
@@ -37,6 +46,9 @@
 <div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
     <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
     <h4>by Dan Ahl</h4>
+    <div>
+        <a href="update.md">See what's new<sup class="notification"></sup></a>
+    </div>
     <div class="container">
         <div id="topBar">
             <input type="file" id="file-input" accept=".nes"/>
