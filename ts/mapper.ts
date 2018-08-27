@@ -53,7 +53,7 @@ class MMC1 extends Mapper {
 
     //Switch 4 or 8KB at a time
     private chrRom4KB: boolean = false;
-    private shiftReg = 1 << 4;
+    private shiftReg: number = 1 << 4;
 
     constructor(nes: NES, buff: Uint8Array, header: iNESFile, cpuMem: Uint8Array, ppuMem: Uint8Array) {
         super(nes, header, cpuMem, ppuMem);
@@ -82,37 +82,38 @@ class MMC1 extends Mapper {
             } else if (this.shiftReg % 2 == 1) {
                 //Shift register is full
                 data = ((data & 1) << 4) + (this.shiftReg >> 1);
+                data &= 0x1F;
                 this.shiftReg = 1 << 4;
                 if (addr >= 0xE000) {
                     //PRG Bank
                     switch (this.prgBankMode) {
                         case 0:
-                            this.cpuMem.set(this.pgrRom[(data & 0x1E)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
                             break;
                         case 1:
-                            this.cpuMem.set(this.pgrRom[(data & 0x1E)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
                             break;
                         case 2:
                             this.cpuMem.set(this.pgrRom[0], 0x8000);
-                            this.cpuMem.set(this.pgrRom[data], 0xC000);
+                            this.cpuMem.set(this.pgrRom[data & 0xF], 0xC000);
                             break;
                         case 3:
-                            this.cpuMem.set(this.pgrRom[data], 0x8000);
+                            this.cpuMem.set(this.pgrRom[data & 0xF], 0x8000);
                             this.cpuMem.set(this.pgrRom[this.pgrRom.length-1], 0xC000);
                             break;
                     }
                 } else if (addr >= 0xC000) {
                     //CHR Bank 1
                     if (!this.chrRom4KB || this.chrRom.length == 0) return false;
-                    this.ppuMem.set(this.chrRom[data], 0x1000);
+                    this.ppuMem.set(this.chrRom[(data & 0x1F)], 0x1000);
                 } else if (addr >= 0xA000) {
                     //CHR Bank 0
                     if (this.chrRom.length == 0) return false;
                     if (this.chrRom4KB) {
-                        this.ppuMem.set(this.chrRom[(data & 0xF)], 0);
+                        this.ppuMem.set(this.chrRom[(data & 0x1F)], 0);
                     } else {
-                        this.ppuMem.set(this.chrRom[(data & 0xE)], 0);
-                        this.ppuMem.set(this.chrRom[(data & 0xE) + 1], 0x1000);
+                        this.ppuMem.set(this.chrRom[(data & 0x1E)], 0);
+                        this.ppuMem.set(this.chrRom[(data & 0x1E) + 1], 0x1000);
                     }
                 } else {
                     //Control Register

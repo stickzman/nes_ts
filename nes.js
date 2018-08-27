@@ -2900,22 +2900,23 @@ class MMC1 extends Mapper {
             else if (this.shiftReg % 2 == 1) {
                 //Shift register is full
                 data = ((data & 1) << 4) + (this.shiftReg >> 1);
+                data &= 0x1F;
                 this.shiftReg = 1 << 4;
                 if (addr >= 0xE000) {
                     //PRG Bank
                     switch (this.prgBankMode) {
                         case 0:
-                            this.cpuMem.set(this.pgrRom[(data & 0x1E)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
                             break;
                         case 1:
-                            this.cpuMem.set(this.pgrRom[(data & 0x1E)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
                             break;
                         case 2:
                             this.cpuMem.set(this.pgrRom[0], 0x8000);
-                            this.cpuMem.set(this.pgrRom[data], 0xC000);
+                            this.cpuMem.set(this.pgrRom[data & 0xF], 0xC000);
                             break;
                         case 3:
-                            this.cpuMem.set(this.pgrRom[data], 0x8000);
+                            this.cpuMem.set(this.pgrRom[data & 0xF], 0x8000);
                             this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xC000);
                             break;
                     }
@@ -2924,18 +2925,18 @@ class MMC1 extends Mapper {
                     //CHR Bank 1
                     if (!this.chrRom4KB || this.chrRom.length == 0)
                         return false;
-                    this.ppuMem.set(this.chrRom[data], 0x1000);
+                    this.ppuMem.set(this.chrRom[(data & 0x1F)], 0x1000);
                 }
                 else if (addr >= 0xA000) {
                     //CHR Bank 0
                     if (this.chrRom.length == 0)
                         return false;
                     if (this.chrRom4KB) {
-                        this.ppuMem.set(this.chrRom[(data & 0xF)], 0);
+                        this.ppuMem.set(this.chrRom[(data & 0x1F)], 0);
                     }
                     else {
-                        this.ppuMem.set(this.chrRom[(data & 0xE)], 0);
-                        this.ppuMem.set(this.chrRom[(data & 0xE) + 1], 0x1000);
+                        this.ppuMem.set(this.chrRom[(data & 0x1E)], 0);
+                        this.ppuMem.set(this.chrRom[(data & 0x1E) + 1], 0x1000);
                     }
                 }
                 else {
@@ -3511,8 +3512,7 @@ class PPU {
         }
         return;
     }
-    writeReg(addr) {
-        let byte = this.nes.mainMemory[addr];
+    writeReg(addr, byte) {
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
@@ -4047,7 +4047,6 @@ class NES {
         return this.mainMemory[addr];
     }
     write(addr, data) {
-        this.mainMemory[addr] = data;
         if (addr == 0x4016) {
             this.input.setStrobe((data & 1) != 0);
         }
@@ -4058,19 +4057,20 @@ class NES {
                 return;
         }
         if (addr == 0x4014) {
-            this.ppu.writeReg(addr);
+            this.ppu.writeReg(addr, data);
         }
         if (addr >= 0x2000 && addr <= 0x3FFF) {
             for (let i = 0x2000; i < 0x3FFF; i += 8) {
                 this.mainMemory[i + (addr % 8)] = data;
             }
-            this.ppu.writeReg(0x2000 + (addr % 8));
+            this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
         if (addr < 0x2000) {
             for (let i = 0; i < 0x2000; i += 0x800) {
                 this.mainMemory[i + (addr % 0x800)] = data;
             }
         }
+        this.mainMemory[addr] = data;
     }
     //Skip setting register values when writing
     writeNoReg(addr, data) {

@@ -94,7 +94,6 @@ class NES {
     }
 
     public write(addr: number, data: number) {
-        this.mainMemory[addr] = data;
         if (addr == 0x4016) {
             this.input.setStrobe((data & 1) != 0);
         }
@@ -104,19 +103,20 @@ class NES {
             if (!this.rom.mapper.notifyWrite(addr, data)) return;
         }
         if (addr == 0x4014) {
-            this.ppu.writeReg(addr);
+            this.ppu.writeReg(addr, data);
         }
         if (addr >= 0x2000 && addr <= 0x3FFF) {
             for (let i = 0x2000; i < 0x3FFF; i += 8) {
                 this.mainMemory[i + (addr % 8)] = data;
             }
-            this.ppu.writeReg(0x2000 + (addr % 8));
+            this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
         if (addr < 0x2000) {
             for (let i = 0; i < 0x2000; i += 0x800) {
                 this.mainMemory[i + (addr % 0x800)] = data;
             }
         }
+        this.mainMemory[addr] = data;
     }
 
     //Skip setting register values when writing

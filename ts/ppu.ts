@@ -460,8 +460,7 @@ class PPU {
         return;
     }
 
-    public writeReg(addr: number) {
-        let byte = this.nes.mainMemory[addr];
+    public writeReg(addr: number, byte: number) {
         switch (addr) {
             case this.PPUCTRL:
                 let ntBit = byte & 3;
