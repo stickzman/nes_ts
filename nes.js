@@ -2886,8 +2886,8 @@ class MMC1 extends Mapper {
             startLoc += 0x4000;
         }
         for (let i = 0; i < header.chrPages; i++) {
-            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
-            startLoc += 0x2000;
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x1000)));
+            startLoc += 0x1000;
         }
         nes.ppu.singleScreenMirror = true;
     }
