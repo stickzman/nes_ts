@@ -67,7 +67,7 @@ class MMC1 extends Mapper {
             this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
             startLoc += 0x4000;
         }
-        for (let i = 0; i < header.chrPages; i++) {
+        for (let i = 0; i < header.chrPages * 2; i++) {
             this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x1000)));
             startLoc += 0x1000;
         }
