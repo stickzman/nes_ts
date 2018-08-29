@@ -29,7 +29,6 @@
         width: 5px;
         background-color: red;
         border-radius: 50%;
-        display: inline-block;
         display: none;
     }
     table {
@@ -48,7 +47,8 @@
     <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
     <h4>by Dan Ahl</h4>
     <div>
-        <a href="update.html">See what's new<sup class="notification"></sup></a>
+        <a href="https://stickzman.github.io/nes_ts/update.html" target="_blank" class="notification">See what's new<sup class="notification"></sup>
+        </a>
     </div>
     <div class="container">
         <div id="topBar">
@@ -87,6 +87,48 @@
         <div id="p2Controls"></div>
     </div>
     <script src="jquery-3.3.1.min.js"></script>
+    <script>
+        //Check cookie and decide whether or not to show update notification
+        if (localStorage.getItem("update") == null) {
+            let obj = {
+                viewed: false,
+                timeCreated: Date.now()
+            };
+            localStorage.setItem("update", JSON.stringify(obj));
+        }
+        let cookie = JSON.parse(localStorage.getItem("update"));
+
+        //Request for header info
+        let req = new XMLHttpRequest();
+        req.open("HEAD", "https://stickzman.github.io/nes_ts/update.html");
+        req.callback = checkDate;
+        req.onload = function () {
+            //Call function to actually compare times
+            this.callback(Date.parse(this.getResponseHeader("Last-Modified")));
+        };
+        req.send();
+
+        const MS_DAY = 86400000;
+
+        function checkDate(lastModif) {
+            if (cookie.timeCreated < lastModif) {
+                cookie.viewed = false;
+                cookie.timeCreated = Date.now();
+            }
+            if (!cookie.viewed && Date.now() - cookie.timeCreated < MS_DAY) {
+                $("sup.notification").css("display", "inline-block");
+            }
+            localStorage.setItem("update", JSON.stringify(cookie));
+        }
+
+        $("a.notification").on("click", function() {
+            if (!cookie.viewed) {
+                cookie.viewed = true;
+                localStorage.setItem("update", JSON.stringify(cookie));
+                $("sup.notification").css("display", "none");
+            }
+        })
+    </script>
     <script src="require/md5.js"></script>
     <script src="nes.js"></script>
 </div>
