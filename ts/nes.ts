@@ -30,10 +30,6 @@ class NES {
             this.mainMemory.set(buff, 0x6000);
         }
 
-        $(document).on("keydown", function (e) {
-            if (e.keyCode == 84) this.cpu.debug = true;
-        }.bind(this));
-
         //Set up input listeners
         this.input = input;
     }
