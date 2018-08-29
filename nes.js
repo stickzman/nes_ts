@@ -2642,8 +2642,8 @@ class Input {
     constructor() {
         this.defaultBind = {
             p1: {
-                a: { code: 18, name: "Alt" },
-                b: { code: 32, name: "Space" },
+                a: { code: 32, name: "Space" },
+                b: { code: 18, name: "Alt" },
                 select: { code: 17, name: "Control" },
                 start: { code: 13, name: "Enter" },
                 up: { code: 87, name: "W" },
@@ -2983,6 +2983,35 @@ class MMC1 extends Mapper {
         this.ppuMem.set(this.chrRom[1], 0x1000);
     }
 }
+//Mapper 2
+class UNROM extends Mapper {
+    constructor(nes, buff, header, cpuMem, ppuMem) {
+        super(nes, header, cpuMem, ppuMem);
+        this.pgrRom = [];
+        //Start loading memory
+        let startLoc = 0x10;
+        if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
+            startLoc += 0x200;
+        }
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+    }
+    notifyWrite(addr, data) {
+        if (addr >= 0x8000 && addr <= 0xFFFF) {
+            data &= 7;
+            this.cpuMem.set(this.pgrRom[data], 0x8000);
+            return false;
+        }
+        return true;
+    }
+    load() {
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xC000);
+    }
+}
 /// <reference path="helper.ts" />
 /// <reference path="mapper.ts" />
 class iNESFile {
@@ -3061,6 +3090,9 @@ class iNESFile {
                 break;
             case 1:
                 this.mapper = new MMC1(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                break;
+            case 2:
+                this.mapper = new UNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
@@ -3532,8 +3564,6 @@ class PPU {
                 }
                 this.sprite8x16 = (byte & 32) != 0;
                 this.masterSlave = (byte & 64) != 0;
-                if (this.masterSlave)
-                    console.log("WARNING: masterSlave mode not currently supported!");
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:

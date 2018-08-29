@@ -478,7 +478,6 @@ class PPU {
                 }
                 this.sprite8x16 = (byte & 32) != 0;
                 this.masterSlave = (byte & 64) != 0;
-                if (this.masterSlave) console.log("WARNING: masterSlave mode not currently supported!");
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:

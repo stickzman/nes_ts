@@ -156,3 +156,38 @@ class MMC1 extends Mapper {
         this.ppuMem.set(this.chrRom[1], 0x1000);
     }
 }
+
+
+//Mapper 2
+class UNROM extends Mapper {
+    private pgrRom: Uint8Array[] = [];
+
+    constructor(nes: NES, buff: Uint8Array, header: iNESFile, cpuMem: Uint8Array, ppuMem: Uint8Array) {
+        super(nes, header, cpuMem, ppuMem);
+
+        //Start loading memory
+        let startLoc = 0x10;
+        if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
+            startLoc += 0x200;
+        }
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+    }
+
+    public notifyWrite(addr: number, data: number) {
+        if (addr >= 0x8000 && addr <= 0xFFFF) {
+            data &= 7;
+            this.cpuMem.set(this.pgrRom[data], 0x8000);
+            return false;
+        }
+        return true;
+    }
+
+    public load() {
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        this.cpuMem.set(this.pgrRom[this.pgrRom.length-1], 0xC000);
+    }
+}

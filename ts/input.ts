@@ -1,8 +1,8 @@
 class Input {
     private defaultBind = {
         p1: {
-            a:      {code: 18, name: "Alt"},
-            b:      {code: 32, name: "Space"},
+            a:      {code: 32, name: "Space"},
+            b:      {code: 18, name: "Alt"},
             select: {code: 17, name: "Control"},
             start:  {code: 13, name: "Enter"},
             up:     {code: 87, name: "W"},
