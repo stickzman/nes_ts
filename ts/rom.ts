@@ -94,7 +94,15 @@ class iNESFile {
 
         //Initiate Mapper
         switch(this.mapNum) {
-            case 0: this.mapper = new NROM(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
+            case 0:
+                if (this.chrPages > 1) {
+                    this.mapper = new CNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                } else if (this.pgrPages > 2) {
+                    this.mapper = new UNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                } else {
+                    this.mapper = new NROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                }
+                break;
             case 1: this.mapper = new MMC1(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
             case 2: this.mapper = new UNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
             case 3: this.mapper = new CNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem); break;
