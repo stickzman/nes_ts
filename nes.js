@@ -2844,22 +2844,32 @@ class Mapper {
 class NROM extends Mapper {
     constructor(nes, buff, header, cpuMem, ppuMem) {
         super(nes, header, cpuMem, ppuMem);
+        this.pgrRom = [];
+        this.chrRom = [];
         //Start loading memory
         let startLoc = 0x10;
         if (header.trainerPresent) {
             console.log("Trainer Data not yet supported.");
             startLoc += 0x200;
         }
-        this.pgrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x4000 * header.pgrPages));
-        startLoc += 0x4000 * header.pgrPages;
-        this.chrRom = new Uint8Array(buff.slice(startLoc, startLoc + 0x2000 * header.chrPages));
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+        for (let i = 0; i < header.chrPages; i++) {
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
+            startLoc += 0x2000;
+        }
     }
     load() {
-        this.cpuMem.set(this.pgrRom, 0x8000);
-        if (this.header.pgrPages == 1) {
-            this.cpuMem.set(this.pgrRom, 0xC000);
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        if (this.pgrRom.length > 1) {
+            this.cpuMem.set(this.pgrRom[1], 0xC000);
         }
-        this.ppuMem.set(this.chrRom, 0);
+        else {
+            this.cpuMem.set(this.pgrRom[0], 0xC000);
+        }
+        this.ppuMem.set(this.chrRom[0], 0);
     }
 }
 //Mapper 1
@@ -3012,6 +3022,46 @@ class UNROM extends Mapper {
         this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xC000);
     }
 }
+//Mapper 3
+class CNROM extends Mapper {
+    constructor(nes, buff, header, cpuMem, ppuMem) {
+        super(nes, header, cpuMem, ppuMem);
+        this.pgrRom = [];
+        this.chrRom = [];
+        //Start loading memory
+        let startLoc = 0x10;
+        if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
+            startLoc += 0x200;
+        }
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+        for (let i = 0; i < header.chrPages; i++) {
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
+            startLoc += 0x2000;
+        }
+    }
+    notifyWrite(addr, data) {
+        if (addr >= 0x8000 && addr <= 0xFFFF) {
+            data &= 3;
+            this.ppuMem.set(this.chrRom[data], 0);
+            return false;
+        }
+        return true;
+    }
+    load() {
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        if (this.pgrRom.length > 1) {
+            this.cpuMem.set(this.pgrRom[1], 0xC000);
+        }
+        else {
+            this.cpuMem.set(this.pgrRom[0], 0xC000);
+        }
+        this.ppuMem.set(this.chrRom[0], 0);
+    }
+}
 /// <reference path="helper.ts" />
 /// <reference path="mapper.ts" />
 class iNESFile {
@@ -3093,6 +3143,9 @@ class iNESFile {
                 break;
             case 2:
                 this.mapper = new UNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                break;
+            case 3:
+                this.mapper = new CNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");

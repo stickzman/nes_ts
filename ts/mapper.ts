@@ -13,8 +13,8 @@ class Mapper {
 
 //Mapper 0
 class NROM extends Mapper {
-    private pgrRom : Uint8Array;
-    private chrRom: Uint8Array;
+    private pgrRom: Uint8Array[] = [];
+    private chrRom: Uint8Array[] = [];
 
     constructor(nes: NES, buff: Uint8Array, header: iNESFile, cpuMem: Uint8Array, ppuMem: Uint8Array) {
         super(nes, header, cpuMem, ppuMem);
@@ -25,19 +25,24 @@ class NROM extends Mapper {
             console.log("Trainer Data not yet supported.");
             startLoc += 0x200;
         }
-        this.pgrRom = new Uint8Array(
-            buff.slice(startLoc, startLoc + 0x4000 * header.pgrPages));
-        startLoc += 0x4000 * header.pgrPages;
-        this.chrRom = new Uint8Array(
-            buff.slice(startLoc, startLoc + 0x2000 * header.chrPages));
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+        for (let i = 0; i < header.chrPages; i++) {
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
+            startLoc += 0x2000;
+        }
     }
 
     public load() {
-        this.cpuMem.set(this.pgrRom, 0x8000);
-        if (this.header.pgrPages == 1) {
-            this.cpuMem.set(this.pgrRom, 0xC000);
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        if (this.pgrRom.length > 1) {
+            this.cpuMem.set(this.pgrRom[1], 0xC000);
+        } else {
+            this.cpuMem.set(this.pgrRom[0], 0xC000);
         }
-        this.ppuMem.set(this.chrRom, 0);
+        this.ppuMem.set(this.chrRom[0], 0);
     }
 }
 
@@ -189,5 +194,50 @@ class UNROM extends Mapper {
     public load() {
         this.cpuMem.set(this.pgrRom[0], 0x8000);
         this.cpuMem.set(this.pgrRom[this.pgrRom.length-1], 0xC000);
+    }
+}
+
+//Mapper 3
+class CNROM extends Mapper {
+    public pgrRom: Uint8Array[] = [];
+    public chrRom: Uint8Array[] = [];
+
+    constructor(nes: NES, buff: Uint8Array, header: iNESFile, cpuMem: Uint8Array, ppuMem: Uint8Array) {
+        super(nes, header, cpuMem, ppuMem);
+
+        //Start loading memory
+        let startLoc = 0x10;
+        if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
+            startLoc += 0x200;
+        }
+        for (let i = 0; i < header.pgrPages; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x4000)));
+            startLoc += 0x4000;
+        }
+        for (let i = 0; i < header.chrPages; i++) {
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + 0x2000)));
+            startLoc += 0x2000;
+        }
+    }
+
+    public notifyWrite(addr: number, data: number) {
+        if (addr >= 0x8000 && addr <= 0xFFFF) {
+            data &= 3;
+            this.ppuMem.set(this.chrRom[data], 0);
+            return false;
+        }
+        return true;
+    }
+
+    public load() {
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        if (this.pgrRom.length > 1) {
+            this.cpuMem.set(this.pgrRom[1], 0xC000);
+        } else {
+            this.cpuMem.set(this.pgrRom[0], 0xC000);
+        }
+
+        this.ppuMem.set(this.chrRom[0], 0);
     }
 }
