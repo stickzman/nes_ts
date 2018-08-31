@@ -352,20 +352,24 @@ class PPU {
         if (palData == null || !this.showSprites) {
             //Get background pixel
             //Get PALETTE NUMBER
-            let quad: number;
-            let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
-            let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
-            if (x % 32 < 16) {
-                quad = (y % 32 < 16) ? 0 : 2;
+            if (this.bkgQ[0][bitSelect] == 0) {
+                palData = this.mem[0x3F00] & 0x3F;
             } else {
-                quad = (y % 32 < 16) ? 1 : 3;
-            }
-            let palNum: number;
-            let mask = 3 << (quad * 2);
-            palNum = (this.attrQ[0] & mask) >> (quad * 2);
+                let quad: number;
+                let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
+                let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
+                if (x % 32 < 16) {
+                    quad = (y % 32 < 16) ? 0 : 2;
+                } else {
+                    quad = (y % 32 < 16) ? 1 : 3;
+                }
+                let palNum: number;
+                let mask = 3 << (quad * 2);
+                palNum = (this.attrQ[0] & mask) >> (quad * 2);
 
-            let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
-            palData = this.mem[palInd] & 0x3F;
+                let palInd = 0x3F00 + palNum * 4 + this.bkgQ[0][bitSelect];
+                palData = this.mem[palInd] & 0x3F;
+            }
         }
 
         if (PPU.forceGreyscale || this.greyscale) palData &= 0x30;
