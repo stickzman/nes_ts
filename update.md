@@ -1,6 +1,13 @@
 # Updates
 
-## 8/29 Update
+## 8/30
+
+#### CPU Timing Accuracy Improved
+The accuracy of the CPU's cycles has been improved, fixing numerous misc. timing-related bugs such as the parallax scrolling in _Excitebike_ as well as visual glitches when scrolling between screens in _The Legend of Zelda_.
+
+* * * *
+
+## 8/29
 
 #### Mapper 2 (UNROM) games now supported
 
@@ -9,6 +16,8 @@ UNROM games are now fully supported. This includes games like _Castlevania_, _Co
 MMC1 games are still only partially supported, but UNROM was easy to implement so I just went ahead and did it, mmk?
 
 * * *
+
+## Initial Launch
 
 #### Mapper 0 (NROM) games now supported
 
