@@ -194,6 +194,33 @@ class CPU {
         return res;
     }
 }
+function absXCycles(obj) {
+    if (this.X + this.nes.mainMemory[this.PC + 1] > 0xFF) {
+        //Page crossed, adj cycle count
+        obj.cycles = 5;
+    }
+    else {
+        obj.cycles = 4;
+    }
+}
+function absYCycles(obj) {
+    if (this.Y + this.nes.mainMemory[this.PC + 1] > 0xFF) {
+        //Page crossed, adj cycle count
+        obj.cycles = 5;
+    }
+    else {
+        obj.cycles = 4;
+    }
+}
+function indYCycles(obj) {
+    let addr = this.getZPageRef();
+    if (this.nes.mainMemory[addr] + this.Y > 0xFF) {
+        obj.cycles = 6;
+    }
+    else {
+        obj.cycles = 5;
+    }
+}
 let opTable = {};
 opTable[0x00] = {
     name: "BRK",
@@ -228,6 +255,7 @@ opTable[0xBD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0xBD]);
         let addr = this.getRef(this.X);
         this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
@@ -238,6 +266,7 @@ opTable[0xB9] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xB9]);
         let addr = this.getRef(this.Y);
         this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
@@ -278,6 +307,7 @@ opTable[0xB1] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0xB1]);
         let addr = this.getIndrYRef();
         this.ACC = this.nes.read(addr);
         this.updateNumStateFlags(this.ACC);
@@ -327,6 +357,7 @@ opTable[0xBE] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xBE]);
         let addr = this.getRef(this.Y);
         this.X = this.nes.read(addr);
         this.updateNumStateFlags(this.X);
@@ -376,6 +407,7 @@ opTable[0xBC] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xBC]);
         let addr = this.getRef(this.X);
         this.Y = this.nes.read(addr);
         this.updateNumStateFlags(this.Y);
@@ -607,6 +639,7 @@ opTable[0x7D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0x7D]);
         let addr = this.getRef(this.X);
         ADC.call(this, this.nes.read(addr));
     }
@@ -616,6 +649,7 @@ opTable[0x79] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0x79]);
         let addr = this.getRef(this.Y);
         ADC.call(this, this.nes.read(addr));
     }
@@ -634,6 +668,7 @@ opTable[0x71] = {
     bytes: 2,
     cycles: 6,
     execute: function () {
+        indYCycles.call(this, opTable[0x71]);
         let addr = this.getIndrYRef();
         ADC.call(this, this.nes.read(addr));
     }
@@ -700,6 +735,7 @@ opTable[0xFD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0xFD]);
         let num = this.nes.read(this.getRef(this.X));
         SBC.call(this, num);
     }
@@ -709,6 +745,7 @@ opTable[0xF9] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xF9]);
         let num = this.nes.read(this.getRef(this.Y));
         SBC.call(this, num);
     }
@@ -725,8 +762,9 @@ opTable[0xE1] = {
 opTable[0xF1] = {
     name: "SBC (ind), Y",
     bytes: 2,
-    cycles: 6,
+    cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0xF1]);
         let num = this.nes.read(this.getIndrYRef());
         SBC.call(this, num);
     }
@@ -734,7 +772,7 @@ opTable[0xF1] = {
 opTable[0xEA] = {
     name: "NOP",
     bytes: 1,
-    cycles: 1,
+    cycles: 2,
     execute: function () { }
 };
 opTable[0xE6] = {
@@ -818,7 +856,7 @@ opTable[0xD6] = {
 opTable[0xCE] = {
     name: "DEC (abs)",
     bytes: 3,
-    cycles: 3,
+    cycles: 6,
     execute: function () {
         let addr = this.getRef();
         this.nes.write(addr, addWrap(this.nes.read(addr), -1));
@@ -953,6 +991,7 @@ opTable[0xDD] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0xDD]);
         CMP.call(this, this.nes.read(this.getRef(this.X)), this.ACC);
     }
 };
@@ -961,6 +1000,7 @@ opTable[0xD9] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xD9]);
         CMP.call(this, this.nes.read(this.getRef(this.Y)), this.ACC);
     }
 };
@@ -977,6 +1017,7 @@ opTable[0xD1] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0xD1]);
         CMP.call(this, this.nes.read(this.getIndrYRef()), this.ACC);
     }
 };
@@ -1069,6 +1110,7 @@ opTable[0x3D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0x3D]);
         this.ACC = this.ACC & this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1078,6 +1120,7 @@ opTable[0x39] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0x39]);
         this.ACC = this.ACC & this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1096,6 +1139,7 @@ opTable[0x31] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0x31]);
         this.ACC = this.ACC & this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
@@ -1141,6 +1185,7 @@ opTable[0x1D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0x1D]);
         this.ACC = this.ACC | this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1150,6 +1195,7 @@ opTable[0x19] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0x19]);
         this.ACC = this.ACC | this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1168,6 +1214,7 @@ opTable[0x11] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0x11]);
         this.ACC = this.ACC | this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
@@ -1213,6 +1260,7 @@ opTable[0x5D] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absXCycles.call(this, opTable[0x5D]);
         this.ACC = this.ACC ^ this.nes.read(this.getRef(this.X));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1222,6 +1270,7 @@ opTable[0x59] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0x59]);
         this.ACC = this.ACC ^ this.nes.read(this.getRef(this.Y));
         this.updateNumStateFlags(this.ACC);
     }
@@ -1240,6 +1289,7 @@ opTable[0x51] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0x51]);
         this.ACC = this.ACC ^ this.nes.read(this.getIndrYRef());
         this.updateNumStateFlags(this.ACC);
     }
@@ -1527,7 +1577,7 @@ opTable[0x7E] = {
         this.updateNumStateFlags(this.nes.read(addr));
     }
 };
-function branch() {
+function branch(obj) {
     let dist = this.nextByte();
     dist -= (dist < 0x80) ? 0 : 0x100;
     if (this.debug) {
@@ -1537,6 +1587,9 @@ function branch() {
         console.log(`TRAPPED at 0x${this.PC.toString(16).padStart(4, "0").toUpperCase()}`);
         this.flags.break = true;
     }
+    if ((this.PC & 0xFF) + dist > 0xFF) {
+        obj.cycles = 4;
+    }
     this.PC += dist;
 }
 opTable[0x90] = {
@@ -1545,7 +1598,11 @@ opTable[0x90] = {
     cycles: 2,
     execute: function () {
         if (!this.flags.carry) {
-            branch.call(this);
+            opTable[0x90].cycles = 3;
+            branch.call(this, opTable[0x90]);
+        }
+        else {
+            opTable[0x90].cycles = 2;
         }
     }
 };
@@ -1555,7 +1612,11 @@ opTable[0xB0] = {
     cycles: 2,
     execute: function () {
         if (this.flags.carry) {
-            branch.call(this);
+            opTable[0xB0].cycles = 3;
+            branch.call(this, opTable[0xB0]);
+        }
+        else {
+            opTable[0xB0].cycles = 2;
         }
     }
 };
@@ -1565,7 +1626,11 @@ opTable[0x30] = {
     cycles: 2,
     execute: function () {
         if (this.flags.negative) {
-            branch.call(this);
+            opTable[0x30].cycles = 3;
+            branch.call(this, opTable[0x30]);
+        }
+        else {
+            opTable[0x30].cycles = 2;
         }
     }
 };
@@ -1575,7 +1640,11 @@ opTable[0x10] = {
     cycles: 2,
     execute: function () {
         if (!this.flags.negative) {
-            branch.call(this);
+            opTable[0x10].cycles = 3;
+            branch.call(this, opTable[0x10]);
+        }
+        else {
+            opTable[0x10].cycles = 2;
         }
     }
 };
@@ -1585,7 +1654,11 @@ opTable[0xF0] = {
     cycles: 2,
     execute: function () {
         if (this.flags.zero) {
-            branch.call(this);
+            opTable[0xF0].cycles = 3;
+            branch.call(this, opTable[0xF0]);
+        }
+        else {
+            opTable[0xF0].cycles = 2;
         }
     }
 };
@@ -1595,7 +1668,11 @@ opTable[0xD0] = {
     cycles: 2,
     execute: function () {
         if (!this.flags.zero) {
-            branch.call(this);
+            opTable[0xD0].cycles = 3;
+            branch.call(this, opTable[0xD0]);
+        }
+        else {
+            opTable[0xD0].cycles = 2;
         }
     }
 };
@@ -1605,7 +1682,11 @@ opTable[0x50] = {
     cycles: 2,
     execute: function () {
         if (!this.flags.overflow) {
-            branch.call(this);
+            opTable[0x50].cycles = 3;
+            branch.call(this, opTable[0x50]);
+        }
+        else {
+            opTable[0x50].cycles = 2;
         }
     }
 };
@@ -1615,7 +1696,11 @@ opTable[0x70] = {
     cycles: 2,
     execute: function () {
         if (this.flags.overflow) {
-            branch.call(this);
+            opTable[0x70].cycles = 3;
+            branch.call(this, opTable[0x70]);
+        }
+        else {
+            opTable[0x70].cycles = 2;
         }
     }
 };
@@ -1913,38 +1998,50 @@ opTable[0x0C] = {
 opTable[0x1C] = {
     name: "TOP",
     bytes: 3,
-    cycles: 1,
-    execute: function () { }
+    cycles: 4,
+    execute: function () {
+        absXCycles.call(this, opTable[0x1C]);
+    }
 };
 opTable[0x3C] = {
     name: "TOP",
     bytes: 3,
     cycles: 4,
-    execute: function () { }
+    execute: function () {
+        absXCycles.call(this, opTable[0x3C]);
+    }
 };
 opTable[0x5C] = {
     name: "TOP",
     bytes: 3,
     cycles: 4,
-    execute: function () { }
+    execute: function () {
+        absXCycles.call(this, opTable[0x5C]);
+    }
 };
 opTable[0x7C] = {
     name: "TOP",
     bytes: 3,
     cycles: 4,
-    execute: function () { }
+    execute: function () {
+        absXCycles.call(this, opTable[0x7C]);
+    }
 };
 opTable[0xDC] = {
     name: "TOP",
     bytes: 3,
     cycles: 4,
-    execute: function () { }
+    execute: function () {
+        absXCycles.call(this, opTable[0xDC]);
+    }
 };
 opTable[0xFC] = {
     name: "TOP",
     bytes: 3,
     cycles: 4,
-    execute: function () { }
+    execute: function () {
+        absXCycles.call(this, opTable[0xFC]);
+    }
 };
 //LAX, Load ACC and X with memory
 opTable[0xA3] = {
@@ -1963,6 +2060,7 @@ opTable[0xB3] = {
     bytes: 2,
     cycles: 5,
     execute: function () {
+        indYCycles.call(this, opTable[0xB3]);
         let addr = this.getIndrYRef();
         this.X = this.nes.read(addr);
         this.ACC = this.nes.read(addr);
@@ -2007,6 +2105,7 @@ opTable[0xBF] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xBF]);
         let addr = this.getRef(this.Y);
         this.X = this.nes.read(addr);
         this.ACC = this.nes.read(addr);
@@ -2590,6 +2689,7 @@ opTable[0xBB] = {
     bytes: 3,
     cycles: 4,
     execute: function () {
+        absYCycles.call(this, opTable[0xBB]);
         let addr = this.getRef(this.Y);
         this.SP = this.SP & this.nes.read(addr);
         this.X = this.SP;

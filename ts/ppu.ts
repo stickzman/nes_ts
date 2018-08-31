@@ -555,7 +555,7 @@ class PPU {
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 15, 3, 0);
                     this.initRamAddr = insertInto(this.initRamAddr, byte, 10, 8, 3);
                 }
-                this.writeLatch = !this.writeLatch
+                this.writeLatch = !this.writeLatch;
                 break;
         }
     }
