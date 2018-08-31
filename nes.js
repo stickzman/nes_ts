@@ -2985,6 +2985,7 @@ class MMC1 extends Mapper {
         //Switch 4 or 8KB at a time
         this.chrRom4KB = false;
         this.shiftReg = 1 << 4;
+        this.ntRAM = new Uint8Array(0x800);
         //Start loading memory
         let startLoc = 0x10;
         if (header.trainerPresent) {
@@ -3053,25 +3054,62 @@ class MMC1 extends Mapper {
                     //Control Register
                     this.chrRom4KB = (data & 0x10) != 0;
                     this.prgBankMode = (data & 0xC) >> 2;
-                    if ((data & 1) == 0) {
-                        if (!this.nes.ppu.mirrorVertical) {
-                            let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
-                            let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
-                            this.ppuMem.set(topRight, 0x2800);
-                            this.ppuMem.set(topLeft, 0x2400);
+                    let single = this.nes.ppu.singleScreenMirror;
+                    let vert = this.nes.ppu.mirrorVertical;
+                    if ((vert != ((data & 1) == 0)) || (single != ((data & 2) == 0))) {
+                        //If mirroring is changing, update ntRAM
+                        let mirror = (Number(!single) << 1) + Number(!vert);
+                        switch (mirror) {
+                            case 0:
+                                this.ntRAM.set(this.ppuMem.slice(0x2000, 0x2400), 0);
+                                break;
+                            case 1:
+                                this.ntRAM.set(this.ppuMem.slice(0x2400, 0x2800), 0x400);
+                                break;
+                            case 2:
+                                this.ntRAM.set(this.ppuMem.slice(0x2000, 0x2800), 0);
+                                break;
+                            case 3:
+                                this.ntRAM.set(this.ppuMem.slice(0x2000, 0x2400), 0);
+                                this.ntRAM.set(this.ppuMem.slice(0x2800, 0x2C00), 0x400);
+                                break;
                         }
-                        this.nes.ppu.mirrorVertical = true;
-                    }
-                    else {
-                        if (this.nes.ppu.mirrorVertical) {
-                            let topRight = new Uint8Array(this.ppuMem.slice(0x2400, 0x2800));
-                            let topLeft = new Uint8Array(this.ppuMem.slice(0x2800, 0x2C00));
-                            this.ppuMem.set(topRight, 0x2800);
-                            this.ppuMem.set(topLeft, 0x2400);
+                        //Set new data from ntRAM into PPU memory
+                        switch (data & 3) {
+                            case 0: {
+                                let slice = this.ntRAM.slice(0, 0x400);
+                                this.ppuMem.set(slice, 0x2000);
+                                this.ppuMem.set(slice, 0x2400);
+                                this.ppuMem.set(slice, 0x2800);
+                                this.ppuMem.set(slice, 0x2C00);
+                                break;
+                            }
+                            case 1:
+                                {
+                                    let slice = this.ntRAM.slice(0x400, 0x800);
+                                    this.ppuMem.set(slice, 0x2000);
+                                    this.ppuMem.set(slice, 0x2400);
+                                    this.ppuMem.set(slice, 0x2800);
+                                    this.ppuMem.set(slice, 0x2C00);
+                                    break;
+                                }
+                            case 2:
+                                this.ppuMem.set(this.ntRAM, 0x2000);
+                                this.ppuMem.set(this.ntRAM, 0x2800);
+                                break;
+                            case 3: {
+                                let slice = this.ntRAM.slice(0, 0x400);
+                                this.ppuMem.set(slice, 0x2000);
+                                this.ppuMem.set(slice, 0x2400);
+                                slice = this.ntRAM.slice(0x400, 0x800);
+                                this.ppuMem.set(slice, 0x2800);
+                                this.ppuMem.set(slice, 0x2C00);
+                                break;
+                            }
                         }
-                        this.nes.ppu.mirrorVertical = false;
+                        this.nes.ppu.mirrorVertical = (data & 1) == 0;
+                        this.nes.ppu.singleScreenMirror = (data & 2) == 0;
                     }
-                    this.nes.ppu.singleScreenMirror = (data & (1 << 1)) == 0;
                 }
             }
             else {
