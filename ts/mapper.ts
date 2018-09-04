@@ -42,7 +42,9 @@ class NROM extends Mapper {
         } else {
             this.cpuMem.set(this.pgrRom[0], 0xC000);
         }
-        this.ppuMem.set(this.chrRom[0], 0);
+        if (this.chrRom.length > 0) {
+            this.ppuMem.set(this.chrRom[0], 0);
+        }
     }
 }
 
