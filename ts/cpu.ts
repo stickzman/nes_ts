@@ -1683,7 +1683,7 @@ function branch(obj) {
             this.PC.toString(16).padStart(4,"0").toUpperCase()}`);
         this.flags.break = true;
     }
-    if ((this.PC & 0xFF) + dist > 0xFF) {
+    if (((this.PC + dist + 2) & 0xFF00) !== ((this.PC + 2) & 0xFF00)) {
         obj.cycles = 4;
     }
     this.PC += dist;
