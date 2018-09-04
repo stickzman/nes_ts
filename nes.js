@@ -2899,6 +2899,11 @@ class Input {
             btn.on("click", function () {
                 btn.html("Press any key...");
                 $(document).one("keydown", function (e) {
+                    if (e.keyCode == 27) {
+                        //If user hits "Escape" key, cancel button change
+                        btn.html(bind[keys[i]].name);
+                        return;
+                    }
                     //Capture new key binding
                     btn.html(e.key);
                     if (e.key.length == 1)
@@ -4204,7 +4209,6 @@ class NES {
     constructor(romData, input) {
         this.MEM_SIZE = 0x10000;
         this.drawFrame = false;
-        this.counter = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
@@ -4250,7 +4254,7 @@ class NES {
             }
         }
         this.ppu.paintFrame();
-        if (error || this.counter > 500) {
+        if (error) {
             this.displayMem();
             this.displayPPUMem();
         }
@@ -4338,11 +4342,13 @@ window.onbeforeunload = function () {
     }
 };
 $(document).ready(function () {
+    //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
     $("#scale").change(function () {
         PPU.updateScale(parseInt($("#scale")[0].value));
     });
+    //Set up relevant button listeners
     $(document).on("keydown", function (e) {
         if (input.setBtn(e.keyCode, true)) {
             e.preventDefault();
@@ -4353,8 +4359,10 @@ $(document).ready(function () {
             e.preventDefault();
         }
     });
+    //Build the button mapping control table
     input.buildControlTable($("#p1Controls"));
     input.buildControlTable($("#p2Controls"), false);
+    //Set up event listener for file picker to launch ROM
     $('#file-input').change(function (e) {
         init(e.target.files[0]);
     });

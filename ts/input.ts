@@ -165,6 +165,11 @@ class Input {
             btn.on("click", function() {
                 btn.html("Press any key...");
                 $(document).one("keydown", function(e) {
+                    if (e.keyCode == 27) {
+                        //If user hits "Escape" key, cancel button change
+                        btn.html(bind[keys[i]].name);
+                        return;
+                    }
                     //Capture new key binding
                     btn.html(e.key);
                     if (e.key.length == 1) btn.html(btn.html().toUpperCase());

@@ -43,7 +43,6 @@ class NES {
         this.step();
     }
 
-    public counter = 0;
     private step() {
         this.drawFrame = false;
         let error = false;
@@ -65,7 +64,7 @@ class NES {
 
         this.ppu.paintFrame();
 
-        if (error || this.counter > 500) {
+        if (error) {
             this.displayMem();
             this.displayPPUMem();
         } else {
@@ -162,6 +161,7 @@ window.onbeforeunload = function () {
 }
 
 $(document).ready(function() {
+    //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
     PPU.updateScale(2);
 
@@ -169,6 +169,7 @@ $(document).ready(function() {
         PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
     });
 
+    //Set up relevant button listeners
     $(document).on("keydown", function (e) {
         if (input.setBtn(e.keyCode, true)) {
             e.preventDefault();
@@ -180,9 +181,11 @@ $(document).ready(function() {
         }
     });
 
+    //Build the button mapping control table
     input.buildControlTable($("#p1Controls"));
     input.buildControlTable($("#p2Controls"), false);
 
+    //Set up event listener for file picker to launch ROM
     $('#file-input').change(function (e:any) {
         init(e.target.files[0]);
     });
