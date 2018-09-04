@@ -21,6 +21,7 @@ class PPU {
     //Shift registers
     private bkgQ = [];
     private attrQ = [];
+    private addrQ = [];
 
     //CTRL vars
     private incAddrBy32: boolean = false; //If false, inc by 1
@@ -156,6 +157,7 @@ class PPU {
                     this.clearOverflow();
                 } else if (this.dot == 328) {
                     if (this.showLeftBkg) {
+                        this.addrQ[0] = this.vRamAddr;
                         //Get attrTable byte
                         this.attrQ[0] = this.mem[this.getATAddr()];
                         let addr = this.mem[this.getNTAddr()] << 4;
@@ -173,6 +175,7 @@ class PPU {
 
                     if (this.showBkg || this.showSprites) this.incCoarseX();
                 } else if (this.dot == 336) {
+                    this.addrQ[1] = this.vRamAddr;
                     //Get attrTable byte
                     this.attrQ[1] = this.mem[this.getATAddr()];
                     let addr = this.mem[this.getNTAddr()] << 4;
@@ -214,6 +217,7 @@ class PPU {
         }
         if (this.dot <= 256) {
             if (this.dot % 8 == 0 && this.dot != 0) {
+                this.addrQ[1] = this.vRamAddr;
                 //Get attrTable byte
                 this.attrQ[1] = this.mem[this.getATAddr()];
                 let addr = this.mem[this.getNTAddr()] << 4;
@@ -296,6 +300,7 @@ class PPU {
             }
         } else if (this.dot == 328) {
             if (this.showLeftBkg) {
+                this.addrQ[0] = this.vRamAddr;
                 //Get attrTable byte
                 this.attrQ[0] = this.mem[this.getATAddr()];
                 let addr = this.mem[this.getNTAddr()] << 4;
@@ -313,6 +318,7 @@ class PPU {
 
             if (this.showBkg || this.showSprites) this.incCoarseX();
         } else if (this.dot == 336) {
+            this.addrQ[1] = this.vRamAddr;
             //Get attrTable byte
             this.attrQ[1] = this.mem[this.getATAddr()];
             let addr = this.mem[this.getNTAddr()] << 4;
@@ -355,9 +361,9 @@ class PPU {
             if (this.bkgQ[0][bitSelect] == 0) {
                 palData = this.mem[0x3F00] & 0x3F;
             } else {
+                let x = (((this.addrQ[0] & 0x1F) * 8) + this.fineX);
+                let y = ((this.addrQ[0] & 0x03E0) >> 5) * 8 + ((this.addrQ[0] & 0x7000) >> 12);
                 let quad: number;
-                let x = ((((this.vRamAddr & 0x1F) - 2) * 8) + this.dot % 8 + this.fineX);
-                let y = ((this.vRamAddr & 0x03E0) >> 5) * 8 + ((this.vRamAddr & 0x7000) >> 12);
                 if (x % 32 < 16) {
                     quad = (y % 32 < 16) ? 0 : 2;
                 } else {
@@ -379,6 +385,7 @@ class PPU {
         if (bitSelect % 8 == 7) {
             this.bkgQ[0] = this.bkgQ[1];
             this.attrQ[0] = this.attrQ[1];
+            this.addrQ[0] = this.addrQ[1];
         }
     }
 
