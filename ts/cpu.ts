@@ -2843,3 +2843,17 @@ opTable[0x0B] = {
         this.flags.carry = (this.ACC & (1 << 7)) != 0;
     }
 }
+
+//ALR
+//AND ACC with imm val, then LSR the result
+opTable[0x4B] = {
+    name: "ALR (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function() {
+        this.ACC = this.ACC & this.nextByte();
+        this.flags.carry = (this.ACC % 2 == 1);
+        this.ACC = this.ACC >> 1;
+        this.updateNumStateFlags(this.ACC);
+    }
+}
