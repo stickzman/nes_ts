@@ -3435,21 +3435,16 @@ class PPU {
                     this.clearOverflow();
                 }
                 else if (this.dot == 328) {
-                    if (this.showLeftBkg) {
-                        this.addrQ[0] = this.vRamAddr;
-                        //Get attrTable byte
-                        this.attrQ[0] = this.mem[this.getATAddr()];
-                        let addr = this.mem[this.getNTAddr()] << 4;
-                        let fineY = (this.vRamAddr & 0x7000) >> 12;
-                        //Get Low BG byte
-                        let lo = this.mem[addr + fineY + this.bkgPatAddr];
-                        //Get High BG byte
-                        let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-                        this.bkgQ[0] = this.combinePatData(hi, lo);
-                    }
-                    else {
-                        this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
-                    }
+                    this.addrQ[0] = this.vRamAddr;
+                    //Get attrTable byte
+                    this.attrQ[0] = this.mem[this.getATAddr()];
+                    let addr = this.mem[this.getNTAddr()] << 4;
+                    let fineY = (this.vRamAddr & 0x7000) >> 12;
+                    //Get Low BG byte
+                    let lo = this.mem[addr + fineY + this.bkgPatAddr];
+                    //Get High BG byte
+                    let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+                    this.bkgQ[0] = this.combinePatData(hi, lo);
                     if (this.showBkg || this.showSprites)
                         this.incCoarseX();
                 }
@@ -3581,21 +3576,16 @@ class PPU {
             }
         }
         else if (this.dot == 328) {
-            if (this.showLeftBkg) {
-                this.addrQ[0] = this.vRamAddr;
-                //Get attrTable byte
-                this.attrQ[0] = this.mem[this.getATAddr()];
-                let addr = this.mem[this.getNTAddr()] << 4;
-                let fineY = (this.vRamAddr & 0x7000) >> 12;
-                //Get Low BG byte
-                let lo = this.mem[addr + fineY + this.bkgPatAddr];
-                //Get High BG byte
-                let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
-                this.bkgQ[0] = this.combinePatData(hi, lo);
-            }
-            else {
-                this.bkgQ[0] = [0, 0, 0, 0, 0, 0, 0, 0];
-            }
+            this.addrQ[0] = this.vRamAddr;
+            //Get attrTable byte
+            this.attrQ[0] = this.mem[this.getATAddr()];
+            let addr = this.mem[this.getNTAddr()] << 4;
+            let fineY = (this.vRamAddr & 0x7000) >> 12;
+            //Get Low BG byte
+            let lo = this.mem[addr + fineY + this.bkgPatAddr];
+            //Get High BG byte
+            let hi = this.mem[addr + 8 + fineY + this.bkgPatAddr];
+            this.bkgQ[0] = this.combinePatData(hi, lo);
             if (this.showBkg || this.showSprites)
                 this.incCoarseX();
         }
@@ -3615,9 +3605,9 @@ class PPU {
         }
     }
     render() {
+        let uBkgData = this.mem[0x3F00] & 0x3F;
         if (!this.showBkg) {
             //Get Universal Background Color and paint a blank pixel
-            var uBkgData = this.mem[0x3F00] & 0x3F;
             if (PPU.forceGreyscale || this.greyscale)
                 uBkgData &= 0x30;
             if (!this.showSprites) {
@@ -3638,8 +3628,8 @@ class PPU {
         if (palData == null || !this.showSprites) {
             //Get background pixel
             //Get PALETTE NUMBER
-            if (this.bkgQ[0][bitSelect] == 0) {
-                palData = this.mem[0x3F00] & 0x3F;
+            if (!this.showLeftBkg && this.dot < 8 || this.bkgQ[0][bitSelect] == 0) {
+                palData = uBkgData;
             }
             else {
                 let x = (((this.addrQ[0] & 0x1F) * 8) + this.fineX);
