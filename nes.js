@@ -2744,6 +2744,39 @@ opTable[0x4B] = {
         this.updateNumStateFlags(this.ACC);
     }
 };
+//ARR
+//AND ACC with imm val, then ROR the result
+opTable[0x6B] = {
+    name: "ARR (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function () {
+        this.ACC = this.ACC & this.nextByte();
+        let addBit = (this.flags.carry) ? 0x80 : 0;
+        this.flags.carry = (this.ACC % 2 == 1);
+        this.ACC = this.ACC >> 1;
+        this.ACC += addBit;
+        this.updateNumStateFlags(this.ACC);
+    }
+};
+//SAX
+//ANDs the contents of the A and X registers, subtracts an immediate value,
+// then stores the result in X.
+opTable[0xCB] = {
+    name: "SAX (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function () {
+        let x = this.ACC & this.X;
+        let num = this.nextByte();
+        this.flags.zero = (x == num);
+        let res = x - num;
+        res += (res < 0) ? 0x10000 : 0;
+        this.updateNegativeFlag(res);
+        this.flags.carry = (x >= num);
+        this.X = res;
+    }
+};
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
