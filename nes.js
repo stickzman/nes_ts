@@ -2709,6 +2709,28 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 };
+//ANC
+//AND ACC with imm val, then move bit 7 of ACC to carry
+opTable[0x2B] = {
+    name: "ANC (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function () {
+        this.ACC = this.ACC & this.nextByte();
+        this.updateNumStateFlags(this.ACC);
+        this.flags.carry = (this.ACC & (1 << 7)) != 0;
+    }
+};
+opTable[0x0B] = {
+    name: "ANC (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function () {
+        this.ACC = this.ACC & this.nextByte();
+        this.updateNumStateFlags(this.ACC);
+        this.flags.carry = (this.ACC & (1 << 7)) != 0;
+    }
+};
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
@@ -4223,7 +4245,9 @@ let colorData = [{
 class NES {
     constructor(romData, input) {
         this.MEM_SIZE = 0x10000;
+        this.print = false;
         this.drawFrame = false;
+        this.counter = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
@@ -4269,9 +4293,10 @@ class NES {
             }
         }
         this.ppu.paintFrame();
-        if (error) {
+        if (error || this.print) {
             this.displayMem();
             this.displayPPUMem();
+            $("#debugDisplay").show();
         }
         else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));

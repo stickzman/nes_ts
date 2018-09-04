@@ -2820,3 +2820,26 @@ opTable[0xAB] = {
         this.updateNumStateFlags(this.ACC);
     }
 }
+
+//ANC
+//AND ACC with imm val, then move bit 7 of ACC to carry
+opTable[0x2B] = {
+    name: "ANC (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function() {
+        this.ACC = this.ACC & this.nextByte();
+        this.updateNumStateFlags(this.ACC);
+        this.flags.carry = (this.ACC & (1 << 7)) != 0;
+    }
+}
+opTable[0x0B] = {
+    name: "ANC (imm)",
+    bytes: 2,
+    cycles: 2,
+    execute: function() {
+        this.ACC = this.ACC & this.nextByte();
+        this.updateNumStateFlags(this.ACC);
+        this.flags.carry = (this.ACC & (1 << 7)) != 0;
+    }
+}

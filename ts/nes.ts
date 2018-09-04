@@ -4,6 +4,8 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
+    public print: boolean = false;
+
     public input: Input;
     public rom: iNESFile;
     public cpu: CPU;
@@ -43,6 +45,7 @@ class NES {
         this.step();
     }
 
+    private counter = 0;
     private step() {
         this.drawFrame = false;
         let error = false;
@@ -64,9 +67,10 @@ class NES {
 
         this.ppu.paintFrame();
 
-        if (error) {
+        if (error || this.print) {
             this.displayMem();
             this.displayPPUMem();
+            $("#debugDisplay").show();
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
