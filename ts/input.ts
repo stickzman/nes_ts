@@ -138,7 +138,20 @@ class Input {
     }
 
     public reset() {
-        this.bindings = this.defaultBind;
+        //Copy default binds into the current bindings
+        let players = Object.getOwnPropertyNames(this.bindings);
+        for (let i = 0; i < players.length; i++) {
+            let btns = Object.getOwnPropertyNames(this.bindings[players[i]]);
+            for (let j = 0; j < btns.length; j++) {
+                let b = this.bindings[players[i]][btns[j]];
+                let props = Object.getOwnPropertyNames(b);
+                for (let k = 0; k < props.length; k++) {
+                    this.bindings[players[i]][btns[j]][props[k]] =
+                        this.defaultBind[players[i]][btns[j]][props[k]];
+                }
+            }
+        }
+        //this.bindings = this.defaultBind;
         let btns = $("#p1Controls > table > tr > td:nth-child(2) > button");
         let bind = this.bindings.p1;
         let keys = Object.getOwnPropertyNames(bind);
