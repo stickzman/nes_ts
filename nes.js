@@ -674,26 +674,9 @@ opTable[0x71] = {
     }
 };
 function SBC(num) {
-    if (this.flags.decimalMode) {
-        //Convert current 2 digit hex to literal 2 digit decimal
-        let num2 = parseInt(this.ACC.toString(16));
-        num = parseInt(num.toString(16));
-        let res = num2 - num;
-        res -= (this.flags.carry) ? 0 : 1;
-        if (res < 0) {
-            this.flags.carry = false;
-            res += 100;
-        }
-        else {
-            this.flags.carry = true;
-        }
-        this.ACC = parseInt(res.toString(), 16);
-    }
-    else {
-        let mask = 0xFF;
-        let flipBits = num ^ mask;
-        ADC.call(this, flipBits);
-    }
+    let mask = 0xFF;
+    let flipBits = num ^ mask;
+    ADC.call(this, flipBits);
 }
 opTable[0xE9] = {
     name: "SBC (imm)",
