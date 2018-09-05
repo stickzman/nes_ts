@@ -146,7 +146,7 @@ class CPU {
             (num1 >= 0x80 && num2 >= 0x80 && reg < 0x80);
     }
     updateNegativeFlag(register) {
-        this.flags.negative = (register > 0x7F);
+        this.flags.negative = ((register & 0x80) != 0);
     }
     updateNumStateFlags(register) {
         this.flags.zero = (register === 0x00);
@@ -675,8 +675,7 @@ opTable[0x71] = {
 };
 function SBC(num) {
     let mask = 0xFF;
-    let flipBits = num ^ mask;
-    ADC.call(this, flipBits);
+    ADC.call(this, (num ^ mask));
 }
 opTable[0xE9] = {
     name: "SBC (imm)",
@@ -2744,9 +2743,9 @@ opTable[0x6B] = {
 };
 //SAX
 //ANDs the contents of the A and X registers, subtracts an immediate value,
-// then stores the result in X.
+//then stores the result in X.
 opTable[0xCB] = {
-    name: "SAX (imm)",
+    name: "AXS (imm)",
     bytes: 2,
     cycles: 2,
     execute: function () {
