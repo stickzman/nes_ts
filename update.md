@@ -1,5 +1,14 @@
 # Updates
 
+## 9/6
+
+#### Super Mario Bros fully functional
+
+Through a number of recent bug fixes, one of the most difficult games to emulate is now fully functional.
+You can play Super Mario Bros. from beginning to end, glitch-free.
+
+---
+
 ## 9/4
 
 #### Bug Fixes
