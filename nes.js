@@ -3492,8 +3492,8 @@ class PPU {
             case (this.scanline < 240):
                 this.visibleCycle();
                 break;
-            case (this.scanline < 260):
-                if (this.scanline == 241 && this.dot == 1 && this.nes.cpu.cycleCount > 29658)
+            case (this.scanline == 241):
+                if (this.dot == 1 && this.nes.cpu.cycleCount > 29658)
                     this.setVBL();
                 //POST-RENDER
                 break;
