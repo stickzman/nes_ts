@@ -4303,6 +4303,13 @@ class NES {
         this.cpu.boot();
         this.step();
     }
+    reset() {
+        window.cancelAnimationFrame(this.lastAnimFrame);
+        this.ppu.reset();
+        this.rom.mapper.load();
+        this.cpu.reset();
+        this.step();
+    }
     step() {
         this.drawFrame = false;
         let error = false;
@@ -4417,6 +4424,11 @@ $(document).ready(function () {
     PPU.updateScale(2);
     $("#scale").change(function () {
         PPU.updateScale(parseInt($("#scale")[0].value));
+    });
+    $("#reset-btn").on("click", function (e) {
+        if (nes !== undefined)
+            nes.reset();
+        this.blur();
     });
     //Set up relevant button listeners
     $(document).on("keydown", function (e) {

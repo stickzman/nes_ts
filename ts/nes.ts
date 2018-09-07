@@ -45,6 +45,15 @@ class NES {
         this.step();
     }
 
+    public reset() {
+        window.cancelAnimationFrame(this.lastAnimFrame);
+        this.ppu.reset();
+        this.rom.mapper.load();
+        this.cpu.reset();
+
+        this.step();
+    }
+
     private counter = 0;
     private step() {
         this.drawFrame = false;
@@ -171,6 +180,10 @@ $(document).ready(function() {
 
     $("#scale").change(function() {
         PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
+    });
+    $("#reset-btn").on("click", function (e) {
+        if (nes !== undefined) nes.reset();
+        this.blur();
     });
 
     //Set up relevant button listeners
