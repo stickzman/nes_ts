@@ -3051,7 +3051,7 @@ class MMC1 extends Mapper {
         //0/1: switch 32 KB at $8000, ignoring low bit of bank number
         //2: fix first bank at $8000 and switch 16 KB bank at $C000
         //3: fix last bank at $C000 and switch 16 KB bank at $8000
-        this.prgBankMode = 0;
+        this.pgrBankMode = 0;
         //Switch 4 or 8KB at a time
         this.chrRom4KB = false;
         this.shiftReg = 1 << 4;
@@ -3076,7 +3076,7 @@ class MMC1 extends Mapper {
         if (addr >= 0x8000) {
             if ((data & 0x80) != 0) {
                 this.shiftReg = 1 << 4;
-                this.prgBankMode = 3;
+                this.pgrBankMode = 3;
             }
             else if (this.shiftReg % 2 == 1) {
                 //Shift register is full
@@ -3085,12 +3085,14 @@ class MMC1 extends Mapper {
                 this.shiftReg = 1 << 4;
                 if (addr >= 0xE000) {
                     //PRG Bank
-                    switch (this.prgBankMode) {
+                    switch (this.pgrBankMode) {
                         case 0:
                             this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE) + 1], 0xC000);
                             break;
                         case 1:
                             this.cpuMem.set(this.pgrRom[(data & 0xE)], 0x8000);
+                            this.cpuMem.set(this.pgrRom[(data & 0xE) + 1], 0xC000);
                             break;
                         case 2:
                             this.cpuMem.set(this.pgrRom[0], 0x8000);
@@ -3123,7 +3125,7 @@ class MMC1 extends Mapper {
                 else {
                     //Control Register
                     this.chrRom4KB = (data & 0x10) != 0;
-                    this.prgBankMode = (data & 0xC) >> 2;
+                    this.pgrBankMode = (data & 0xC) >> 2;
                     let single = this.nes.ppu.singleScreenMirror;
                     let vert = this.nes.ppu.mirrorVertical;
                     if ((vert != ((data & 1) == 0)) || (single != ((data & 2) == 0))) {
