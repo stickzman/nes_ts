@@ -1,5 +1,13 @@
 # Updates
 
+## 9/7
+
+#### Added Reset Button
+
+Added a reset button that performs a soft reset of whatever game is being played when pressed.
+
+---
+
 ## 9/6
 
 #### Super Mario Bros fully functional
