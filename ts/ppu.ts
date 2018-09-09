@@ -453,11 +453,7 @@ class PPU {
             case this.PPUDATA:
                 let res = this.internalReadBuff;
                 this.internalReadBuff = this.mem[this.vRamAddr];
-                if (this.incAddrBy32) {
-                    this.vRamAddr += 32;
-                } else {
-                    this.vRamAddr++;
-                }
+                this.incVRAM();
                 return res;
         }
         return;
@@ -498,6 +494,7 @@ class PPU {
                     this.initRamAddr = byte << 8;
                 } else {
                     this.initRamAddr += byte;
+                    this.initRamAddr &= 0x3FFF;
                     this.vRamAddr = this.initRamAddr;
                 }
                 this.writeLatch = !this.writeLatch;
@@ -529,11 +526,7 @@ class PPU {
                 } else {
                     this.write(this.vRamAddr, byte);
                 }
-                if (this.incAddrBy32) {
-                    this.vRamAddr += 32;
-                } else {
-                    this.vRamAddr += 1;
-                }
+                this.incVRAM();
                 break;
             case this.OAMADDR:
                 this.oamAddr = byte;
@@ -619,6 +612,17 @@ class PPU {
     private resetCoarseY() {
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 15, 15, 11);
+    }
+
+    private incVRAM() {
+        if (this.incAddrBy32) {
+            this.vRamAddr += 32;
+        } else {
+            this.vRamAddr++;
+        }
+        while (this.vRamAddr > 0x3FFF) {
+            this.vRamAddr -= 0x4000;
+        }
     }
 
     private getNTAddr(): number {
