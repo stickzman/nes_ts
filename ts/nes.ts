@@ -4,7 +4,7 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
 
-    public print: boolean = false;
+    private print: boolean = false;
 
     public input: Input;
     public rom: iNESFile;
@@ -80,9 +80,14 @@ class NES {
             this.displayMem();
             this.displayPPUMem();
             $("#debugDisplay").show();
+            this.print = false;
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
+    }
+
+    public printDebug() {
+        this.print = true;
     }
 
     public read(addr: number): number {

@@ -3731,7 +3731,7 @@ class PPU {
         }
     }
     getSpritePix(bkgIsVis) {
-        if (!this.showLeftSprite && this.dot < 8)
+        if (!this.showSprites || (!this.showLeftSprite && this.dot < 8))
             return null;
         let entry;
         let pix;
@@ -4336,10 +4336,14 @@ class NES {
             this.displayMem();
             this.displayPPUMem();
             $("#debugDisplay").show();
+            this.print = false;
         }
         else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
+    }
+    printDebug() {
+        this.print = true;
     }
     read(addr) {
         if (addr >= 0x2000 && addr <= 0x3FFF) {
