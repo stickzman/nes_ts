@@ -296,6 +296,11 @@ class MMC3 extends Mapper {
     private pgrSwap: boolean = false;
     private xorChrAddr: boolean = false;
 
+    private irqCount: number = 0;
+    private irqReload: number = 0;
+    private irqEnabled: boolean = false;
+    private reload: boolean = false;
+
     constructor(nes: NES, buff: Uint8Array, header: iNESFile, cpuMem: Uint8Array, ppuMem: Uint8Array) {
         super(nes, header, cpuMem, ppuMem);
 
@@ -397,17 +402,37 @@ class MMC3 extends Mapper {
         } else if (addr < 0xE000) {
             if ((addr & 1) == 0) {
                 //IRQ latch
+                this.irqReload = data;
             } else {
                 //IRQ reload
+                this.reload = true;
             }
         } else {
             if ((addr & 1) == 0) {
                 //IRQ disable/ack
+                this.irqEnabled = false;
             } else {
                 //IRQ enable
+                this.irqEnabled = true;
             }
         }
         return false;
+    }
+
+    public decIRQ() {
+        //Only decrement if sprite or bkg rendering is on
+        if (!this.nes.ppu.showBkg && !this.nes.ppu.showSprites) return;
+        if (this.reload) {
+            this.irqCount = this.irqReload;
+            this.reload = false;
+        } else if (this.irqCount == 0) {
+            if (this.irqEnabled) {
+                this.nes.cpu.requestInterrupt();
+            }
+            this.irqCount = this.irqReload;
+        } else {
+            this.irqCount--;
+        }
     }
 
     public load() {

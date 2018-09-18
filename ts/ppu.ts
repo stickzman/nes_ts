@@ -35,8 +35,8 @@ class PPU {
     public static forceGreyscale: boolean = false;
     private showLeftBkg: boolean = false;
     private showLeftSprite: boolean = false;
-    private showBkg: boolean = false;
-    private showSprites: boolean = false;
+    public showBkg: boolean = false;
+    public showSprites: boolean = false;
     private maxRed: boolean = false;
     private maxGreen: boolean = false;
     private maxBlue: boolean = false;
@@ -141,6 +141,12 @@ class PPU {
     }
 
     public cycle() {
+        if (this.dot == 260 && this.nes.rom.mapper instanceof MMC3) {
+            this.nes.rom.mapper.decIRQ();
+        }
+        if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
+            this.dot++;
+        }
         switch (true) {
             case (this.scanline < 240):
                 this.visibleCycle();

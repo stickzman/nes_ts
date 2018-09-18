@@ -3281,6 +3281,10 @@ class MMC3 extends Mapper {
         this.bankSelect = 0;
         this.pgrSwap = false;
         this.xorChrAddr = false;
+        this.irqCount = 0;
+        this.irqReload = 0;
+        this.irqEnabled = false;
+        this.reload = false;
         //Start loading memory
         let startLoc = 0x10;
         let pgrBankSize = 0x2000;
@@ -3390,20 +3394,42 @@ class MMC3 extends Mapper {
         else if (addr < 0xE000) {
             if ((addr & 1) == 0) {
                 //IRQ latch
+                this.irqReload = data;
             }
             else {
                 //IRQ reload
+                this.reload = true;
             }
         }
         else {
             if ((addr & 1) == 0) {
                 //IRQ disable/ack
+                this.irqEnabled = false;
             }
             else {
                 //IRQ enable
+                this.irqEnabled = true;
             }
         }
         return false;
+    }
+    decIRQ() {
+        //Only decrement if sprite or bkg rendering is on
+        if (!this.nes.ppu.showBkg && !this.nes.ppu.showSprites)
+            return;
+        if (this.reload) {
+            this.irqCount = this.irqReload;
+            this.reload = false;
+        }
+        else if (this.irqCount == 0) {
+            if (this.irqEnabled) {
+                this.nes.cpu.requestInterrupt();
+            }
+            this.irqCount = this.irqReload;
+        }
+        else {
+            this.irqCount--;
+        }
     }
     load() {
         this.cpuMem.set(this.pgrRom[0], 0x8000);
@@ -3638,6 +3664,12 @@ class PPU {
         this.oddFrame = false;
     }
     cycle() {
+        if (this.dot == 260 && this.nes.rom.mapper instanceof MMC3) {
+            this.nes.rom.mapper.decIRQ();
+        }
+        if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
+            this.dot++;
+        }
         switch (true) {
             case (this.scanline < 240):
                 this.visibleCycle();
