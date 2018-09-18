@@ -141,9 +141,6 @@ class PPU {
     }
 
     public cycle() {
-        if (this.dot == 260 && this.nes.rom.mapper instanceof MMC3) {
-            this.nes.rom.mapper.decIRQ();
-        }
         if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
             this.dot++;
         }
@@ -501,7 +498,12 @@ class PPU {
                 } else {
                     this.initRamAddr += byte;
                     this.initRamAddr &= 0x3FFF;
+                    let oldBit = this.vRamAddr & (1 << 12);
                     this.vRamAddr = this.initRamAddr;
+                    if (this.nes.rom.mapper instanceof MMC3 &&
+                        oldBit != (this.vRamAddr & (1 << 12))) {
+                            this.nes.rom.mapper.decIRQ();
+                    }
                 }
                 this.writeLatch = !this.writeLatch;
                 break;
@@ -596,6 +598,7 @@ class PPU {
     private incY() {
         if ((this.vRamAddr & 0x7000) != 0x7000) {
             this.vRamAddr += 0x1000; //If fineY != 7, inc by 1
+            if (this.nes.rom.mapper instanceof MMC3) this.nes.rom.mapper.decIRQ();
         } else {
             this.vRamAddr &= 0xFFF; //Reset fineY to 0
             let y = (this.vRamAddr & 0x3E0) >> 5;
@@ -612,12 +615,18 @@ class PPU {
             mask ^= 0x3E0;
             //Put y back into vRamAddr
             this.vRamAddr = (this.vRamAddr & mask) | (y << 5);
+            if (this.nes.rom.mapper instanceof MMC3) this.nes.rom.mapper.decIRQ();
         }
     }
 
     private resetCoarseY() {
+        let oldBit = this.vRamAddr & (1 << 12);
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 10, 10, 5);
         this.vRamAddr = insertInto(this.vRamAddr, this.initRamAddr, 15, 15, 11);
+        if (this.nes.rom.mapper instanceof MMC3 &&
+            oldBit != (this.vRamAddr & (1 << 12))) {
+                this.nes.rom.mapper.decIRQ();
+        }
     }
 
     private incVRAM() {
