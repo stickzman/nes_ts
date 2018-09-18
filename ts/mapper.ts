@@ -326,7 +326,6 @@ class MMC3 extends Mapper {
                 this.xorChrAddr = (data & (1 << 7)) != 0;
                 let pgrSwap = (data & (1 << 6)) != 0;
                 if (pgrSwap != this.pgrSwap) {
-                    console.log("swap");
                     if (this.pgrSwap) {
                         this.cpuMem.set(this.cpuMem.slice(0x8000, 0xA000), 0xC000);
                         this.cpuMem.set(this.pgrRom[this.pgrRom.length - 2], 0x8000);
