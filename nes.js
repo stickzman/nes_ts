@@ -3272,6 +3272,152 @@ class CNROM extends Mapper {
         this.ppuMem.set(this.chrRom[0], 0);
     }
 }
+//Mapper 4
+class MMC3 extends Mapper {
+    constructor(nes, buff, header, cpuMem, ppuMem) {
+        super(nes, header, cpuMem, ppuMem);
+        this.pgrRom = [];
+        this.chrRom = [];
+        this.bankSelect = 0;
+        this.pgrSwap = false;
+        this.xorChrAddr = false;
+        //Start loading memory
+        let startLoc = 0x10;
+        let pgrBankSize = 0x2000;
+        let chrBankSize = 0x400;
+        if (header.trainerPresent) {
+            console.log("Trainer Data not yet supported.");
+            startLoc += 0x200;
+        }
+        for (let i = 0; i < header.pgrPages * 2; i++) {
+            this.pgrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + pgrBankSize)));
+            startLoc += pgrBankSize;
+        }
+        for (let i = 0; i < header.chrPages * 8; i++) {
+            this.chrRom.push(new Uint8Array(buff.slice(startLoc, startLoc + chrBankSize)));
+            startLoc += chrBankSize;
+        }
+    }
+    notifyWrite(addr, data) {
+        if (addr < 0x8000)
+            return true;
+        if (addr < 0xA000) {
+            if ((addr & 1) == 0) {
+                //0x8000
+                this.bankSelect = data & 7;
+                this.xorChrAddr = (data & (1 << 7)) != 0;
+                let pgrSwap = (data & (1 << 6)) != 0;
+                if (pgrSwap != this.pgrSwap) {
+                    console.log("swap");
+                    if (this.pgrSwap) {
+                        this.cpuMem.set(this.cpuMem.slice(0x8000, 0xA000), 0xC000);
+                        this.cpuMem.set(this.pgrRom[this.pgrRom.length - 2], 0x8000);
+                    }
+                    else {
+                        this.cpuMem.set(this.cpuMem.slice(0xC000, 0xE000), 0x8000);
+                        this.cpuMem.set(this.pgrRom[this.pgrRom.length - 2], 0xC000);
+                    }
+                }
+                this.pgrSwap = pgrSwap;
+            }
+            else {
+                //0x8001
+                let chrAddr;
+                switch (this.bankSelect) {
+                    case 0:
+                        chrAddr = 0;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        this.ppuMem.set(this.chrRom[data + 1], chrAddr + 0x400);
+                        break;
+                    case 1:
+                        chrAddr = 0x800;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        this.ppuMem.set(this.chrRom[data + 1], chrAddr + 0x400);
+                        break;
+                    case 2:
+                        chrAddr = 0x1000;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        break;
+                    case 3:
+                        chrAddr = 0x1400;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        break;
+                    case 4:
+                        chrAddr = 0x1800;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        break;
+                    case 5:
+                        chrAddr = 0x1C00;
+                        if (this.xorChrAddr)
+                            chrAddr ^= 0x1000;
+                        this.ppuMem.set(this.chrRom[data], chrAddr);
+                        break;
+                    case 6:
+                        if (this.pgrSwap) {
+                            this.cpuMem.set(this.pgrRom[data], 0xC000);
+                        }
+                        else {
+                            this.cpuMem.set(this.pgrRom[data], 0x8000);
+                        }
+                        break;
+                    case 7:
+                        this.cpuMem.set(this.pgrRom[data], 0xA000);
+                        break;
+                }
+            }
+        }
+        else if (addr < 0xC000) {
+            if ((addr & 1) == 0) {
+                let mirrorVert = (data & 1) == 0;
+                if (mirrorVert != this.nes.ppu.mirrorVertical) {
+                    let slice1 = this.nes.ppu.mem.slice(0x2400, 0x2800);
+                    let slice2 = this.nes.ppu.mem.slice(0x2800, 0x2C00);
+                    this.nes.ppu.mem.set(slice1, 0x2800);
+                    this.nes.ppu.mem.set(slice2, 0x2400);
+                }
+                this.nes.ppu.mirrorVertical = mirrorVert;
+            }
+        }
+        else if (addr < 0xE000) {
+            if ((addr & 1) == 0) {
+                //IRQ latch
+            }
+            else {
+                //IRQ reload
+            }
+        }
+        else {
+            if ((addr & 1) == 0) {
+                //IRQ disable/ack
+            }
+            else {
+                //IRQ enable
+            }
+        }
+        return false;
+    }
+    load() {
+        this.cpuMem.set(this.pgrRom[0], 0x8000);
+        this.cpuMem.set(this.pgrRom[1], 0xA000);
+        this.cpuMem.set(this.pgrRom[this.pgrRom.length - 2], 0xC000);
+        this.cpuMem.set(this.pgrRom[this.pgrRom.length - 1], 0xE000);
+        if (this.chrRom.length > 0) {
+            for (let i = 0; i < 8; i++) {
+                this.ppuMem.set(this.chrRom[i], i * 0x400);
+            }
+        }
+    }
+}
 /// <reference path="helper.ts" />
 /// <reference path="mapper.ts" />
 class iNESFile {
@@ -3364,6 +3510,9 @@ class iNESFile {
                 break;
             case 3:
                 this.mapper = new CNROM(nes, buff, this, nes.mainMemory, nes.ppu.mem);
+                break;
+            case 4:
+                this.mapper = new MMC3(nes, buff, this, nes.mainMemory, nes.ppu.mem);
                 break;
             default: //Unsupported Mapper
                 alert("Warning: Unsupported Mapper\nThis game is not yet supported.");
