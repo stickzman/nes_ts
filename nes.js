@@ -4499,7 +4499,6 @@ class NES {
     reset() {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
-        this.rom.mapper.load();
         this.cpu.reset();
         this.step();
     }
