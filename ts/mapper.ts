@@ -348,6 +348,7 @@ class MMC3 extends Mapper {
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         this.ppuMem.set(this.chrRom[data + 1], chrAddr + 0x400);
                         break;
@@ -355,6 +356,7 @@ class MMC3 extends Mapper {
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0x800;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         this.ppuMem.set(this.chrRom[data + 1], chrAddr + 0x400);
                         break;
@@ -362,24 +364,28 @@ class MMC3 extends Mapper {
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0x1000;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         break;
                     case 3:
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0x1400;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         break;
                     case 4:
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0x1800;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         break;
                     case 5:
                         if (this.chrRom.length == 0) break;
                         chrAddr = 0x1C00;
                         if (this.xorChrAddr) chrAddr ^= 0x1000;
+                        data &= this.chrRom.length - 1;
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         break;
                     case 6:
