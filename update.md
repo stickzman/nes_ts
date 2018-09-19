@@ -1,5 +1,19 @@
 # Updates
 
+## 9/18
+
+#### Added more game support!
+
+MMC1 games are now supported!  
+This includes games like _The Legend of Zelda_, _Metroid_, and _MegaMan 1 & 2_.
+
+MMC2 games are now supported!  
+This includes games like _Super Mario Bros 2 & 3_, and every other _MegaMan_.
+
+Also, various bug fixes are included in this update.
+
+---
+
 ## 9/7
 
 #### Added Reset Button
