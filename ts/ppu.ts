@@ -455,7 +455,12 @@ class PPU {
                 return this.oam[this.oamAddr];
             case this.PPUDATA:
                 let res = this.internalReadBuff;
-                this.internalReadBuff = this.mem[this.vRamAddr];
+                if (this.vRamAddr >= 0x3F00) {
+                    res = this.mem[this.vRamAddr];
+                    this.internalReadBuff = this.mem[this.vRamAddr - 0x1000];
+                } else {
+                    this.internalReadBuff = this.mem[this.vRamAddr];
+                }
                 this.incVRAM();
                 return res;
         }
