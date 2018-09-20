@@ -1,5 +1,13 @@
 # Updates
 
+## 9/19
+
+#### Bug Fixes
+
+Various bug fixes.
+
+---
+
 ## 9/18
 
 #### Added more game support!
