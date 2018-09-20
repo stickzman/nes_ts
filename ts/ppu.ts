@@ -149,7 +149,7 @@ class PPU {
                 this.visibleCycle();
                 break;
             case (this.scanline == 241):
-                if (this.dot == 1 && this.nes.cpu.cycleCount > 29658) this.setVBL();
+                if (this.dot == 1) this.setVBL();
                 //POST-RENDER
                 break;
             case (this.scanline == 261):
@@ -550,7 +550,14 @@ class PPU {
                 break;
             case this.OAMDMA:
                 let slice = this.nes.mainMemory.slice((byte << 8), ((byte + 1) << 8));
-                this.oam.set(slice, 0);
+                if (this.oamAddr == 0) {
+                    this.oam.set(slice, 0);
+                } else {
+                    let first = slice.slice(0, (0x100 - this.oamAddr));
+                    let second = slice.slice((0x100 - this.oamAddr), 0x100);
+                    this.oam.set(first, this.oamAddr);
+                    this.oam.set(second, 0);
+                }
                 //Catch up to the 514 CPU cycles used
                 for (let i = 0; i < 514 * 3; i++) {
                     this.cycle();
