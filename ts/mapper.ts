@@ -436,16 +436,11 @@ class MMC3 extends Mapper {
     public decIRQ() {
         //Only decrement if sprite or bkg rendering is on
         if (!this.nes.ppu.showBkg && !this.nes.ppu.showSprites) return;
-        if (this.reload) {
+        if (this.reload || this.irqCount == 0) {
             this.irqCount = this.irqReload;
             this.reload = false;
-        } else if (this.irqCount == 0) {
-            if (this.irqEnabled) {
-                this.nes.cpu.requestInterrupt();
-            }
-            this.irqCount = this.irqReload;
-        } else {
-            this.irqCount--;
+        } else if (--this.irqCount == 0 && this.irqEnabled) {
+            this.nes.cpu.requestInterrupt();
         }
     }
 
