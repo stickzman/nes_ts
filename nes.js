@@ -3619,10 +3619,12 @@ class PPU {
         ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(PPU.canvas.width, PPU.canvas.height);
         PPU.ctx = ctx;
-        for (let i = 3; i < imgData.data.length; i += 4) {
-            imgData.data[i] = 255;
-        }
         PPU.imageData = imgData;
+        PPU.imageWidth = imgData.width;
+        //Create a buffer with 8 & 32-bit views to store pixel data b4 render
+        let buff = new ArrayBuffer(imgData.data.length);
+        PPU.pixBuff8 = new Uint8Array(buff);
+        PPU.pixBuff32 = new Uint32Array(buff);
     }
     setPixel(r, g, b) {
         if (this.maxGreen || this.maxBlue) {
@@ -3634,30 +3636,16 @@ class PPU {
         if (this.maxRed || this.maxGreen) {
             b -= 25;
         }
-        let i = (this.scanline * PPU.imageData.width * 4 + this.dot * 4) * PPU.scale;
-        if (PPU.imageData.data[i] != r) {
-            for (let row = 0; row < PPU.scale; row++) {
-                for (let col = 0; col < PPU.scale; col++) {
-                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = r;
-                }
-            }
-        }
-        if (PPU.imageData.data[++i] != g) {
-            for (let row = 0; row < PPU.scale; row++) {
-                for (let col = 0; col < PPU.scale; col++) {
-                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = g;
-                }
-            }
-        }
-        if (PPU.imageData.data[++i] != b) {
-            for (let row = 0; row < PPU.scale; row++) {
-                for (let col = 0; col < PPU.scale; col++) {
-                    PPU.imageData.data[i + row * PPU.imageData.width * 4 + col * 4] = b;
-                }
+        let i = (this.scanline * PPU.imageWidth + this.dot) * PPU.scale;
+        let pixVal = (b << 16) | (g << 8) | r;
+        for (let x = 0; x < PPU.scale; x++) {
+            for (let y = 0; y < PPU.scale; y++) {
+                PPU.pixBuff32[i + x + (y * PPU.imageWidth)] = pixVal;
             }
         }
     }
     paintFrame() {
+        PPU.imageData.data.set(PPU.pixBuff8);
         PPU.ctx.putImageData(PPU.imageData, 0, 0);
     }
     boot() {
@@ -4232,6 +4220,8 @@ class PPU {
 PPU.forceGreyscale = false;
 PPU.ctx = null;
 PPU.imageData = null;
+PPU.pixBuff8 = null;
+PPU.pixBuff32 = null;
 PPU.scale = 2;
 let colorData = [{
         "r": 102,
