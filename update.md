@@ -4,7 +4,7 @@
 
 #### Performance Improvements
 
-Games should now run smoother at higher resolution (scale) and on weaker hardware.
+Games should now run smoother at higher resolutions (scale) and on weaker hardware.
 _Castlevania 2_, in particular, runs like butter at "Scale: x5" compared to the choppy mess it was previously.
 
 ## 9/19
