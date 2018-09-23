@@ -1,26 +1,31 @@
 # Updates
 
+## 9/23
+
+#### Performance Improvements
+
+Games should now run smoother at higher resolution (scale) and on weaker hardware.
+_Castlevania 2_, in particular, runs like butter at "Scale: x5" compared to the choppy mess it was previously.
+
 ## 9/19
 
 #### Bug Fixes
 
 Various bug fixes.
 
----
 
 ## 9/18
 
 #### Added more game support!
 
-MMC1 games are now supported!  
+**MMC1** games are now supported!  
 This includes games like _The Legend of Zelda_, _Metroid_, and _MegaMan 1 & 2_.
 
-MMC2 games are now supported!  
+**MMC3** games are now supported!  
 This includes games like _Super Mario Bros 2 & 3_, and every other _MegaMan_.
 
 Also, various bug fixes are included in this update.
 
----
 
 ## 9/7
 
@@ -28,7 +33,6 @@ Also, various bug fixes are included in this update.
 
 Added a reset button that performs a soft reset of whatever game is being played when pressed.
 
----
 
 ## 9/6
 
@@ -37,7 +41,6 @@ Added a reset button that performs a soft reset of whatever game is being played
 Through a number of recent bug fixes, one of the most difficult games to emulate is now fully functional.
 You can play Super Mario Bros. from beginning to end, glitch-free.
 
----
 
 ## 9/4
 
@@ -49,14 +52,11 @@ You can play Super Mario Bros. from beginning to end, glitch-free.
 
 When remapping input keys, you can now press the "Escape" key to cancel the remap.
 
----
-
 ## 8/30
 
 #### CPU Timing Accuracy Improved
 The accuracy of the CPU's cycles has been improved, fixing numerous misc. timing-related bugs such as the parallax scrolling in _Excitebike_ as well as visual glitches when scrolling between screens in _The Legend of Zelda_.
 
----
 
 ## 8/29
 
