@@ -3615,8 +3615,6 @@ class PPU {
         PPU.canvas.height = 240 * scale;
         let ctx = PPU.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(PPU.canvas.width, PPU.canvas.height);
         PPU.ctx = ctx;
         PPU.imageData = imgData;
@@ -3637,7 +3635,9 @@ class PPU {
             b -= 25;
         }
         let i = (this.scanline * PPU.imageWidth + this.dot) * PPU.scale;
-        let pixVal = (b << 16) | (g << 8) | r;
+        let pixVal = (PPU.isLittleEndian) ?
+            0xFF000000 | (b << 16) | (g << 8) | r :
+            (r << 24) | (g << 16) | (b << 8) | 0xFF;
         for (let x = 0; x < PPU.scale; x++) {
             for (let y = 0; y < PPU.scale; y++) {
                 PPU.pixBuff32[i + x + (y * PPU.imageWidth)] = pixVal;
@@ -4488,7 +4488,6 @@ class NES {
         this.MEM_SIZE = 0x10000;
         this.print = false;
         this.drawFrame = false;
-        this.counter = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
@@ -4633,13 +4632,22 @@ window.onbeforeunload = function () {
     }
 };
 $(document).ready(function () {
+    //Check little/big endianness of Uint32
+    let buff = new ArrayBuffer(8);
+    let view32 = new Uint32Array(buff);
+    view32[1] = 0x0a0b0c0d;
+    PPU.isLittleEndian = true;
+    if (buff[4] === 0x0a && buff[5] === 0x0b && buff[6] === 0x0c &&
+        buff[7] === 0x0d) {
+        PPU.isLittleEndian = false;
+    }
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
     $("#scale").change(function () {
         PPU.updateScale(parseInt($("#scale")[0].value));
     });
-    $("#reset-btn").on("click", function (e) {
+    $("#reset-btn").on("click", function () {
         if (nes !== undefined)
             nes.reset();
         this.blur();

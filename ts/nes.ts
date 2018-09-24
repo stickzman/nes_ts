@@ -53,7 +53,6 @@ class NES {
         this.step();
     }
 
-    private counter = 0;
     private step() {
         this.drawFrame = false;
         let error = false;
@@ -178,6 +177,17 @@ window.onbeforeunload = function () {
 }
 
 $(document).ready(function() {
+    //Check little/big endianness of Uint32
+    let buff = new ArrayBuffer(8);
+    let view32 = new Uint32Array(buff);
+    view32[1] = 0x0a0b0c0d;
+
+    PPU.isLittleEndian = true;
+    if (buff[4] === 0x0a && buff[5] === 0x0b && buff[6] === 0x0c &&
+        buff[7] === 0x0d) {
+        PPU.isLittleEndian = false;
+    }
+
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
     PPU.updateScale(2);
@@ -185,7 +195,7 @@ $(document).ready(function() {
     $("#scale").change(function() {
         PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
     });
-    $("#reset-btn").on("click", function (e) {
+    $("#reset-btn").on("click", function () {
         if (nes !== undefined) nes.reset();
         this.blur();
     });

@@ -56,6 +56,7 @@ class PPU {
     private static imageWidth: number;
     private static pixBuff8: Uint8Array = null;
     private static pixBuff32: Uint32Array = null;
+    public static isLittleEndian: boolean;
     private static scale: number = 2;
     public static canvas: HTMLCanvasElement;
 
@@ -76,8 +77,6 @@ class PPU {
         PPU.canvas.height = 240 * scale;
         let ctx = PPU.canvas.getContext("2d", { alpha: false });
         ctx.imageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
         let imgData = ctx.createImageData(PPU.canvas.width, PPU.canvas.height);
         PPU.ctx = ctx;
         PPU.imageData = imgData;
@@ -99,7 +98,9 @@ class PPU {
             b -= 25;
         }
         let i = (this.scanline * PPU.imageWidth + this.dot) * PPU.scale;
-        let pixVal = (b << 16) | (g << 8) | r;
+        let pixVal = (PPU.isLittleEndian) ?
+            0xFF000000 | (b << 16) | (g << 8) | r :
+            (r << 24) | (g << 16) | (b << 8) | 0xFF;
         for (let x = 0; x < PPU.scale; x++){
             for (let y = 0; y < PPU.scale; y++) {
                 PPU.pixBuff32[i + x + (y * PPU.imageWidth)] = pixVal;

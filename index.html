@@ -1,137 +1,142 @@
-<style>
-    #main {
-        margin: 0 auto;
-        text-align: center;
-    }
-    #topBar {
-        margin-bottom: 28px;
-        min-width: 500px;
-    }
-    #bottomBar {
-        margin-top: 8px;
-        min-width: 500px;
-    }
-    #debugDisplay {
-        display: none;
-    }
+<head>
+    <meta charset="utf-8"/>
+    <style>
+        #main {
+            margin: 0 auto;
+            text-align: center;
+        }
+        #topBar {
+            margin-bottom: 28px;
+            min-width: 500px;
+        }
+        #bottomBar {
+            margin-top: 8px;
+            min-width: 500px;
+        }
+        #debugDisplay {
+            display: none;
+        }
 
-    .container {
-        display: inline-block;
-        padding: 15px;
-    }
+        .container {
+            display: inline-block;
+            padding: 15px;
+        }
 
-    sup.notification {
-        margin-left: 2px;
-        margin-bottom: 3px;
-        height: 5px;
-        width: 5px;
-        background-color: red;
-        border-radius: 50%;
-        display: none;
-    }
-    table {
-        margin: auto;
-    }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    }
-    span {
-        font-size: 75%;
-    }
+        sup.notification {
+            margin-left: 2px;
+            margin-bottom: 3px;
+            height: 5px;
+            width: 5px;
+            background-color: red;
+            border-radius: 50%;
+            display: none;
+        }
+        table {
+            margin: auto;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        }
+        span {
+            font-size: 75%;
+        }
 
-</style>
+    </style>
+</head>
 
-<div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
-    <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
-    <h4>by Dan Ahl</h4>
-    <div>
-        <a href="https://stickzman.github.io/nes_ts/update.html" target="_blank" class="notification">See what's new<sup class="notification"></sup>
-        </a>
-    </div>
-    <div class="container">
-        <div id="topBar">
-            <input style="float: left" type="file" id="file-input" accept=".nes"/>
-            <div style="float: right">
-                <label style="padding-left:20px">Scale: </label>
-                <select id="scale">
-                    <option value="1">x1 (Native)</option>
-                    <option value="2" selected>x2</option>
-                    <option value="3">x3</option>
-                    <option value="4">x4</option>
-                    <option value="5">x5</option>
-                </select>
+<body>
+    <div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
+        <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
+        <h4>by Dan Ahl</h4>
+        <div>
+            <a href="https://stickzman.github.io/nes_ts/update.html" target="_blank" class="notification">See what's new<sup class="notification"></sup>
+            </a>
+        </div>
+        <div class="container">
+            <div id="topBar">
+                <input style="float: left" type="file" id="file-input" accept=".nes"/>
+                <div style="float: right">
+                    <label style="padding-left:20px">Scale: </label>
+                    <select id="scale">
+                        <option value="1">x1 (Native)</option>
+                        <option value="2" selected>x2</option>
+                        <option value="3">x3</option>
+                        <option value="4">x4</option>
+                        <option value="5">x5</option>
+                    </select>
+                </div>
+            </div>
+            <canvas id="screen"></canvas>
+            <div id="bottomBar">
+                <div style="float: left">
+                    <input type="checkbox" id="greyscale" onclick="PPU.forceGreyscale = this.checked"> Grayscale
+                </div>
+                <button style="float: right" id="reset-btn">Reset</button>
             </div>
         </div>
-        <canvas id="screen"></canvas>
-        <div id="bottomBar">
-            <div style="float: left">
-                <input type="checkbox" id="greyscale" onclick="PPU.forceGreyscale = this.checked"> Grayscale
-            </div>
-            <button style="float: right" id="reset-btn">Reset</button>
-        </div>
-    </div>
-    <br>
-    <div id="debugDisplay">
-        <div>
-            Main Memory:<br>
-            <textarea id="mem" name="mem" rows="8" cols="80"></textarea>
-        </div>
-        <div>
-            PPU Memory:<br>
-            <textarea id="ppuMem" name="ppuMem" rows="8" cols="80"></textarea>
-        </div>
-    </div>
-
-    <div id="controls" class="container">
-        P1 Controls (Click to update):
-        <div id="p1Controls"></div>
         <br>
-        P2 Controls (Click to update):
-        <div id="p2Controls"></div>
-    </div>
-    <script src="jquery-3.3.1.min.js"></script>
-    <script>
-        //Check cookie and decide whether or not to show update notification
-        if (localStorage.getItem("update") == null) {
-            let obj = {
-                viewed: false,
-                timeCreated: Date.now()
+        <div id="debugDisplay">
+            <div>
+                Main Memory:<br>
+                <textarea id="mem" name="mem" rows="8" cols="80"></textarea>
+            </div>
+            <div>
+                PPU Memory:<br>
+                <textarea id="ppuMem" name="ppuMem" rows="8" cols="80"></textarea>
+            </div>
+        </div>
+
+        <div id="controls" class="container">
+            P1 Controls (Click to update):
+            <div id="p1Controls"></div>
+            <br>
+            P2 Controls (Click to update):
+            <div id="p2Controls"></div>
+        </div>
+        <script src="jquery-3.3.1.min.js"></script>
+        <script>
+            //Check cookie and decide whether or not to show update notification
+            if (localStorage.getItem("update") == null) {
+                let obj = {
+                    viewed: false,
+                    timeCreated: Date.now()
+                };
+                localStorage.setItem("update", JSON.stringify(obj));
+            }
+            let cookie = JSON.parse(localStorage.getItem("update"));
+
+            //Request for header info
+            let req = new XMLHttpRequest();
+            req.open("HEAD", "https://stickzman.github.io/nes_ts/update.html");
+            req.callback = checkDate;
+            req.onload = function () {
+                //Call function to actually compare times
+                this.callback(Date.parse(this.getResponseHeader("Last-Modified")));
             };
-            localStorage.setItem("update", JSON.stringify(obj));
-        }
-        let cookie = JSON.parse(localStorage.getItem("update"));
+            req.send();
 
-        //Request for header info
-        let req = new XMLHttpRequest();
-        req.open("HEAD", "https://stickzman.github.io/nes_ts/update.html");
-        req.callback = checkDate;
-        req.onload = function () {
-            //Call function to actually compare times
-            this.callback(Date.parse(this.getResponseHeader("Last-Modified")));
-        };
-        req.send();
+            const MS_DAY = 86400000;
 
-        const MS_DAY = 86400000;
-
-        function checkDate(lastModif) {
-            if (cookie.timeCreated < lastModif) {
-                cookie.viewed = false;
-                cookie.timeCreated = Date.now();
-            }
-            if (!cookie.viewed && Date.now() - cookie.timeCreated < MS_DAY) {
-                $("sup.notification").css("display", "inline-block");
-            }
-            localStorage.setItem("update", JSON.stringify(cookie));
-        }
-
-        $("a.notification").on("click", function() {
-            if (!cookie.viewed) {
-                cookie.viewed = true;
+            function checkDate(lastModif) {
+                if (cookie.timeCreated < lastModif) {
+                    cookie.viewed = false;
+                    cookie.timeCreated = Date.now();
+                }
+                if (!cookie.viewed && Date.now() - cookie.timeCreated < MS_DAY) {
+                    $("sup.notification").css("display", "inline-block");
+                }
                 localStorage.setItem("update", JSON.stringify(cookie));
-                $("sup.notification").css("display", "none");
             }
-        })
-    </script>
-    <script src="require/md5.js"></script>
-    <script src="nes.js"></script>
-</div>
+
+            $("a.notification").on("click", function() {
+                if (!cookie.viewed) {
+                    cookie.viewed = true;
+                    localStorage.setItem("update", JSON.stringify(cookie));
+                    $("sup.notification").css("display", "none");
+                }
+            })
+        </script>
+        <script src="require/md5.js"></script>
+        <script src="nes.js"></script>
+    </div>
+</body>
