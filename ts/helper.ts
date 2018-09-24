@@ -36,3 +36,7 @@ function insertInto(addr: number, byte: number, i: number, j1: number, j2: numbe
     byte <<= (i - (j1 - j2));
     return addr | byte;
 }
+
+function deepCopyObj(obj: object): object {
+    return JSON.parse(JSON.stringify(obj));
+}

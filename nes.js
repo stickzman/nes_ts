@@ -2788,6 +2788,9 @@ function insertInto(addr, byte, i, j1, j2) {
     byte <<= (i - (j1 - j2));
     return addr | byte;
 }
+function deepCopyObj(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
 class Input {
     constructor() {
         this.defaultBind = {
@@ -2813,7 +2816,7 @@ class Input {
             }
         };
         this.bindings = (localStorage.getItem("bindings") == null) ?
-            this.defaultBind : JSON.parse(localStorage.getItem("bindings"));
+            deepCopyObj(this.defaultBind) : JSON.parse(localStorage.getItem("bindings"));
         this.p1 = {
             buttons: {
                 a: false,
@@ -2936,7 +2939,6 @@ class Input {
                 }
             }
         }
-        //this.bindings = this.defaultBind;
         let btns = $("#p1Controls > table > tr > td:nth-child(2) > button");
         let bind = this.bindings.p1;
         let keys = Object.getOwnPropertyNames(bind);
