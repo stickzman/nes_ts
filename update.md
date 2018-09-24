@@ -1,5 +1,11 @@
 # Updates
 
+## 9/24
+
+#### Bug fixes
+
+Fixed a bug in last update that broke rendering on Firefox. Fixed bug where hitting "Restore Default" for input controls wouldn't work on your first visit to the page.
+
 ## 9/23
 
 #### Performance Improvements
