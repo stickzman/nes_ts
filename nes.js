@@ -1,3 +1,75 @@
+class APU {
+    constructor(nes) {
+        this.cycle = 0;
+        this.irqEnable = true;
+        this.is4Step = true;
+        this.pulse1Enable = false;
+        this.pulse2Enable = false;
+        this.triangleEnable = false;
+        this.noiseEnable = false;
+        this.dmcEnable = false;
+        this.nes = nes;
+    }
+    reset() {
+        this.pulse1Enable = false;
+        this.pulse2Enable = false;
+        this.triangleEnable = false;
+        this.noiseEnable = false;
+        this.dmcEnable = false;
+    }
+    notifyWrite(addr, data) {
+        if (addr == 0x4017) {
+            //Frame Counter
+            this.is4Step = (data & 0x80) == 0;
+            this.irqEnable = (data & 0x40) == 0;
+        }
+        else if (addr == 0x4015) {
+            this.pulse1Enable = (data & 1) != 0;
+            this.pulse2Enable = (data & 2) != 0;
+            this.triangleEnable = (data & 4) != 0;
+            this.noiseEnable = (data & 8) != 0;
+            this.dmcEnable = (data & 16) != 0;
+        }
+    }
+    step() {
+        this.cycle++;
+        if (this.is4Step) {
+            if (this.cycle == 14915) {
+                this.cycle = 0;
+            }
+            else if (this.cycle == 14914) {
+                if (this.irqEnable) {
+                    this.nes.cpu.requestInterrupt();
+                }
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            else if (this.cycle == 7456) {
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            else if (this.cycle == 11185 || this.cycle == 3728) {
+                this.clockQuarter();
+            }
+        }
+        else {
+            if (this.cycle == 18641) {
+                this.cycle = 0;
+            }
+            else if (this.cycle == 18640 || this.cycle == 7456) {
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            else if (this.cycle == 11185 || this.cycle == 3728) {
+                this.clockHalf();
+            }
+        }
+    }
+    clockHalf() {
+    }
+    clockQuarter() {
+    }
+}
 class CPU {
     constructor(nes) {
         this.debug = false; //Output debug info
@@ -4494,6 +4566,7 @@ class NES {
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
         this.rom = new iNESFile(romData, this);
+        this.apu = new APU(this);
         if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
             //Parse memory str
             let arr = localStorage.getItem(this.rom.id).split(",");
@@ -4519,6 +4592,7 @@ class NES {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
         this.cpu.reset();
+        this.apu.reset();
         this.step();
     }
     step() {
@@ -4526,9 +4600,12 @@ class NES {
         let error = false;
         while (!this.drawFrame) {
             try {
-                let cpuCycles = this.cpu.step();
-                for (let j = 0; j < cpuCycles * 3; j++) {
-                    this.ppu.cycle();
+                this.apu.step();
+                for (let i = 0; i < 2; i++) {
+                    let cpuCycles = this.cpu.step();
+                    for (let j = 0; j < cpuCycles * 3; j++) {
+                        this.ppu.cycle();
+                    }
                 }
             }
             catch (e) {
@@ -4583,13 +4660,25 @@ class NES {
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
+        else if (addr >= 0x4000 && addr <= 0x4013) {
+            //APU registers
+            this.apu.notifyWrite(addr, data);
+        }
         else if (addr == 0x4014) {
             //OAM DMA
             this.ppu.writeReg(addr, data);
         }
+        else if (addr == 0x4015) {
+            //APU enable register
+            this.apu.notifyWrite(addr, data);
+        }
         else if (addr == 0x4016) {
             //Input register
             this.input.setStrobe((data & 1) != 0);
+        }
+        else if (addr == 0x4017) {
+            //APU Frame counter
+            this.apu.notifyWrite(addr, data);
         }
         else if (addr >= 0x4020) {
             //Notify mapper of potential register writes. Don't write value
@@ -4701,13 +4790,4 @@ function init(file) {
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
-}
-class APU {
-    constructor() {
-        this.cycle = 0;
-    }
-    notifyWrite() {
-    }
-    step() {
-    }
 }
