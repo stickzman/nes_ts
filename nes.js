@@ -4570,28 +4570,32 @@ class NES {
         return this.mainMemory[addr];
     }
     write(addr, data) {
-        if (addr == 0x4016) {
-            this.input.setStrobe((data & 1) != 0);
+        if (addr < 0x2000) {
+            //RAM mirroring
+            for (let i = 0; i < 0x2000; i += 0x800) {
+                this.mainMemory[i + (addr % 0x800)] = data;
+            }
         }
-        if (addr >= 0x4020) {
-            //Notify mapper of potential register writes. Don't write value
-            //if function returns false.
-            if (!this.rom.mapper.notifyWrite(addr, data))
-                return;
-        }
-        if (addr == 0x4014) {
-            this.ppu.writeReg(addr, data);
-        }
-        if (addr >= 0x2000 && addr <= 0x3FFF) {
+        else if (addr >= 0x2000 && addr <= 0x3FFF) {
+            //PPU register mirroring
             for (let i = 0x2000; i < 0x3FFF; i += 8) {
                 this.mainMemory[i + (addr % 8)] = data;
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
-        if (addr < 0x2000) {
-            for (let i = 0; i < 0x2000; i += 0x800) {
-                this.mainMemory[i + (addr % 0x800)] = data;
-            }
+        else if (addr == 0x4014) {
+            //OAM DMA
+            this.ppu.writeReg(addr, data);
+        }
+        else if (addr == 0x4016) {
+            //Input register
+            this.input.setStrobe((data & 1) != 0);
+        }
+        else if (addr >= 0x4020) {
+            //Notify mapper of potential register writes. Don't write value
+            //if function returns false.
+            if (!this.rom.mapper.notifyWrite(addr, data))
+                return;
         }
         this.mainMemory[addr] = data;
     }
@@ -4697,4 +4701,13 @@ function init(file) {
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
+}
+class APU {
+    constructor() {
+        this.cycle = 0;
+    }
+    notifyWrite() {
+    }
+    step() {
+    }
 }
