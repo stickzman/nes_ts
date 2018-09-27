@@ -5,6 +5,7 @@ class APU {
 
     private nes: NES;
     public static audio: AudioContext;
+    public static masterGain: GainNode;
     public static triangle: TriangleChannel;
 
     constructor(nes: NES) {

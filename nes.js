@@ -4895,12 +4895,15 @@ $(document).ready(function () {
     }
     //Set up APU/Web Audio API
     let a = new AudioContext();
+    let masterGain = a.createGain();
     let o = a.createOscillator();
     o.type = "triangle";
     let g = a.createGain();
     o.connect(g);
-    g.connect(a.destination);
+    g.connect(masterGain);
+    masterGain.connect(a.destination);
     APU.audio = a;
+    APU.masterGain = masterGain;
     APU.triangle = new TriangleChannel(o, g);
     //Create canvas
     PPU.canvas = $("#screen")[0];
@@ -4912,6 +4915,15 @@ $(document).ready(function () {
         if (nes !== undefined)
             nes.reset();
         this.blur();
+    });
+    //Mute audio when webpage is hidden
+    $(document).on('visibilitychange', function () {
+        if (document.hidden) {
+            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+        }
+        else {
+            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
+        }
     });
     //Set up relevant button listeners
     $(document).on("keydown", function (e) {
