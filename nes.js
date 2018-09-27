@@ -7,6 +7,7 @@ class CPU {
         this.INT_VECT_LOC = 0xFFFE;
         this.NMI_VECT_LOC = 0xFFFA;
         this.mmc3IRQ = false; //Interrupt Request signal line for MMC3
+        this.apuIRQ = false; //Interrupt Request for APU frame counter
         this.NMI = false; //Non-Maskable Interrupt signal line
         this.cycleCount = 0;
         this.PC = 0; //Program Counter
@@ -46,7 +47,7 @@ class CPU {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
         }
-        else if (this.mmc3IRQ && !this.flags.interruptDisable) {
+        else if ((this.mmc3IRQ || this.apuIRQ) && !this.flags.interruptDisable) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
         let opCode = this.nes.read(this.PC); //Fetch
@@ -4490,6 +4491,7 @@ class NES {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
+        this.apu = new APU(this);
         this.rom = new iNESFile(romData, this);
         if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
             //Parse memory str
@@ -4516,6 +4518,7 @@ class NES {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
         this.cpu.reset();
+        this.apu.reset();
         this.step();
     }
     step() {
@@ -4526,6 +4529,9 @@ class NES {
                 let cpuCycles = this.cpu.step();
                 for (let j = 0; j < cpuCycles * 3; j++) {
                     this.ppu.cycle();
+                }
+                for (let i = 0; i < cpuCycles; i++) {
+                    this.apu.step();
                 }
             }
             catch (e) {
@@ -4557,8 +4563,11 @@ class NES {
             if (res !== undefined)
                 return res;
         }
-        if (addr == 0x4016 || addr == 0x4017) {
+        else if (addr == 0x4016 || addr == 0x4017) {
             return this.input.read(addr);
+        }
+        else if (addr == 0x4015) {
+            return this.apu.read4015();
         }
         return this.mainMemory[addr];
     }
@@ -4587,6 +4596,10 @@ class NES {
         else if (addr == 0x4016) {
             //Input register
             this.input.setStrobe((data & 1) != 0);
+        }
+        else if (addr == 0x4017) {
+            //APU Frame Counter
+            this.apu.notifyWrite(addr, data);
         }
         else if (addr >= 0x4020) {
             //Notify mapper of potential register writes. Don't write value
@@ -4698,4 +4711,76 @@ function init(file) {
         nes.boot();
     };
     reader.readAsArrayBuffer(file);
+}
+class APU {
+    constructor(nes) {
+        this.cycles = 0;
+        this.nes = nes;
+        this.is4Step = true;
+        this.irqEnabled = true;
+    }
+    reset() {
+    }
+    read4015() {
+        let byte = 0;
+        byte |= (this.nes.cpu.apuIRQ) ? 0x40 : 0;
+        this.nes.cpu.apuIRQ = false; //Acknowledge IRQ
+        return byte;
+    }
+    notifyWrite(addr, data) {
+        if (addr == 0x4017) {
+            this.is4Step = (data & 0x80) == 0;
+            if (!this.is4Step) {
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            this.irqEnabled = (data & 0x40) == 0;
+            if (!this.irqEnabled)
+                this.nes.cpu.apuIRQ = false;
+        }
+    }
+    //Each call is 1/2 APU cycle
+    step() {
+        this.cycles += 0.5;
+        //Both 4 and 5-Step share the first 3 steps
+        if (this.cycles == 3728.5) {
+            this.clockQuarter();
+        }
+        else if (this.cycles == 7456.5) {
+            this.clockQuarter();
+            this.clockHalf();
+        }
+        else if (this.cycles == 11185.5) {
+            this.clockQuarter();
+        }
+        if (this.is4Step) {
+            //4-Step Mode
+            if (this.cycles == 14914) {
+                if (this.irqEnabled) {
+                    this.nes.cpu.apuIRQ = true;
+                }
+            }
+            else if (this.cycles == 14914.5) {
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            else if (this.cycles == 14915) {
+                this.cycles = 0;
+            }
+        }
+        else {
+            //5-Step Mode
+            if (this.cycles == 18640.5) {
+                this.clockQuarter();
+                this.clockHalf();
+            }
+            else if (this.cycles == 18641) {
+                this.cycles = 0;
+            }
+        }
+    }
+    clockQuarter() {
+    }
+    clockHalf() {
+    }
 }

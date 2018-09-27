@@ -8,6 +8,7 @@ class CPU {
     private readonly NMI_VECT_LOC = 0xFFFA;
 
     public mmc3IRQ: boolean = false; //Interrupt Request signal line for MMC3
+    public apuIRQ: boolean = false; //Interrupt Request for APU frame counter
     private NMI: boolean = false; //Non-Maskable Interrupt signal line
     public cycleCount: number = 0;
 
@@ -58,7 +59,7 @@ class CPU {
         if (this.NMI) {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
-        } else if (this.mmc3IRQ && !this.flags.interruptDisable) {
+        } else if ((this.mmc3IRQ || this.apuIRQ) && !this.flags.interruptDisable) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
 
