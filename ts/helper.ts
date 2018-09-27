@@ -1,10 +1,5 @@
 declare function md5(input: string): string;
 
-interface AudioChannel {
-    osc: OscillatorNode,
-    gain: GainNode
-}
-
 interface oamEntry {
     x: number,
     patData: number[],

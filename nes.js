@@ -47,7 +47,7 @@ class CPU {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
         }
-        else if ((this.mmc3IRQ || this.apuIRQ) && !this.flags.interruptDisable) {
+        else if (!this.flags.interruptDisable && (this.mmc3IRQ || this.apuIRQ)) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
         let opCode = this.nes.read(this.PC); //Fetch
@@ -4589,9 +4589,17 @@ class NES {
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
+        else if (addr >= 0x4000 && addr <= 0x4013) {
+            //APU registers
+            this.apu.notifyWrite(addr, data);
+        }
         else if (addr == 0x4014) {
             //OAM DMA
             this.ppu.writeReg(addr, data);
+        }
+        else if (addr == 0x4015) {
+            //APU Status
+            this.apu.notifyWrite(addr, data);
         }
         else if (addr == 0x4016) {
             //Input register
@@ -4657,6 +4665,14 @@ $(document).ready(function () {
         buff[7] === 0x0d) {
         PPU.isLittleEndian = false;
     }
+    //Set up APU/Web Audio API
+    let a = new AudioContext();
+    let o = a.createOscillator();
+    o.type = "triangle";
+    let g = a.createGain();
+    o.connect(g);
+    g.connect(a.destination);
+    APU.triangle = new TriangleChannel(o, g);
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
@@ -4705,6 +4721,9 @@ function init(file) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
     }
+    else {
+        APU.triangle.osc.start(0);
+    }
     let reader = new FileReader();
     reader.onload = function (e) {
         nes = new NES(new Uint8Array(e.target.result), input);
@@ -4715,20 +4734,53 @@ function init(file) {
 class APU {
     constructor(nes) {
         this.cycles = 0;
-        this.nes = nes;
         this.is4Step = true;
         this.irqEnabled = true;
+        this.nes = nes;
+        this.reset();
     }
     reset() {
+        //Silence channels
+        this.notifyWrite(0x4015, 0);
+        //Reset triangle registers
+        APU.triangle.reset();
     }
     read4015() {
+        //Status
         let byte = 0;
         byte |= (this.nes.cpu.apuIRQ) ? 0x40 : 0;
         this.nes.cpu.apuIRQ = false; //Acknowledge IRQ
         return byte;
     }
     notifyWrite(addr, data) {
-        if (addr == 0x4017) {
+        if (addr == 0x4008) {
+            //Triangle Linear Counter
+            APU.triangle.haltLength = (data & 0x80) != 0;
+            APU.triangle.reloadVal = data & 0x7F;
+        }
+        else if (addr == 0x400A) {
+            //Triangle Period Low
+            let period = APU.triangle.period & 0x700;
+            APU.triangle.period = period | data;
+            //Convert/set period to freq
+            APU.triangle.updateFreq();
+        }
+        else if (addr == 0x400B) {
+            //Triangle Length/Period High
+            let period = APU.triangle.period & 0xFF;
+            APU.triangle.period = ((data & 7) << 8) | period;
+            APU.triangle.updateFreq();
+            APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
+            APU.triangle.linearReload = true;
+        }
+        else if (addr == 0x4015) {
+            //Status
+            APU.triangle.enable = (data & 4) != 0;
+            if (!APU.triangle.enable)
+                APU.triangle.length = 0;
+        }
+        else if (addr == 0x4017) {
+            //Frame Counter
             this.is4Step = (data & 0x80) == 0;
             if (!this.is4Step) {
                 this.clockQuarter();
@@ -4755,16 +4807,14 @@ class APU {
         }
         if (this.is4Step) {
             //4-Step Mode
-            if (this.cycles == 14914) {
-                if (this.irqEnabled) {
-                    this.nes.cpu.apuIRQ = true;
-                }
-            }
-            else if (this.cycles == 14914.5) {
+            if (this.cycles == 14914.5) {
                 this.clockQuarter();
                 this.clockHalf();
             }
             else if (this.cycles == 14915) {
+                if (this.irqEnabled) {
+                    this.nes.cpu.apuIRQ = true;
+                }
                 this.cycles = 0;
             }
         }
@@ -4778,9 +4828,129 @@ class APU {
                 this.cycles = 0;
             }
         }
+        //Turn triangle volume on and off
+        if (APU.triangle.enable && APU.triangle.length != 0 &&
+            APU.triangle.linearCount != 0) {
+            //Should be on
+            if (APU.triangle.getGain() != 1) {
+                APU.triangle.setGain(1);
+            }
+        }
+        else {
+            //Should be off
+            if (APU.triangle.getGain() != 0) {
+                APU.triangle.setGain(0);
+            }
+        }
     }
     clockQuarter() {
+        APU.triangle.clockLinear();
     }
     clockHalf() {
+        APU.triangle.clockLength();
     }
 }
+// CHANNEL CLASSES BELOW
+class AudioChannel {
+    constructor(osc, gain) {
+        this.osc = osc;
+        this.gain = gain;
+        this.period = 0;
+        this.length = 0;
+        this.haltLength = false;
+        this.enable = false;
+    }
+    clockLength() {
+        if (this.haltLength || this.length == 0)
+            return;
+        --this.length;
+    }
+    updateFreq() {
+        if (this.period == 0) {
+            this.osc.frequency.value = 2400;
+            return;
+        }
+        this.osc.frequency.value = (111860.8 + this.period) / this.period;
+    }
+    setGain(val) {
+        this.gain.gain.value = val;
+    }
+    getGain() {
+        return this.gain.gain.value;
+    }
+    reset() {
+        this.length = 0;
+        this.period = 0;
+        this.haltLength = false;
+        this.osc.frequency.value = 2400;
+        this.gain.gain.value = 0;
+    }
+}
+class TriangleChannel extends AudioChannel {
+    constructor(osc, gain) {
+        super(osc, gain);
+        this.linearCount = 0;
+        this.reloadVal = 0;
+        this.linearReload = false;
+    }
+    clockLinear() {
+        if (this.linearReload) {
+            this.linearCount = this.reloadVal;
+        }
+        else if (this.linearCount != 0) {
+            --this.linearCount;
+        }
+        if (!this.haltLength)
+            this.linearReload = false;
+    }
+    updateFreq() {
+        if (this.period == 0) {
+            this.osc.frequency.value = 2400;
+            return;
+        }
+        this.osc.frequency.value = (55930.4 + this.period) / this.period;
+    }
+    reset() {
+        this.length = 0;
+        this.period = 0;
+        this.haltLength = false;
+        this.osc.frequency.value = 2400;
+        this.gain.gain.value = 0;
+        this.linearCount = 0;
+        this.reloadVal = 0;
+        this.linearReload = false;
+    }
+}
+let lengthTable = [];
+lengthTable[0x1F] = 30;
+lengthTable[0x1D] = 28;
+lengthTable[0x1B] = 26;
+lengthTable[0x19] = 24;
+lengthTable[0x17] = 22;
+lengthTable[0x15] = 20;
+lengthTable[0x13] = 18;
+lengthTable[0x11] = 16;
+lengthTable[0x0F] = 14;
+lengthTable[0x0D] = 12;
+lengthTable[0x0B] = 10;
+lengthTable[0x09] = 8;
+lengthTable[0x07] = 6;
+lengthTable[0x05] = 4;
+lengthTable[0x03] = 2;
+lengthTable[0x01] = 254;
+lengthTable[0x1E] = 32;
+lengthTable[0x1C] = 16;
+lengthTable[0x1A] = 72;
+lengthTable[0x18] = 192;
+lengthTable[0x16] = 96;
+lengthTable[0x14] = 48;
+lengthTable[0x12] = 24;
+lengthTable[0x10] = 12;
+lengthTable[0x0E] = 26;
+lengthTable[0x0C] = 14;
+lengthTable[0x0A] = 60;
+lengthTable[0x08] = 160;
+lengthTable[0x06] = 80;
+lengthTable[0x04] = 40;
+lengthTable[0x02] = 20;
+lengthTable[0x00] = 10;

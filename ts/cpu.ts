@@ -59,7 +59,7 @@ class CPU {
         if (this.NMI) {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
-        } else if ((this.mmc3IRQ || this.apuIRQ) && !this.flags.interruptDisable) {
+        } else if (!this.flags.interruptDisable && (this.mmc3IRQ || this.apuIRQ)) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
 

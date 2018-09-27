@@ -121,9 +121,15 @@ class NES {
                 this.mainMemory[i + (addr % 8)] = data;
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
+        } else if (addr >= 0x4000 && addr <= 0x4013) {
+            //APU registers
+            this.apu.notifyWrite(addr, data);
         } else if (addr == 0x4014) {
             //OAM DMA
             this.ppu.writeReg(addr, data);
+        } else if (addr == 0x4015) {
+            //APU Status
+            this.apu.notifyWrite(addr, data);
         } else if (addr == 0x4016) {
             //Input register
             this.input.setStrobe((data & 1) != 0);
@@ -196,6 +202,15 @@ $(document).ready(function() {
         PPU.isLittleEndian = false;
     }
 
+    //Set up APU/Web Audio API
+    let a = new AudioContext();
+    let o = a.createOscillator();
+    o.type = "triangle";
+    let g = a.createGain();
+    o.connect(g);
+    g.connect(a.destination);
+    APU.triangle = new TriangleChannel(o, g);
+
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
     PPU.updateScale(2);
@@ -248,6 +263,8 @@ function init(file) {
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
+    } else {
+        APU.triangle.osc.start(0);
     }
     let reader = new FileReader();
     reader.onload = function(e) {
