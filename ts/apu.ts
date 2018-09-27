@@ -117,6 +117,7 @@ class APU {
 
 // CHANNEL CLASSES BELOW
 class AudioChannel {
+    protected periodToFreq: number = 111860.8;
     public period: number = 0;
     public length: number = 0;
     public haltLength: boolean = false;
@@ -136,15 +137,15 @@ class AudioChannel {
     public setPeriod(val: number) {
         if (val < 2) {
             //If the period is too low, silence the channel
-            this.gain.gain.value = 0;
+            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
             this.period = val;
             return;
         } else if (this.period < 2) {
             //Restore the channel if it was silenced
-            this.gain.gain.value = 1;
+            this.gain.gain.setTargetAtTime(1, 0, this.smoothing);
         }
         this.period = val;
-        this.osc.frequency.value = (111860.8 + this.period) / this.period;
+        this.osc.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
 
     public setGain(val: number) {
@@ -173,6 +174,7 @@ class TriangleChannel extends AudioChannel {
 
     constructor(osc: OscillatorNode, gain: GainNode) {
         super(osc, gain);
+        this.periodToFreq = 55930.4;
     }
 
     public clockLinear() {
@@ -182,20 +184,6 @@ class TriangleChannel extends AudioChannel {
             --this.linearCount;
         }
         if (!this.haltLength) this.linearReload = false;
-    }
-
-    public setPeriod(val: number) {
-        if (val < 2) {
-            //If the period is too low, silence the channel
-            this.gain.gain.value = 0;
-            this.period = val;
-            return;
-        } else if (this.period < 2) {
-            //Restore the channel if it was silenced
-            this.gain.gain.value = 1;
-        }
-        this.period = val;
-        this.osc.frequency.value = (55930.4 + this.period) / this.period;
     }
 
     public reset() {

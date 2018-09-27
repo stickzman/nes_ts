@@ -265,6 +265,8 @@ function init(file) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
     } else {
+        //Start the oscillators after the user chooses a file
+        //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.triangle.osc.start(0);
     }
     let reader = new FileReader();
