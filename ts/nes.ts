@@ -209,6 +209,7 @@ $(document).ready(function() {
     let g = a.createGain();
     o.connect(g);
     g.connect(a.destination);
+    APU.audio = a;
     APU.triangle = new TriangleChannel(o, g);
 
     //Create canvas

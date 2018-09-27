@@ -4672,6 +4672,7 @@ $(document).ready(function () {
     let g = a.createGain();
     o.connect(g);
     g.connect(a.destination);
+    APU.audio = a;
     APU.triangle = new TriangleChannel(o, g);
     //Create canvas
     PPU.canvas = $("#screen")[0];
@@ -4761,15 +4762,12 @@ class APU {
         else if (addr == 0x400A) {
             //Triangle Period Low
             let period = APU.triangle.period & 0x700;
-            APU.triangle.period = period | data;
-            //Convert/set period to freq
-            APU.triangle.updateFreq();
+            APU.triangle.setPeriod(period | data);
         }
         else if (addr == 0x400B) {
             //Triangle Length/Period High
             let period = APU.triangle.period & 0xFF;
-            APU.triangle.period = ((data & 7) << 8) | period;
-            APU.triangle.updateFreq();
+            APU.triangle.setPeriod(((data & 7) << 8) | period);
             APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
             APU.triangle.linearReload = true;
         }
@@ -4859,24 +4857,35 @@ class AudioChannel {
         this.length = 0;
         this.haltLength = false;
         this.enable = false;
+        this.targetGain = 0;
+        this.smoothing = 0.005; //Time to exp trans btwn volume, in seconds
+        gain.gain.value = 0;
     }
     clockLength() {
         if (this.haltLength || this.length == 0)
             return;
         --this.length;
     }
-    updateFreq() {
-        if (this.period == 0) {
-            this.osc.frequency.value = 2400;
+    setPeriod(val) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.gain.gain.value = 0;
+            this.period = val;
             return;
         }
+        else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            this.gain.gain.value = 1;
+        }
+        this.period = val;
         this.osc.frequency.value = (111860.8 + this.period) / this.period;
     }
     setGain(val) {
-        this.gain.gain.value = val;
+        this.targetGain = val;
+        this.gain.gain.setTargetAtTime(val, 0, this.smoothing);
     }
     getGain() {
-        return this.gain.gain.value;
+        return this.targetGain;
     }
     reset() {
         this.length = 0;
@@ -4884,6 +4893,7 @@ class AudioChannel {
         this.haltLength = false;
         this.osc.frequency.value = 2400;
         this.gain.gain.value = 0;
+        this.targetGain = 0;
     }
 }
 class TriangleChannel extends AudioChannel {
@@ -4903,11 +4913,18 @@ class TriangleChannel extends AudioChannel {
         if (!this.haltLength)
             this.linearReload = false;
     }
-    updateFreq() {
-        if (this.period == 0) {
-            this.osc.frequency.value = 2400;
+    setPeriod(val) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.gain.gain.value = 0;
+            this.period = val;
             return;
         }
+        else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            this.gain.gain.value = 1;
+        }
+        this.period = val;
         this.osc.frequency.value = (55930.4 + this.period) / this.period;
     }
     reset() {
@@ -4916,6 +4933,7 @@ class TriangleChannel extends AudioChannel {
         this.haltLength = false;
         this.osc.frequency.value = 2400;
         this.gain.gain.value = 0;
+        this.targetGain = 0;
         this.linearCount = 0;
         this.reloadVal = 0;
         this.linearReload = false;
