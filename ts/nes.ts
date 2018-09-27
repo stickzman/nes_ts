@@ -9,7 +9,6 @@ class NES {
     public rom: iNESFile;
     public cpu: CPU;
     public ppu: PPU;
-    public apu: APU;
     public mainMemory: Uint8Array;
     public drawFrame: boolean = false;
     public lastAnimFrame;
@@ -19,7 +18,6 @@ class NES {
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
         this.rom = new iNESFile(romData, this);
-        this.apu = new APU(this);
 
         if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
             //Parse memory str
@@ -49,7 +47,6 @@ class NES {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
         this.cpu.reset();
-        this.apu.reset();
 
         this.step();
     }
@@ -59,12 +56,9 @@ class NES {
         let error = false;
         while (!this.drawFrame) {
             try {
-                this.apu.step();
-                for (let i = 0; i < 2; i++) {
-                    let cpuCycles = this.cpu.step();
-                    for (let j = 0; j < cpuCycles * 3; j++) {
-                        this.ppu.cycle();
-                    }
+                let cpuCycles = this.cpu.step();
+                for (let j = 0; j < cpuCycles * 3; j++) {
+                    this.ppu.cycle();
                 }
             } catch (e) {
                 if (e.name == "Unexpected OpCode") {
@@ -120,21 +114,12 @@ class NES {
                 this.mainMemory[i + (addr % 8)] = data;
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
-        } else if (addr >= 0x4000 && addr <= 0x4013) {
-            //APU registers
-            this.apu.notifyWrite(addr, data);
         } else if (addr == 0x4014) {
             //OAM DMA
             this.ppu.writeReg(addr, data);
-        } else if (addr == 0x4015) {
-            //APU enable register
-            this.apu.notifyWrite(addr, data);
         } else if (addr == 0x4016) {
             //Input register
             this.input.setStrobe((data & 1) != 0);
-        } else if (addr == 0x4017) {
-            //APU Frame counter
-            this.apu.notifyWrite(addr, data);
         } else if (addr >= 0x4020) {
             //Notify mapper of potential register writes. Don't write value
             //if function returns false.

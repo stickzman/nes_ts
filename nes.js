@@ -1,75 +1,3 @@
-class APU {
-    constructor(nes) {
-        this.cycle = 0;
-        this.irqEnable = true;
-        this.is4Step = true;
-        this.pulse1Enable = false;
-        this.pulse2Enable = false;
-        this.triangleEnable = false;
-        this.noiseEnable = false;
-        this.dmcEnable = false;
-        this.nes = nes;
-    }
-    reset() {
-        this.pulse1Enable = false;
-        this.pulse2Enable = false;
-        this.triangleEnable = false;
-        this.noiseEnable = false;
-        this.dmcEnable = false;
-    }
-    notifyWrite(addr, data) {
-        if (addr == 0x4017) {
-            //Frame Counter
-            this.is4Step = (data & 0x80) == 0;
-            this.irqEnable = (data & 0x40) == 0;
-        }
-        else if (addr == 0x4015) {
-            this.pulse1Enable = (data & 1) != 0;
-            this.pulse2Enable = (data & 2) != 0;
-            this.triangleEnable = (data & 4) != 0;
-            this.noiseEnable = (data & 8) != 0;
-            this.dmcEnable = (data & 16) != 0;
-        }
-    }
-    step() {
-        this.cycle++;
-        if (this.is4Step) {
-            if (this.cycle == 14915) {
-                this.cycle = 0;
-            }
-            else if (this.cycle == 14914) {
-                if (this.irqEnable) {
-                    this.nes.cpu.requestInterrupt();
-                }
-                this.clockQuarter();
-                this.clockHalf();
-            }
-            else if (this.cycle == 7456) {
-                this.clockQuarter();
-                this.clockHalf();
-            }
-            else if (this.cycle == 11185 || this.cycle == 3728) {
-                this.clockQuarter();
-            }
-        }
-        else {
-            if (this.cycle == 18641) {
-                this.cycle = 0;
-            }
-            else if (this.cycle == 18640 || this.cycle == 7456) {
-                this.clockQuarter();
-                this.clockHalf();
-            }
-            else if (this.cycle == 11185 || this.cycle == 3728) {
-                this.clockHalf();
-            }
-        }
-    }
-    clockHalf() {
-    }
-    clockQuarter() {
-    }
-}
 class CPU {
     constructor(nes) {
         this.debug = false; //Output debug info
@@ -78,7 +6,7 @@ class CPU {
         this.RES_VECT_LOC = 0xFFFC;
         this.INT_VECT_LOC = 0xFFFE;
         this.NMI_VECT_LOC = 0xFFFA;
-        this.IRQ = false; //Interrupt Request signal line
+        this.mmc3IRQ = false; //Interrupt Request signal line for MMC3
         this.NMI = false; //Non-Maskable Interrupt signal line
         this.cycleCount = 0;
         this.PC = 0; //Program Counter
@@ -118,8 +46,7 @@ class CPU {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
         }
-        else if (this.IRQ && !this.flags.interruptDisable) {
-            this.IRQ = false;
+        else if (this.mmc3IRQ && !this.flags.interruptDisable) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
         let opCode = this.nes.read(this.PC); //Fetch
@@ -143,9 +70,6 @@ class CPU {
         }
         this.cycleCount += op.cycles;
         return op.cycles;
-    }
-    requestInterrupt() {
-        this.IRQ = true;
     }
     requestNMInterrupt() {
         this.NMI = true;
@@ -3499,6 +3423,7 @@ class MMC3 extends Mapper {
             if ((addr & 1) == 0) {
                 //IRQ disable/ack
                 this.irqEnabled = false;
+                this.nes.cpu.mmc3IRQ = false;
             }
             else {
                 //IRQ enable
@@ -3516,7 +3441,7 @@ class MMC3 extends Mapper {
             this.reload = false;
         }
         else if (--this.irqCount == 0 && this.irqEnabled) {
-            this.nes.cpu.requestInterrupt();
+            this.nes.cpu.mmc3IRQ = true;
         }
     }
     load() {
@@ -4566,7 +4491,6 @@ class NES {
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
         this.rom = new iNESFile(romData, this);
-        this.apu = new APU(this);
         if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
             //Parse memory str
             let arr = localStorage.getItem(this.rom.id).split(",");
@@ -4592,7 +4516,6 @@ class NES {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
         this.cpu.reset();
-        this.apu.reset();
         this.step();
     }
     step() {
@@ -4600,12 +4523,9 @@ class NES {
         let error = false;
         while (!this.drawFrame) {
             try {
-                this.apu.step();
-                for (let i = 0; i < 2; i++) {
-                    let cpuCycles = this.cpu.step();
-                    for (let j = 0; j < cpuCycles * 3; j++) {
-                        this.ppu.cycle();
-                    }
+                let cpuCycles = this.cpu.step();
+                for (let j = 0; j < cpuCycles * 3; j++) {
+                    this.ppu.cycle();
                 }
             }
             catch (e) {
@@ -4660,25 +4580,13 @@ class NES {
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
-        else if (addr >= 0x4000 && addr <= 0x4013) {
-            //APU registers
-            this.apu.notifyWrite(addr, data);
-        }
         else if (addr == 0x4014) {
             //OAM DMA
             this.ppu.writeReg(addr, data);
         }
-        else if (addr == 0x4015) {
-            //APU enable register
-            this.apu.notifyWrite(addr, data);
-        }
         else if (addr == 0x4016) {
             //Input register
             this.input.setStrobe((data & 1) != 0);
-        }
-        else if (addr == 0x4017) {
-            //APU Frame counter
-            this.apu.notifyWrite(addr, data);
         }
         else if (addr >= 0x4020) {
             //Notify mapper of potential register writes. Don't write value

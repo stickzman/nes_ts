@@ -425,6 +425,7 @@ class MMC3 extends Mapper {
             if ((addr & 1) == 0) {
                 //IRQ disable/ack
                 this.irqEnabled = false;
+                this.nes.cpu.mmc3IRQ = false;
             } else {
                 //IRQ enable
                 this.irqEnabled = true;
@@ -440,7 +441,7 @@ class MMC3 extends Mapper {
             this.irqCount = this.irqReload;
             this.reload = false;
         } else if (--this.irqCount == 0 && this.irqEnabled) {
-            this.nes.cpu.requestInterrupt();
+            this.nes.cpu.mmc3IRQ = true;
         }
     }
 

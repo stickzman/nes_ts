@@ -7,7 +7,7 @@ class CPU {
     private readonly INT_VECT_LOC = 0xFFFE;
     private readonly NMI_VECT_LOC = 0xFFFA;
 
-    private IRQ: boolean = false; //Interrupt Request signal line
+    public mmc3IRQ: boolean = false; //Interrupt Request signal line for MMC3
     private NMI: boolean = false; //Non-Maskable Interrupt signal line
     public cycleCount: number = 0;
 
@@ -58,8 +58,7 @@ class CPU {
         if (this.NMI) {
             this.NMI = false;
             this.handleInterrupt(this.NMI_VECT_LOC);
-        } else if (this.IRQ && !this.flags.interruptDisable) {
-            this.IRQ = false;
+        } else if (this.mmc3IRQ && !this.flags.interruptDisable) {
             this.handleInterrupt(this.INT_VECT_LOC);
         }
 
@@ -93,10 +92,6 @@ class CPU {
 
         this.cycleCount += op.cycles;
         return op.cycles;
-    }
-
-    public requestInterrupt() {
-        this.IRQ = true;
     }
 
     public requestNMInterrupt() {
