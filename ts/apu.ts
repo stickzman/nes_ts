@@ -94,19 +94,7 @@ class APU {
             }
         }
 
-        //Turn triangle volume on and off
-        if (APU.triangle.enable && APU.triangle.length != 0 &&
-                APU.triangle.linearCount != 0) {
-            //Should be on
-            if (APU.triangle.getGain() != APU.FULL_DB) {
-                APU.triangle.setGain(APU.FULL_DB);
-            }
-        } else {
-            //Should be off
-            if (APU.triangle.getGain() != APU.MUTE_DB) {
-                APU.triangle.setGain(APU.MUTE_DB);
-            }
-        }
+        APU.triangle.step();
     }
 
     private clockQuarter() {
@@ -187,6 +175,22 @@ class TriangleChannel extends AudioChannel {
             --this.linearCount;
         }
         if (!this.haltLength) this.linearReload = false;
+    }
+
+    public step() {
+        //Turn triangle volume on and off
+        if (this.enable && this.length != 0 &&
+                this.linearCount != 0) {
+            //Should be on
+            if (this.getGain() != APU.FULL_DB) {
+                this.setGain(APU.FULL_DB);
+            }
+        } else {
+            //Should be off
+            if (this.getGain() != APU.MUTE_DB) {
+                this.setGain(APU.MUTE_DB);
+            }
+        }
     }
 
     public reset() {
