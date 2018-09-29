@@ -1,11 +1,12 @@
 class APU {
+    public static readonly FULL_DB = 0;
+    public static readonly MUTE_DB = -Infinity;
+
     private cycles: number = 0;
     private is4Step: boolean = true;
     private irqEnabled: boolean = true;
 
     private nes: NES;
-    public static audio: AudioContext;
-    public static masterGain: GainNode;
     public static triangle: TriangleChannel;
 
     constructor(nes: NES) {
@@ -24,6 +25,7 @@ class APU {
         //Status
         let byte = 0;
         byte |= (this.nes.cpu.apuIRQ) ? 0x40 : 0;
+        byte |= (APU.triangle.length > 0) ? 4 : 0;
         this.nes.cpu.apuIRQ = false; //Acknowledge IRQ
         return byte;
     }
@@ -96,13 +98,13 @@ class APU {
         if (APU.triangle.enable && APU.triangle.length != 0 &&
                 APU.triangle.linearCount != 0) {
             //Should be on
-            if (APU.triangle.getGain() != 1) {
-                APU.triangle.setGain(1);
+            if (APU.triangle.getGain() != APU.FULL_DB) {
+                APU.triangle.setGain(APU.FULL_DB);
             }
         } else {
             //Should be off
-            if (APU.triangle.getGain() != 0) {
-                APU.triangle.setGain(0);
+            if (APU.triangle.getGain() != APU.MUTE_DB) {
+                APU.triangle.setGain(APU.MUTE_DB);
             }
         }
     }
@@ -123,11 +125,11 @@ class AudioChannel {
     public length: number = 0;
     public haltLength: boolean = false;
     public enable: boolean = false;
-    public targetGain: number = 0;
+    public targetVol: number = APU.MUTE_DB; //In dB
     public smoothing: number = 0.005; //Time to exp trans btwn volume, in seconds
 
-    constructor(public osc: OscillatorNode, public gain: GainNode) {
-        gain.gain.value = 0;
+    constructor(public node) {
+        node.volume.value = APU.MUTE_DB; //Turn off volume before starting
     }
 
     public clockLength() {
@@ -138,33 +140,33 @@ class AudioChannel {
     public setPeriod(val: number) {
         if (val < 2) {
             //If the period is too low, silence the channel
-            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
             this.period = val;
             return;
         } else if (this.period < 2) {
             //Restore the channel if it was silenced
-            this.gain.gain.setTargetAtTime(1, 0, this.smoothing);
+            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
         }
         this.period = val;
-        this.osc.frequency.value = (this.periodToFreq + this.period) / this.period;
+        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
 
-    public setGain(val: number) {
-        this.targetGain = val;
-        this.gain.gain.setTargetAtTime(val, 0, this.smoothing);
+    public setGain(dB: number) {
+        this.targetVol = dB;
+        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
     }
 
     public getGain(): number {
-        return this.targetGain;
+        return this.targetVol;
     }
 
     public reset() {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.osc.frequency.value = 2400;
-        this.gain.gain.value = 0;
-        this.targetGain = 0;
+        this.node.frequency.value = 2400;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
     }
 }
 
@@ -173,8 +175,8 @@ class TriangleChannel extends AudioChannel {
     public reloadVal: number = 0;
     public linearReload: boolean = false;
 
-    constructor(osc: OscillatorNode, gain: GainNode) {
-        super(osc, gain);
+    constructor(node) {
+        super(node);
         this.periodToFreq = 55930.4;
     }
 
@@ -191,9 +193,9 @@ class TriangleChannel extends AudioChannel {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.osc.frequency.value = 2400;
-        this.gain.gain.value = 0;
-        this.targetGain = 0;
+        this.node.frequency.value = 2400;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
         this.linearCount = 0;
         this.reloadVal = 0;
         this.linearReload = false;

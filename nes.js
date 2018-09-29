@@ -16,6 +16,7 @@ class APU {
         //Status
         let byte = 0;
         byte |= (this.nes.cpu.apuIRQ) ? 0x40 : 0;
+        byte |= (APU.triangle.length > 0) ? 4 : 0;
         this.nes.cpu.apuIRQ = false; //Acknowledge IRQ
         return byte;
     }
@@ -96,14 +97,14 @@ class APU {
         if (APU.triangle.enable && APU.triangle.length != 0 &&
             APU.triangle.linearCount != 0) {
             //Should be on
-            if (APU.triangle.getGain() != 1) {
-                APU.triangle.setGain(1);
+            if (APU.triangle.getGain() != APU.FULL_DB) {
+                APU.triangle.setGain(APU.FULL_DB);
             }
         }
         else {
             //Should be off
-            if (APU.triangle.getGain() != 0) {
-                APU.triangle.setGain(0);
+            if (APU.triangle.getGain() != APU.MUTE_DB) {
+                APU.triangle.setGain(APU.MUTE_DB);
             }
         }
     }
@@ -114,19 +115,20 @@ class APU {
         APU.triangle.clockLength();
     }
 }
+APU.FULL_DB = 0;
+APU.MUTE_DB = -Infinity;
 // CHANNEL CLASSES BELOW
 class AudioChannel {
-    constructor(osc, gain) {
-        this.osc = osc;
-        this.gain = gain;
+    constructor(node) {
+        this.node = node;
         this.periodToFreq = 111860.8;
         this.period = 0;
         this.length = 0;
         this.haltLength = false;
         this.enable = false;
-        this.targetGain = 0;
+        this.targetVol = APU.MUTE_DB; //In dB
         this.smoothing = 0.005; //Time to exp trans btwn volume, in seconds
-        gain.gain.value = 0;
+        node.volume.value = APU.MUTE_DB; //Turn off volume before starting
     }
     clockLength() {
         if (this.haltLength || this.length == 0)
@@ -136,36 +138,36 @@ class AudioChannel {
     setPeriod(val) {
         if (val < 2) {
             //If the period is too low, silence the channel
-            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
             this.period = val;
             return;
         }
         else if (this.period < 2) {
             //Restore the channel if it was silenced
-            this.gain.gain.setTargetAtTime(1, 0, this.smoothing);
+            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
         }
         this.period = val;
-        this.osc.frequency.value = (this.periodToFreq + this.period) / this.period;
+        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
-    setGain(val) {
-        this.targetGain = val;
-        this.gain.gain.setTargetAtTime(val, 0, this.smoothing);
+    setGain(dB) {
+        this.targetVol = dB;
+        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
     }
     getGain() {
-        return this.targetGain;
+        return this.targetVol;
     }
     reset() {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.osc.frequency.value = 2400;
-        this.gain.gain.value = 0;
-        this.targetGain = 0;
+        this.node.frequency.value = 2400;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
     }
 }
 class TriangleChannel extends AudioChannel {
-    constructor(osc, gain) {
-        super(osc, gain);
+    constructor(node) {
+        super(node);
         this.linearCount = 0;
         this.reloadVal = 0;
         this.linearReload = false;
@@ -185,9 +187,9 @@ class TriangleChannel extends AudioChannel {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.osc.frequency.value = 2400;
-        this.gain.gain.value = 0;
-        this.targetGain = 0;
+        this.node.frequency.value = 2400;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
         this.linearCount = 0;
         this.reloadVal = 0;
         this.linearReload = false;
@@ -4893,7 +4895,10 @@ $(document).ready(function () {
         buff[7] === 0x0d) {
         PPU.isLittleEndian = false;
     }
-    //Set up APU/Web Audio API
+    //Set up APU/Tone.js
+    var osc = new Tone.Oscillator(0, "triangle").toMaster();
+    APU.triangle = new TriangleChannel(osc);
+    /*
     let a = new AudioContext();
     let masterGain = a.createGain();
     let o = a.createOscillator();
@@ -4905,6 +4910,7 @@ $(document).ready(function () {
     APU.audio = a;
     APU.masterGain = masterGain;
     APU.triangle = new TriangleChannel(o, g);
+    */
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
@@ -4919,10 +4925,10 @@ $(document).ready(function () {
     //Mute audio when webpage is hidden
     $(document).on('visibilitychange', function () {
         if (document.hidden) {
-            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            Tone.Master.volume.setTargetAtTime(APU.MUTE_DB, 0, 0.05);
         }
         else {
-            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
+            Tone.Master.volume.setTargetAtTime(APU.FULL_DB, 0, 0.5);
         }
     });
     //Set up relevant button listeners
@@ -4965,7 +4971,7 @@ function init(file) {
     else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
-        APU.triangle.osc.start(0);
+        APU.triangle.node.start();
     }
     let reader = new FileReader();
     reader.onload = function (e) {

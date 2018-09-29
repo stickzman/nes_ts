@@ -202,7 +202,11 @@ $(document).ready(function() {
         PPU.isLittleEndian = false;
     }
 
-    //Set up APU/Web Audio API
+    //Set up APU/Tone.js
+    var osc = new Tone.Oscillator(0, "triangle").toMaster();
+    APU.triangle = new TriangleChannel(osc);
+
+    /*
     let a = new AudioContext();
     let masterGain = a.createGain();
     let o = a.createOscillator();
@@ -214,6 +218,7 @@ $(document).ready(function() {
     APU.audio = a;
     APU.masterGain = masterGain;
     APU.triangle = new TriangleChannel(o, g);
+    */
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
@@ -230,9 +235,9 @@ $(document).ready(function() {
     //Mute audio when webpage is hidden
     $(document).on('visibilitychange', function() {
         if (document.hidden) {
-            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            Tone.Master.volume.setTargetAtTime(APU.MUTE_DB, 0, 0.05);
         } else {
-            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
+            Tone.Master.volume.setTargetAtTime(APU.FULL_DB, 0, 0.5);
         }
     });
 
@@ -279,7 +284,7 @@ function init(file) {
     } else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
-        APU.triangle.osc.start(0);
+        APU.triangle.node.start();
     }
     let reader = new FileReader();
     reader.onload = function(e) {

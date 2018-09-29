@@ -1,5 +1,7 @@
 declare function md5(input: string): string;
 
+declare var Tone: any;
+
 interface oamEntry {
     x: number,
     patData: number[],
