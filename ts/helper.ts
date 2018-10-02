@@ -14,7 +14,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function asyncUnMuteNoise() {
     await delay(500);
-    noiseGain.gain.value = 0.25;
+    noiseGain.gain.value = .8;
 }
 
 function combineHex(hiByte: number, lowByte: number): number {

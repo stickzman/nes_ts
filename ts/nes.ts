@@ -211,6 +211,10 @@ $(document).ready(function() {
     osc.connect(noiseGain);
     noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
+    osc = new Tone.Oscillator(0, "square").toMaster();
+    APU.pulse1 = new PulseChannel(osc);
+    osc = new Tone.Oscillator(0, "square").toMaster();
+    APU.pulse2 = new PulseChannel(osc);
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
@@ -279,6 +283,8 @@ function init(file) {
         //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.noise.node.start();
         APU.triangle.node.start();
+        APU.pulse1.node.start();
+        APU.pulse2.node.start();
     }
     asyncUnMuteNoise();
     let reader = new FileReader();

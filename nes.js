@@ -11,17 +11,67 @@ class APU {
         this.notifyWrite(0x4015, 0);
         //Reset triangle registers
         APU.triangle.reset();
+        APU.noise.reset();
+        APU.pulse1.reset();
+        APU.pulse2.reset();
     }
     read4015() {
         //Status
         let byte = 0;
         byte |= (this.nes.cpu.apuIRQ) ? 0x40 : 0;
+        byte |= (APU.noise.length > 0) ? 8 : 0;
         byte |= (APU.triangle.length > 0) ? 4 : 0;
+        byte |= (APU.pulse2.length > 0) ? 2 : 0;
+        byte |= (APU.pulse1.length > 0) ? 1 : 0;
         this.nes.cpu.apuIRQ = false; //Acknowledge IRQ
         return byte;
     }
     notifyWrite(addr, data) {
-        if (addr == 0x4008) {
+        if (addr == 0x4000) {
+            //Pulse 1 Duty/Volume
+            APU.pulse1.setDuty((data & 0xC0) >> 6);
+            APU.pulse1.haltLength = (data & 0x20) != 0;
+            APU.pulse1.constantVol = (data & 0x10) != 0;
+            APU.pulse1.v = data & 0xF;
+        }
+        else if (addr == 0x4001) {
+            //TODO: Pulse 1 APU Sweep
+        }
+        else if (addr == 0x4002) {
+            //Pulse 1 Period Low
+            let period = APU.pulse1.period & 0x700;
+            APU.pulse1.setPeriod(period | data);
+        }
+        else if (addr == 0x4003) {
+            //Pulse 1 Length/Period High
+            let period = APU.pulse1.period & 0xFF;
+            APU.pulse1.setPeriod(((data & 7) << 8) | period);
+            APU.pulse1.length = lengthTable[(data & 0xF8) >> 3];
+            APU.pulse1.envStart = true;
+        }
+        else if (addr == 0x4004) {
+            //Pulse 2 Duty/Volume
+            APU.pulse2.setDuty((data & 0xC0) >> 6);
+            APU.pulse2.haltLength = (data & 0x20) != 0;
+            APU.pulse2.constantVol = (data & 0x10) != 0;
+            APU.pulse2.v = data & 0xF;
+        }
+        else if (addr == 0x4005) {
+            //TODO: Pulse 2 APU Sweep
+        }
+        else if (addr == 0x4006) {
+            //Pulse 2 Period Low
+            let period = APU.pulse2.period & 0x700;
+            APU.pulse2.setPeriod(period | data);
+        }
+        else if (addr == 0x4007) {
+            //Pulse 2 Length/Period High
+            let period = APU.pulse2.period & 0xFF;
+            APU.pulse2.setPeriod(((data & 7) << 8) | period);
+            APU.pulse2.length = lengthTable[(data & 0xF8) >> 3];
+            APU.pulse2.envStart = true;
+        }
+        else if (addr == 0x4008) {
             //Triangle Linear Counter
             APU.triangle.haltLength = (data & 0x80) != 0;
             APU.triangle.reloadVal = data & 0x7F;
@@ -61,6 +111,12 @@ class APU {
             APU.noise.enable = (data & 8) != 0;
             if (!APU.noise.enable)
                 APU.noise.length = 0;
+            APU.pulse2.enable = (data & 2) != 0;
+            if (!APU.pulse2.enable)
+                APU.pulse2.length = 0;
+            APU.pulse1.enable = (data & 1) != 0;
+            if (!APU.pulse1.enable)
+                APU.pulse1.length = 0;
         }
         else if (addr == 0x4017) {
             //Frame Counter
@@ -113,14 +169,20 @@ class APU {
         }
         APU.triangle.step();
         APU.noise.step();
+        APU.pulse1.step();
+        APU.pulse2.step();
     }
     clockQuarter() {
-        APU.triangle.clockLinear();
         APU.noise.clockEnv();
+        APU.triangle.clockLinear();
+        APU.pulse1.clockEnv();
+        APU.pulse2.clockEnv();
     }
     clockHalf() {
-        APU.triangle.clockLength();
         APU.noise.clockLength();
+        APU.triangle.clockLength();
+        APU.pulse1.clockLength();
+        APU.pulse2.clockLength();
     }
 }
 APU.FULL_DB = 0;
@@ -146,9 +208,119 @@ class AudioChannel {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.node.frequency.value = 2400;
+        this.node.frequency.value = 0;
         this.node.volume.value = APU.MUTE_DB;
         this.targetVol = 0;
+    }
+}
+class PulseChannel extends AudioChannel {
+    constructor(osc) {
+        super(osc);
+        this.envStart = false;
+        this.constantVol = false;
+        this.v = 0;
+        this.currV = 0;
+        this.divider = 0;
+        this.decayCount = 0;
+        this.periodToFreq = 111860.8;
+    }
+    setPeriod(val) {
+        if (val < 8) {
+            //If the period is too low, silence the channel
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            this.period = val;
+            return;
+        }
+        else if (this.period < 8) {
+            //Restore the channel if it was silenced
+            if (this.constantVol) {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.v / 15), 0, this.smoothing);
+            }
+            else {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount / 15), 0, this.smoothing);
+            }
+        }
+        this.period = val;
+        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
+    }
+    setDuty(val) {
+        return;
+        //TODO: Create Pulse Oscillator and set duty
+        switch (val) {
+            case 0:
+                this.node.width.value = .12;
+                break;
+            case 1:
+                this.node.width.value = .25;
+                break;
+            case 2:
+                this.node.width.value = .50;
+                break;
+            case 3:
+                this.node.width.value = .25;
+                break;
+        }
+    }
+    clockEnv() {
+        if (!this.envStart) {
+            //Dec divider
+            if (this.divider-- == 0) {
+                this.divider = this.v;
+                //Clock decayCount
+                if (this.decayCount > 0) {
+                    this.decayCount--;
+                }
+                else if (this.haltLength) {
+                    this.decayCount = 15;
+                }
+            }
+        }
+        else {
+            this.envStart = false;
+            this.decayCount = 15;
+            this.divider = this.v;
+        }
+    }
+    gainToDb(val) {
+        return 20 * Math.log10(val);
+    }
+    step() {
+        if (this.enable && this.length != 0) {
+            //Should produce sound
+            if (this.constantVol) {
+                if (this.currV != this.v) {
+                    this.currV = this.v;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.v / 15), 0, this.smoothing);
+                }
+            }
+            else {
+                if (this.currV != this.decayCount) {
+                    this.currV = this.decayCount;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount / 15), 0, this.smoothing);
+                }
+            }
+        }
+        else {
+            //Should be quiet
+            if (this.currV != 0) {
+                this.currV = 0;
+                this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            }
+        }
+    }
+    reset() {
+        this.length = 0;
+        this.period = 0;
+        this.haltLength = false;
+        this.node.frequency.value = 0;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
+        this.envStart = false;
+        this.constantVol = false;
+        this.v = 0;
+        this.currV = 0;
+        this.divider = 0;
+        this.decayCount = 0;
     }
 }
 class TriangleChannel extends AudioChannel {
@@ -210,7 +382,7 @@ class TriangleChannel extends AudioChannel {
         this.length = 0;
         this.period = 0;
         this.haltLength = false;
-        this.node.frequency.value = 2400;
+        this.node.frequency.value = 0;
         this.node.volume.value = APU.MUTE_DB;
         this.targetVol = 0;
         this.linearCount = 0;
@@ -295,6 +467,19 @@ class NoiseChannel extends AudioChannel {
                 this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
             }
         }
+    }
+    reset() {
+        this.length = 0;
+        this.period = 0;
+        this.haltLength = false;
+        this.node.volume.value = APU.MUTE_DB;
+        this.targetVol = 0;
+        this.envStart = false;
+        this.constantVol = false;
+        this.v = 0;
+        this.currV = 0;
+        this.divider = 0;
+        this.decayCount = 0;
     }
 }
 //Length Lookup Table
@@ -3094,7 +3279,7 @@ opTable[0xCB] = {
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function asyncUnMuteNoise() {
     await delay(500);
-    noiseGain.gain.value = 0.25;
+    noiseGain.gain.value = .8;
 }
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
@@ -5014,6 +5199,10 @@ $(document).ready(function () {
     osc.connect(noiseGain);
     noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
+    osc = new Tone.Oscillator(0, "square").toMaster();
+    APU.pulse1 = new PulseChannel(osc);
+    osc = new Tone.Oscillator(0, "square").toMaster();
+    APU.pulse2 = new PulseChannel(osc);
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
@@ -5077,6 +5266,8 @@ function init(file) {
         //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.noise.node.start();
         APU.triangle.node.start();
+        APU.pulse1.node.start();
+        APU.pulse2.node.start();
     }
     asyncUnMuteNoise();
     let reader = new FileReader();
