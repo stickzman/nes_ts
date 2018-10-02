@@ -231,13 +231,13 @@ class NoiseChannel extends AudioChannel {
         this.smoothing = 0.001;
     }
     setPeriod(val) {
-        if (val < 2) {
+        if (val < 8) {
             //If the period is too low, silence the channel
             this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
             this.period = val;
             return;
         }
-        else if (this.period < 2) {
+        else if (this.period < 8) {
             //Restore the channel if it was silenced
             if (this.constantVol) {
                 this.node.volume.setTargetAtTime(this.gainToDb(this.v / 15), 0, this.smoothing);
@@ -273,7 +273,7 @@ class NoiseChannel extends AudioChannel {
         return 20 * Math.log10(val);
     }
     step() {
-        if (this.length != 0) {
+        if (this.enable && this.length != 0) {
             //Should produce sound
             if (this.constantVol) {
                 if (this.currV != this.v) {
@@ -3091,6 +3091,11 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function asyncUnMuteNoise() {
+    await delay(500);
+    noiseGain.gain.value = 0.25;
+}
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
@@ -4990,6 +4995,7 @@ window.onbeforeunload = function () {
         saveRAM();
     }
 };
+var noiseGain;
 $(document).ready(function () {
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
@@ -5003,7 +5009,10 @@ $(document).ready(function () {
     //Set up APU/Tone.js
     var osc = new Tone.Oscillator(0, "triangle").toMaster();
     APU.triangle = new TriangleChannel(osc);
-    osc = new Tone.Noise().toMaster();
+    osc = new Tone.Noise();
+    noiseGain = new Tone.Gain();
+    osc.connect(noiseGain);
+    noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
     //Create canvas
     PPU.canvas = $("#screen")[0];
@@ -5058,6 +5067,7 @@ function init(file) {
     if (!file) {
         return;
     }
+    noiseGain.gain.value = 0; //Mute Noise Channel to avoid startup pop
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
@@ -5065,9 +5075,10 @@ function init(file) {
     else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
-        APU.triangle.node.start();
         APU.noise.node.start();
+        APU.triangle.node.start();
     }
+    asyncUnMuteNoise();
     let reader = new FileReader();
     reader.onload = function (e) {
         nes = new NES(new Uint8Array(e.target.result), input);

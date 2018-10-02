@@ -190,6 +190,7 @@ window.onbeforeunload = function () {
     }
 }
 
+var noiseGain;
 $(document).ready(function() {
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
@@ -205,7 +206,10 @@ $(document).ready(function() {
     //Set up APU/Tone.js
     var osc = new Tone.Oscillator(0, "triangle").toMaster();
     APU.triangle = new TriangleChannel(osc);
-    osc = new Tone.Noise().toMaster();
+    osc = new Tone.Noise();
+    noiseGain = new Tone.Gain();
+    osc.connect(noiseGain);
+    noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
 
     //Create canvas
@@ -266,15 +270,17 @@ function init(file) {
     if (!file) {
         return;
     }
+    noiseGain.gain.value = 0; //Mute Noise Channel to avoid startup pop
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
     } else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
-        APU.triangle.node.start();
         APU.noise.node.start();
+        APU.triangle.node.start();
     }
+    asyncUnMuteNoise();
     let reader = new FileReader();
     reader.onload = function(e) {
         nes = new NES(new Uint8Array(e.target.result), input);

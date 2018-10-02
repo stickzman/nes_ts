@@ -240,12 +240,12 @@ class NoiseChannel extends AudioChannel {
     }
 
     public setPeriod(val: number) {
-        if (val < 2) {
+        if (val < 8) {
             //If the period is too low, silence the channel
             this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
             this.period = val;
             return;
-        } else if (this.period < 2) {
+        } else if (this.period < 8) {
             //Restore the channel if it was silenced
             if (this.constantVol) {
                 this.node.volume.setTargetAtTime(this.gainToDb(this.v/15), 0, this.smoothing);
@@ -281,7 +281,7 @@ class NoiseChannel extends AudioChannel {
     }
 
     public step() {
-        if (this.length != 0) {
+        if (this.enable && this.length != 0) {
             //Should produce sound
             if (this.constantVol) {
                 if (this.currV != this.v) {
