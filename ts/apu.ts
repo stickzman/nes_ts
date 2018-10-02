@@ -2,12 +2,13 @@ class APU {
     public static readonly FULL_DB = 0;
     public static readonly MUTE_DB = -Infinity;
 
-    private cycles: number = 0;
+    public cycles: number = 0;
     private is4Step: boolean = true;
     private irqEnabled: boolean = true;
 
     private nes: NES;
     public static triangle: TriangleChannel;
+    public static noise: NoiseChannel;
 
     constructor(nes: NES) {
         this.nes = nes;
@@ -45,10 +46,24 @@ class APU {
             APU.triangle.setPeriod(((data & 7) << 8) | period);
             APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
             APU.triangle.linearReload = true;
+        } else if (addr == 0x400C) {
+            //Noise Volume/Envelope
+            APU.noise.haltLength = (data & 0x20) != 0;
+            APU.noise.constantVol = (data & 0x10) != 0;
+            APU.noise.v = data & 0xF;
+        } else if (addr == 0x400E) {
+            //Noise Period
+            APU.noise.setPeriod(noiseTable[(data & 0xF)]);
+        } else if (addr == 0x400F) {
+            //Noise Length
+            APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
+            APU.noise.envStart = true;
         } else if (addr == 0x4015) {
             //Status
             APU.triangle.enable = (data & 4) != 0;
             if (!APU.triangle.enable) APU.triangle.length = 0;
+            APU.noise.enable = (data & 8) != 0;
+            if (!APU.noise.enable) APU.noise.length = 0;
         } else if (addr == 0x4017) {
             //Frame Counter
             this.is4Step = (data & 0x80) == 0;
@@ -95,20 +110,24 @@ class APU {
         }
 
         APU.triangle.step();
+        APU.noise.step();
     }
 
     private clockQuarter() {
         APU.triangle.clockLinear();
+        APU.noise.clockEnv();
     }
 
     private clockHalf() {
         APU.triangle.clockLength();
+        APU.noise.clockLength();
     }
 }
 
+
+
 // CHANNEL CLASSES BELOW
 class AudioChannel {
-    protected periodToFreq: number = 111860.8;
     public period: number = 0;
     public length: number = 0;
     public haltLength: boolean = false;
@@ -125,29 +144,6 @@ class AudioChannel {
         --this.length;
     }
 
-    public setPeriod(val: number) {
-        if (val < 2) {
-            //If the period is too low, silence the channel
-            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
-            this.period = val;
-            return;
-        } else if (this.period < 2) {
-            //Restore the channel if it was silenced
-            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
-        }
-        this.period = val;
-        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
-    }
-
-    public setGain(dB: number) {
-        this.targetVol = dB;
-        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
-    }
-
-    public getGain(): number {
-        return this.targetVol;
-    }
-
     public reset() {
         this.length = 0;
         this.period = 0;
@@ -162,10 +158,24 @@ class TriangleChannel extends AudioChannel {
     public linearCount: number = 0;
     public reloadVal: number = 0;
     public linearReload: boolean = false;
+    private periodToFreq: number = 55930.4;
 
     constructor(node) {
         super(node);
-        this.periodToFreq = 55930.4;
+    }
+
+    public setPeriod(val: number) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            this.period = val;
+            return;
+        } else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
+        }
+        this.period = val;
+        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
 
     public clockLinear() {
@@ -175,6 +185,15 @@ class TriangleChannel extends AudioChannel {
             --this.linearCount;
         }
         if (!this.haltLength) this.linearReload = false;
+    }
+
+    public setGain(dB: number) {
+        this.targetVol = dB;
+        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
+    }
+
+    public getGain(): number {
+        return this.targetVol;
     }
 
     public step() {
@@ -204,9 +223,88 @@ class TriangleChannel extends AudioChannel {
         this.reloadVal = 0;
         this.linearReload = false;
     }
-
 }
 
+class NoiseChannel extends AudioChannel {
+    public envStart: boolean = false;
+    public constantVol: boolean = false;
+    public v: number = 0;
+    private currV: number = 0;
+    private divider: number = 0;
+    private decayCount: number = 0;
+    private periodToFreq: number = 111860.8;
+
+    constructor(osc) {
+        super(osc);
+        this.smoothing = 0.001;
+    }
+
+    public setPeriod(val: number) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            this.period = val;
+            return;
+        } else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            if (this.constantVol) {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.v/15), 0, this.smoothing);
+            } else {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount/15), 0, this.smoothing);
+            }
+        }
+        this.period = val;
+        //this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
+    }
+
+    public clockEnv() {
+        if (!this.envStart) {
+            //Dec divider
+            if (this.divider-- == 0) {
+                this.divider = this.v;
+                //Clock decayCount
+                if (this.decayCount > 0) {
+                    this.decayCount--;
+                } else if (this.haltLength) {
+                    this.decayCount = 15;
+                }
+            }
+        } else {
+            this.envStart = false;
+            this.decayCount = 15;
+            this.divider = this.v;
+        }
+    }
+
+    private gainToDb(val: number) {
+        return 20*Math.log10(val);
+    }
+
+    public step() {
+        if (this.length != 0) {
+            //Should produce sound
+            if (this.constantVol) {
+                if (this.currV != this.v) {
+                    this.currV = this.v;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.v/15), 0, this.smoothing);
+                }
+            } else {
+                if (this.currV != this.decayCount) {
+                    this.currV = this.decayCount;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount/15), 0, this.smoothing);
+                }
+            }
+        } else {
+            //Should be quiet
+            if (this.currV != 0) {
+                this.currV = 0;
+                this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            }
+        }
+    }
+}
+
+//Length Lookup Table
 let lengthTable = [];
 lengthTable[0x1F] = 30;
 lengthTable[0x1D] = 28;
@@ -240,3 +338,6 @@ lengthTable[0x06] = 80;
 lengthTable[0x04] = 40;
 lengthTable[0x02] = 20;
 lengthTable[0x00] = 10;
+
+//Noise Period Lookup Table
+let noiseTable = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];

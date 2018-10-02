@@ -38,11 +38,29 @@ class APU {
             APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
             APU.triangle.linearReload = true;
         }
+        else if (addr == 0x400C) {
+            //Noise Volume/Envelope
+            APU.noise.haltLength = (data & 0x20) != 0;
+            APU.noise.constantVol = (data & 0x10) != 0;
+            APU.noise.v = data & 0xF;
+        }
+        else if (addr == 0x400E) {
+            //Noise Period
+            APU.noise.setPeriod(noiseTable[(data & 0xF)]);
+        }
+        else if (addr == 0x400F) {
+            //Noise Length
+            APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
+            APU.noise.envStart = true;
+        }
         else if (addr == 0x4015) {
             //Status
             APU.triangle.enable = (data & 4) != 0;
             if (!APU.triangle.enable)
                 APU.triangle.length = 0;
+            APU.noise.enable = (data & 8) != 0;
+            if (!APU.noise.enable)
+                APU.noise.length = 0;
         }
         else if (addr == 0x4017) {
             //Frame Counter
@@ -94,12 +112,15 @@ class APU {
             }
         }
         APU.triangle.step();
+        APU.noise.step();
     }
     clockQuarter() {
         APU.triangle.clockLinear();
+        APU.noise.clockEnv();
     }
     clockHalf() {
         APU.triangle.clockLength();
+        APU.noise.clockLength();
     }
 }
 APU.FULL_DB = 0;
@@ -108,7 +129,6 @@ APU.MUTE_DB = -Infinity;
 class AudioChannel {
     constructor(node) {
         this.node = node;
-        this.periodToFreq = 111860.8;
         this.period = 0;
         this.length = 0;
         this.haltLength = false;
@@ -121,27 +141,6 @@ class AudioChannel {
         if (this.haltLength || this.length == 0)
             return;
         --this.length;
-    }
-    setPeriod(val) {
-        if (val < 2) {
-            //If the period is too low, silence the channel
-            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
-            this.period = val;
-            return;
-        }
-        else if (this.period < 2) {
-            //Restore the channel if it was silenced
-            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
-        }
-        this.period = val;
-        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
-    }
-    setGain(dB) {
-        this.targetVol = dB;
-        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
-    }
-    getGain() {
-        return this.targetVol;
     }
     reset() {
         this.length = 0;
@@ -160,6 +159,20 @@ class TriangleChannel extends AudioChannel {
         this.linearReload = false;
         this.periodToFreq = 55930.4;
     }
+    setPeriod(val) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            this.period = val;
+            return;
+        }
+        else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            this.node.volume.setTargetAtTime(APU.FULL_DB, 0, this.smoothing);
+        }
+        this.period = val;
+        this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
+    }
     clockLinear() {
         if (this.linearReload) {
             this.linearCount = this.reloadVal;
@@ -169,6 +182,13 @@ class TriangleChannel extends AudioChannel {
         }
         if (!this.haltLength)
             this.linearReload = false;
+    }
+    setGain(dB) {
+        this.targetVol = dB;
+        this.node.volume.setTargetAtTime(dB, 0, this.smoothing);
+    }
+    getGain() {
+        return this.targetVol;
     }
     step() {
         //Turn triangle volume on and off
@@ -198,6 +218,86 @@ class TriangleChannel extends AudioChannel {
         this.linearReload = false;
     }
 }
+class NoiseChannel extends AudioChannel {
+    constructor(osc) {
+        super(osc);
+        this.envStart = false;
+        this.constantVol = false;
+        this.v = 0;
+        this.currV = 0;
+        this.divider = 0;
+        this.decayCount = 0;
+        this.periodToFreq = 111860.8;
+        this.smoothing = 0.001;
+    }
+    setPeriod(val) {
+        if (val < 2) {
+            //If the period is too low, silence the channel
+            this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            this.period = val;
+            return;
+        }
+        else if (this.period < 2) {
+            //Restore the channel if it was silenced
+            if (this.constantVol) {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.v / 15), 0, this.smoothing);
+            }
+            else {
+                this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount / 15), 0, this.smoothing);
+            }
+        }
+        this.period = val;
+        //this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
+    }
+    clockEnv() {
+        if (!this.envStart) {
+            //Dec divider
+            if (this.divider-- == 0) {
+                this.divider = this.v;
+                //Clock decayCount
+                if (this.decayCount > 0) {
+                    this.decayCount--;
+                }
+                else if (this.haltLength) {
+                    this.decayCount = 15;
+                }
+            }
+        }
+        else {
+            this.envStart = false;
+            this.decayCount = 15;
+            this.divider = this.v;
+        }
+    }
+    gainToDb(val) {
+        return 20 * Math.log10(val);
+    }
+    step() {
+        if (this.length != 0) {
+            //Should produce sound
+            if (this.constantVol) {
+                if (this.currV != this.v) {
+                    this.currV = this.v;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.v / 15), 0, this.smoothing);
+                }
+            }
+            else {
+                if (this.currV != this.decayCount) {
+                    this.currV = this.decayCount;
+                    this.node.volume.setTargetAtTime(this.gainToDb(this.decayCount / 15), 0, this.smoothing);
+                }
+            }
+        }
+        else {
+            //Should be quiet
+            if (this.currV != 0) {
+                this.currV = 0;
+                this.node.volume.setTargetAtTime(APU.MUTE_DB, 0, this.smoothing);
+            }
+        }
+    }
+}
+//Length Lookup Table
 let lengthTable = [];
 lengthTable[0x1F] = 30;
 lengthTable[0x1D] = 28;
@@ -231,6 +331,8 @@ lengthTable[0x06] = 80;
 lengthTable[0x04] = 40;
 lengthTable[0x02] = 20;
 lengthTable[0x00] = 10;
+//Noise Period Lookup Table
+let noiseTable = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
 class CPU {
     constructor(nes) {
         this.debug = false; //Output debug info
@@ -4901,19 +5003,8 @@ $(document).ready(function () {
     //Set up APU/Tone.js
     var osc = new Tone.Oscillator(0, "triangle").toMaster();
     APU.triangle = new TriangleChannel(osc);
-    /*
-    let a = new AudioContext();
-    let masterGain = a.createGain();
-    let o = a.createOscillator();
-    o.type = "triangle";
-    let g = a.createGain();
-    o.connect(g);
-    g.connect(masterGain);
-    masterGain.connect(a.destination);
-    APU.audio = a;
-    APU.masterGain = masterGain;
-    APU.triangle = new TriangleChannel(o, g);
-    */
+    osc = new Tone.Noise().toMaster();
+    APU.noise = new NoiseChannel(osc);
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
@@ -4975,6 +5066,7 @@ function init(file) {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.triangle.node.start();
+        APU.noise.node.start();
     }
     let reader = new FileReader();
     reader.onload = function (e) {

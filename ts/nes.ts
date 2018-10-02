@@ -205,20 +205,8 @@ $(document).ready(function() {
     //Set up APU/Tone.js
     var osc = new Tone.Oscillator(0, "triangle").toMaster();
     APU.triangle = new TriangleChannel(osc);
-
-    /*
-    let a = new AudioContext();
-    let masterGain = a.createGain();
-    let o = a.createOscillator();
-    o.type = "triangle";
-    let g = a.createGain();
-    o.connect(g);
-    g.connect(masterGain);
-    masterGain.connect(a.destination);
-    APU.audio = a;
-    APU.masterGain = masterGain;
-    APU.triangle = new TriangleChannel(o, g);
-    */
+    osc = new Tone.Noise().toMaster();
+    APU.noise = new NoiseChannel(osc);
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
@@ -285,6 +273,7 @@ function init(file) {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.triangle.node.start();
+        APU.noise.node.start();
     }
     let reader = new FileReader();
     reader.onload = function(e) {
