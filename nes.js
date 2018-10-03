@@ -36,6 +36,11 @@ class APU {
         }
         else if (addr == 0x4001) {
             //TODO: Pulse 1 APU Sweep
+            APU.pulse1.sweepEnabled = (data & 0x80) != 0;
+            APU.pulse1.sweepNeg = (data & 8) != 0;
+            APU.pulse1.sweepPeriod = ((data & 0x70) >> 4);
+            APU.pulse1.sweepShift = data & 7;
+            APU.pulse1.sweepReload = true;
         }
         else if (addr == 0x4002) {
             //Pulse 1 Period Low
@@ -46,7 +51,8 @@ class APU {
             //Pulse 1 Length/Period High
             let period = APU.pulse1.period & 0xFF;
             APU.pulse1.setPeriod(((data & 7) << 8) | period);
-            APU.pulse1.length = lengthTable[(data & 0xF8) >> 3];
+            if (APU.pulse1.enable)
+                APU.pulse1.length = lengthTable[(data & 0xF8) >> 3];
             APU.pulse1.envStart = true;
         }
         else if (addr == 0x4004) {
@@ -58,6 +64,11 @@ class APU {
         }
         else if (addr == 0x4005) {
             //TODO: Pulse 2 APU Sweep
+            APU.pulse2.sweepEnabled = (data & 0x80) != 0;
+            APU.pulse2.sweepNeg = (data & 8) != 0;
+            APU.pulse2.sweepPeriod = ((data & 0x70) >> 4);
+            APU.pulse2.sweepShift = data & 7;
+            APU.pulse2.sweepReload = true;
         }
         else if (addr == 0x4006) {
             //Pulse 2 Period Low
@@ -68,7 +79,8 @@ class APU {
             //Pulse 2 Length/Period High
             let period = APU.pulse2.period & 0xFF;
             APU.pulse2.setPeriod(((data & 7) << 8) | period);
-            APU.pulse2.length = lengthTable[(data & 0xF8) >> 3];
+            if (APU.pulse2.enable)
+                APU.pulse2.length = lengthTable[(data & 0xF8) >> 3];
             APU.pulse2.envStart = true;
         }
         else if (addr == 0x4008) {
@@ -85,7 +97,8 @@ class APU {
             //Triangle Length/Period High
             let period = APU.triangle.period & 0xFF;
             APU.triangle.setPeriod(((data & 7) << 8) | period);
-            APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
+            if (APU.triangle.enable)
+                APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
             APU.triangle.linearReload = true;
         }
         else if (addr == 0x400C) {
@@ -100,7 +113,8 @@ class APU {
         }
         else if (addr == 0x400F) {
             //Noise Length
-            APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
+            if (APU.noise.enable)
+                APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
             APU.noise.envStart = true;
         }
         else if (addr == 0x4015) {
@@ -182,7 +196,9 @@ class APU {
         APU.noise.clockLength();
         APU.triangle.clockLength();
         APU.pulse1.clockLength();
+        APU.pulse1.clockSweep();
         APU.pulse2.clockLength();
+        APU.pulse2.clockSweep();
     }
 }
 APU.FULL_DB = 0;
@@ -204,20 +220,21 @@ class AudioChannel {
             return;
         --this.length;
     }
-    reset() {
-        this.length = 0;
-        this.period = 0;
-        this.haltLength = false;
-        this.node.frequency.value = 0;
-        this.node.volume.value = APU.MUTE_DB;
-        this.targetVol = 0;
-    }
 }
 class PulseChannel extends AudioChannel {
-    constructor(osc) {
+    constructor(osc, isP2 = false) {
         super(osc);
+        this.isP2 = isP2;
         this.envStart = false;
         this.constantVol = false;
+        this.sweepEnabled = false;
+        this.sweepReload = false;
+        this.sweepNeg = false;
+        this.sweepMute = false;
+        this.sweepTargetP = 0;
+        this.sweepPeriod = 0;
+        this.sweepDiv = 0;
+        this.sweepShift = 0;
         this.v = 0;
         this.currV = 0;
         this.divider = 0;
@@ -261,6 +278,36 @@ class PulseChannel extends AudioChannel {
                 break;
         }
     }
+    clockSweep() {
+        //Shift Sweep
+        let p = this.period >> this.sweepShift;
+        if (this.sweepNeg && p != 0) {
+            p *= -1;
+            if (!this.isP2)
+                p--;
+        }
+        p = this.period + p;
+        if (p > 0x7FF) {
+            this.sweepMute = true;
+        }
+        else {
+            this.sweepMute = false;
+            this.sweepTargetP = p;
+        }
+        //Adj div/clock changes
+        if (this.sweepDiv == 0) {
+            if (this.sweepEnabled && !this.sweepMute) {
+                this.setPeriod(this.sweepTargetP);
+            }
+            if (this.sweepReload) {
+                this.sweepDiv = this.sweepPeriod;
+                this.sweepReload = false;
+            }
+        }
+        else {
+            this.sweepDiv--;
+        }
+    }
     clockEnv() {
         if (!this.envStart) {
             //Dec divider
@@ -285,7 +332,7 @@ class PulseChannel extends AudioChannel {
         return 20 * Math.log10(val);
     }
     step() {
-        if (this.enable && this.length != 0) {
+        if (this.enable && this.length != 0 && !this.sweepMute) {
             //Should produce sound
             if (this.constantVol) {
                 if (this.currV != this.v) {
@@ -399,7 +446,6 @@ class NoiseChannel extends AudioChannel {
         this.currV = 0;
         this.divider = 0;
         this.decayCount = 0;
-        this.periodToFreq = 111860.8;
         this.smoothing = 0.001;
     }
     setPeriod(val) {
@@ -5202,7 +5248,7 @@ $(document).ready(function () {
     osc = new Tone.Oscillator(0, "square").toMaster();
     APU.pulse1 = new PulseChannel(osc);
     osc = new Tone.Oscillator(0, "square").toMaster();
-    APU.pulse2 = new PulseChannel(osc);
+    APU.pulse2 = new PulseChannel(osc, true);
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);

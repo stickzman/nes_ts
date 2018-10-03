@@ -214,7 +214,7 @@ $(document).ready(function() {
     osc = new Tone.Oscillator(0, "square").toMaster();
     APU.pulse1 = new PulseChannel(osc);
     osc = new Tone.Oscillator(0, "square").toMaster();
-    APU.pulse2 = new PulseChannel(osc);
+    APU.pulse2 = new PulseChannel(osc, true);
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
