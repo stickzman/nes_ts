@@ -231,7 +231,7 @@ class PulseChannel extends AudioChannel {
         this.sweepReload = false;
         this.sweepNeg = false;
         this.sweepMute = false;
-        this.sweepTargetP = 0;
+        this.targetP = 0;
         this.sweepPeriod = 0;
         this.sweepDiv = 0;
         this.sweepShift = 0;
@@ -279,21 +279,7 @@ class PulseChannel extends AudioChannel {
         }
     }
     clockSweep() {
-        //Shift Sweep
-        let p = this.period >> this.sweepShift;
-        if (this.sweepNeg && p != 0) {
-            p *= -1;
-            if (!this.isP2)
-                p--;
-        }
-        p = this.period + p;
-        if (p > 0x7FF) {
-            this.sweepMute = true;
-        }
-        else {
-            this.sweepMute = false;
-            this.sweepTargetP = p;
-        }
+        this.sweepMute = (!this.sweepNeg && this.sweepShift == 0 && this.period >= 0x400);
         //Adj div/clock changes
         if (this.sweepReload) {
             this.sweepDiv = this.sweepPeriod;
@@ -302,7 +288,14 @@ class PulseChannel extends AudioChannel {
         if (this.sweepDiv == 0) {
             this.sweepDiv = this.sweepPeriod;
             if (this.sweepEnabled && !this.sweepMute) {
-                this.setPeriod(this.sweepTargetP);
+                //Shift Sweep
+                let p = this.period >> this.sweepShift;
+                if (this.sweepNeg && p != 0) {
+                    p *= -1;
+                    if (!this.isP2)
+                        p--;
+                }
+                this.setPeriod(this.period + p);
             }
         }
         else {
