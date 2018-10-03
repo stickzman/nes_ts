@@ -52,7 +52,7 @@ class APU {
             let period = APU.pulse1.period & 0xFF;
             APU.pulse1.setPeriod(((data & 7) << 8) | period);
             if (APU.pulse1.enable)
-                APU.pulse1.length = lengthTable[(data & 0xF8) >> 3];
+                APU.pulse1.length = lengthTable[(data & 0xF8) >> 3] + 1;
             APU.pulse1.envStart = true;
         }
         else if (addr == 0x4004) {
@@ -80,7 +80,7 @@ class APU {
             let period = APU.pulse2.period & 0xFF;
             APU.pulse2.setPeriod(((data & 7) << 8) | period);
             if (APU.pulse2.enable)
-                APU.pulse2.length = lengthTable[(data & 0xF8) >> 3];
+                APU.pulse2.length = lengthTable[(data & 0xF8) >> 3] + 1;
             APU.pulse2.envStart = true;
         }
         else if (addr == 0x4008) {
@@ -3316,11 +3316,6 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function asyncUnMuteNoise() {
-    await delay(500);
-    noiseGain.gain.value = .8;
-}
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }
@@ -5236,6 +5231,7 @@ $(document).ready(function () {
     APU.triangle = new TriangleChannel(osc);
     osc = new Tone.Noise();
     noiseGain = new Tone.Gain();
+    noiseGain.gain.value = 0.9;
     osc.connect(noiseGain);
     noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
@@ -5296,7 +5292,6 @@ function init(file) {
     if (!file) {
         return;
     }
-    noiseGain.gain.value = 0; //Mute Noise Channel to avoid startup pop
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
@@ -5309,7 +5304,6 @@ function init(file) {
         APU.pulse1.node.start();
         APU.pulse2.node.start();
     }
-    asyncUnMuteNoise();
     let reader = new FileReader();
     reader.onload = function (e) {
         nes = new NES(new Uint8Array(e.target.result), input);

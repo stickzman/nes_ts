@@ -61,7 +61,7 @@ class APU {
             //Pulse 1 Length/Period High
             let period = APU.pulse1.period & 0xFF;
             APU.pulse1.setPeriod(((data & 7) << 8) | period);
-            if (APU.pulse1.enable) APU.pulse1.length = lengthTable[(data & 0xF8) >> 3];
+            if (APU.pulse1.enable) APU.pulse1.length = lengthTable[(data & 0xF8) >> 3] + 1;
             APU.pulse1.envStart = true;
         } else if (addr == 0x4004) {
             //Pulse 2 Duty/Volume
@@ -84,7 +84,7 @@ class APU {
             //Pulse 2 Length/Period High
             let period = APU.pulse2.period & 0xFF;
             APU.pulse2.setPeriod(((data & 7) << 8) | period);
-            if (APU.pulse2.enable) APU.pulse2.length = lengthTable[(data & 0xF8) >> 3];
+            if (APU.pulse2.enable) APU.pulse2.length = lengthTable[(data & 0xF8) >> 3] + 1;
             APU.pulse2.envStart = true;
         } else if (addr == 0x4008) {
             //Triangle Linear Counter

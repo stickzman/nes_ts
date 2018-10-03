@@ -208,6 +208,7 @@ $(document).ready(function() {
     APU.triangle = new TriangleChannel(osc);
     osc = new Tone.Noise();
     noiseGain = new Tone.Gain();
+    noiseGain.gain.value = 0.9;
     osc.connect(noiseGain);
     noiseGain.connect(Tone.Master);
     APU.noise = new NoiseChannel(osc);
@@ -274,7 +275,6 @@ function init(file) {
     if (!file) {
         return;
     }
-    noiseGain.gain.value = 0; //Mute Noise Channel to avoid startup pop
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
@@ -286,7 +286,6 @@ function init(file) {
         APU.pulse1.node.start();
         APU.pulse2.node.start();
     }
-    asyncUnMuteNoise();
     let reader = new FileReader();
     reader.onload = function(e) {
         nes = new NES(new Uint8Array(e.target.result), input);
