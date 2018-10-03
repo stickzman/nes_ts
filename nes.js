@@ -38,7 +38,7 @@ class APU {
             //TODO: Pulse 1 APU Sweep
             APU.pulse1.sweepEnabled = (data & 0x80) != 0;
             APU.pulse1.sweepNeg = (data & 8) != 0;
-            APU.pulse1.sweepPeriod = ((data & 0x70) >> 4);
+            APU.pulse1.sweepPeriod = ((data & 0x70) >> 4) + 1;
             APU.pulse1.sweepShift = data & 7;
             APU.pulse1.sweepReload = true;
         }
@@ -66,7 +66,7 @@ class APU {
             //TODO: Pulse 2 APU Sweep
             APU.pulse2.sweepEnabled = (data & 0x80) != 0;
             APU.pulse2.sweepNeg = (data & 8) != 0;
-            APU.pulse2.sweepPeriod = ((data & 0x70) >> 4);
+            APU.pulse2.sweepPeriod = ((data & 0x70) >> 4) + 1;
             APU.pulse2.sweepShift = data & 7;
             APU.pulse2.sweepReload = true;
         }
@@ -295,13 +295,14 @@ class PulseChannel extends AudioChannel {
             this.sweepTargetP = p;
         }
         //Adj div/clock changes
+        if (this.sweepReload) {
+            this.sweepDiv = this.sweepPeriod;
+            this.sweepReload = false;
+        }
         if (this.sweepDiv == 0) {
+            this.sweepDiv = this.sweepPeriod;
             if (this.sweepEnabled && !this.sweepMute) {
                 this.setPeriod(this.sweepTargetP);
-            }
-            if (this.sweepReload) {
-                this.sweepDiv = this.sweepPeriod;
-                this.sweepReload = false;
             }
         }
         else {
