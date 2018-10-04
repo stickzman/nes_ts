@@ -1,5 +1,11 @@
 # Updates
 
+## 10/3
+
+#### Bug Fixes
+
+Fixed a bug that prevented some MMC3 games from being loaded (like _Batman Returns_ and _Bad Dudes_).
+
 ## 9/24
 
 #### Bug fixes
