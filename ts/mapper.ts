@@ -389,7 +389,7 @@ class MMC3 extends Mapper {
                         this.ppuMem.set(this.chrRom[data], chrAddr);
                         break;
                     case 6:
-                        data &= 0x3F;
+                        data &= this.pgrRom.length-1;
                         if (this.pgrSwap) {
                             this.cpuMem.set(this.pgrRom[data], 0xC000);
                         } else {
@@ -397,7 +397,7 @@ class MMC3 extends Mapper {
                         }
                         break;
                     case 7:
-                        data &= 0x3F;
+                        data &= this.pgrRom.length-1;
                         this.cpuMem.set(this.pgrRom[data], 0xA000);
                         break;
                 }
