@@ -5218,30 +5218,30 @@ $(document).ready(function () {
     }
     //Set up APU/Web Audio API
     let a = new AudioContext();
-    let masterGain = a.createGain();
-    masterGain.connect(a.destination);
+    APU.masterGain = a.createGain();
+    APU.masterGain.connect(a.destination);
     let osc = a.createOscillator();
     osc.type = "triangle";
     let g = a.createGain();
     osc.connect(g);
-    g.connect(masterGain);
+    g.connect(APU.masterGain);
     APU.triangle = new TriangleChannel(osc, g);
     osc = a.createOscillator();
     osc.type = "square";
     g = a.createGain();
     osc.connect(g);
-    g.connect(masterGain);
+    g.connect(APU.masterGain);
     APU.pulse1 = new PulseChannel(osc, g);
     osc = a.createOscillator();
     osc.type = "square";
     g = a.createGain();
     osc.connect(g);
-    g.connect(masterGain);
+    g.connect(APU.masterGain);
     APU.pulse2 = new PulseChannel(osc, g, false);
     let o = a.createNoiseSource();
     g = a.createGain();
     o.connect(g);
-    g.connect(masterGain);
+    g.connect(APU.masterGain);
     APU.noise = new NoiseChannel(o, g);
     //Create canvas
     PPU.canvas = $("#screen")[0];
