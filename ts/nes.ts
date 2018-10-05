@@ -195,27 +195,39 @@ $(document).ready(function() {
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
     let view32 = new Uint32Array(buff);
-    view32[1] = 0x0a0b0c0d;
-
+    view32[1] = 0x0A0B0C0D;
     PPU.isLittleEndian = true;
-    if (buff[4] === 0x0a && buff[5] === 0x0b && buff[6] === 0x0c &&
-        buff[7] === 0x0d) {
+    if (buff[4] === 0x0A && buff[5] === 0x0B && buff[6] === 0x0C && buff[7] === 0x0D) {
         PPU.isLittleEndian = false;
     }
 
-    //Set up APU/Tone.js
-    var osc = new Tone.Oscillator(0, "triangle").toMaster();
-    APU.triangle = new TriangleChannel(osc);
-    osc = new Tone.Noise();
-    noiseGain = new Tone.Gain();
-    noiseGain.gain.value = 0.9;
-    osc.connect(noiseGain);
-    noiseGain.connect(Tone.Master);
-    APU.noise = new NoiseChannel(osc);
-    osc = new Tone.Oscillator(0, "square").toMaster();
-    APU.pulse1 = new PulseChannel(osc);
-    osc = new Tone.Oscillator(0, "square").toMaster();
-    APU.pulse2 = new PulseChannel(osc, true);
+    //Set up APU/Web Audio API
+    let a = new AudioContext();
+    let masterGain = a.createGain();
+    masterGain.connect(a.destination);
+    let osc = a.createOscillator();
+    osc.type = "triangle";
+    let g = a.createGain();
+    osc.connect(g);
+    g.connect(masterGain);
+    APU.triangle = new TriangleChannel(osc, g);
+    osc = a.createOscillator();
+    osc.type = "square";
+    g = a.createGain();
+    osc.connect(g);
+    g.connect(masterGain);
+    APU.pulse1 = new PulseChannel(osc, g);
+    osc = a.createOscillator();
+    osc.type = "square";
+    g = a.createGain();
+    osc.connect(g);
+    g.connect(masterGain);
+    APU.pulse2 = new PulseChannel(osc, g, false);
+    let o = a.createNoiseSource();
+    g = a.createGain();
+    o.connect(g);
+    g.connect(masterGain);
+    APU.noise = new NoiseChannel(o, g);
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
@@ -232,9 +244,9 @@ $(document).ready(function() {
     //Mute audio when webpage is hidden
     $(document).on('visibilitychange', function() {
         if (document.hidden) {
-            Tone.Master.volume.setTargetAtTime(APU.MUTE_DB, 0, 0.05);
+            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
         } else {
-            Tone.Master.volume.setTargetAtTime(APU.FULL_DB, 0, 0.5);
+            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
         }
     });
 
@@ -281,10 +293,10 @@ function init(file) {
     } else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
-        APU.noise.node.start();
-        APU.triangle.node.start();
-        APU.pulse1.node.start();
-        APU.pulse2.node.start();
+        APU.noise.osc.start(0);
+        APU.triangle.osc.start(0);
+        APU.pulse1.osc.start(0);
+        APU.pulse2.osc.start(0);
     }
     let reader = new FileReader();
     reader.onload = function(e) {
