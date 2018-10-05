@@ -45,7 +45,7 @@ class APU {
             APU.pulse1.constantVol = (data & 0x10) != 0;
             APU.pulse1.v = data & 0xF;
         } else if (addr == 0x4001) {
-            //TODO: Pulse 1 APU Sweep
+            //Pulse 1 APU Sweep
             APU.pulse1.sweepEnabled = (data & 0x80) != 0;
             APU.pulse1.sweepNeg = (data & 8) != 0;
             APU.pulse1.sweepPeriod = ((data & 0x70) >> 4) + 1;
@@ -68,7 +68,7 @@ class APU {
             APU.pulse2.constantVol = (data & 0x10) != 0;
             APU.pulse2.v = data & 0xF;
         } else if (addr == 0x4005) {
-            //TODO: Pulse 2 APU Sweep
+            //Pulse 2 APU Sweep
             APU.pulse2.sweepEnabled = (data & 0x80) != 0;
             APU.pulse2.sweepNeg = (data & 8) != 0;
             APU.pulse2.sweepPeriod = ((data & 0x70) >> 4) + 1;
@@ -356,7 +356,7 @@ class TriangleChannel extends AudioChannel {
             this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
             this.period = val;
             return;
-        } else if (this.period < 2) {
+        } else if (this.period < 2 && this.targetVol == 1) {
             //Restore the channel if it was silenced
             this.gain.gain.setTargetAtTime(1, 0, this.smoothing);
         }
