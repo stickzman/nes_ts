@@ -28,7 +28,6 @@ class PPU {
     private spritePatAddr: number = 0;
     private bkgPatAddr: number = 0;
     private sprite8x16: boolean = false; //If false, sprite size is 8x8
-    private masterSlave: boolean = false;
     private vBlankNMI: boolean = false;
     //MASK vars
     private greyscale: boolean = false;
@@ -57,7 +56,7 @@ class PPU {
     private static pixBuff8: Uint8Array = null;
     private static pixBuff32: Uint32Array = null;
     public static isLittleEndian: boolean;
-    private static scale: number = 2;
+    public static scale: number = 2;
     public static canvas: HTMLCanvasElement;
 
 
@@ -476,7 +475,6 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
-                this.masterSlave = (byte & 64) != 0;
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:

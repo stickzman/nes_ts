@@ -4138,7 +4138,6 @@ class PPU {
         this.spritePatAddr = 0;
         this.bkgPatAddr = 0;
         this.sprite8x16 = false; //If false, sprite size is 8x8
-        this.masterSlave = false;
         this.vBlankNMI = false;
         //MASK vars
         this.greyscale = false;
@@ -4573,7 +4572,6 @@ class PPU {
                     this.bkgPatAddr = 0;
                 }
                 this.sprite8x16 = (byte & 32) != 0;
-                this.masterSlave = (byte & 64) != 0;
                 this.vBlankNMI = (byte & 128) != 0;
                 break;
             case this.PPUMASK:
@@ -5211,6 +5209,8 @@ window.onbeforeunload = function () {
     if (nes !== undefined) {
         saveRAM();
     }
+    sessionStorage.setItem("volume", $("#volume").val().toString());
+    sessionStorage.setItem("scale", PPU.scale.toString());
 };
 var noiseGain;
 $(document).ready(function () {
@@ -5249,10 +5249,26 @@ $(document).ready(function () {
     o.connect(g);
     g.connect(APU.masterGain);
     APU.noise = new NoiseChannel(o, g);
-    updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+    //Check for existing volume settings
+    if (sessionStorage.getItem("volume") === null) {
+        updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+    }
+    else {
+        let vol = parseFloat(sessionStorage.getItem("volume"));
+        $("#volume").val(vol);
+        updateVol(vol);
+    }
     //Create canvas
     PPU.canvas = $("#screen")[0];
-    PPU.updateScale(2);
+    //Check for existing scale settings
+    if (sessionStorage.getItem("scale") == null) {
+        PPU.updateScale(2);
+    }
+    else {
+        let scale = parseInt(sessionStorage.getItem("scale"));
+        PPU.updateScale(scale);
+        $("#scale").val(PPU.scale);
+    }
     $("#scale").change(function () {
         PPU.updateScale(parseInt($("#scale")[0].value));
     });

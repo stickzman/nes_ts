@@ -188,6 +188,8 @@ window.onbeforeunload = function () {
     if (nes !== undefined) {
         saveRAM();
     }
+    sessionStorage.setItem("volume", $("#volume").val().toString());
+    sessionStorage.setItem("scale", PPU.scale.toString());
 }
 
 var noiseGain;
@@ -228,11 +230,26 @@ $(document).ready(function() {
     o.connect(g);
     g.connect(APU.masterGain);
     APU.noise = new NoiseChannel(o, g);
-    updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+
+    //Check for existing volume settings
+    if (sessionStorage.getItem("volume") === null) {
+        updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+    } else {
+        let vol = parseFloat(sessionStorage.getItem("volume"));
+        $("#volume").val(vol);
+        updateVol(vol);
+    }
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
-    PPU.updateScale(2);
+    //Check for existing scale settings
+    if (sessionStorage.getItem("scale") == null) {
+        PPU.updateScale(2);
+    } else {
+        let scale = parseInt(sessionStorage.getItem("scale"));
+        PPU.updateScale(scale);
+        $("#scale").val(PPU.scale);
+    }
 
     $("#scale").change(function() {
         PPU.updateScale(parseInt((<HTMLSelectElement>$("#scale")[0]).value));
