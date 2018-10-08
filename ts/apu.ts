@@ -9,7 +9,7 @@ class APU {
     public static triangle: TriangleChannel;
     public static noise: NoiseChannel;
     public static masterGain: GainNode;
-    public static masterVol: number = 1;
+    public static masterVol: number;
 
     constructor(nes: NES) {
         this.nes = nes;
@@ -457,7 +457,6 @@ class NoiseChannel extends AudioChannel {
             }
         }
         this.period = val;
-        //this.node.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
 
     public clockEnv() {

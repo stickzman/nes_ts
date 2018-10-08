@@ -59,6 +59,6 @@ function deepCopyObj(obj: object): object {
 }
 
 function updateVol(val: number) {
-    APU.masterVol = Math.pow(val, 2);
-    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.1);
+    APU.masterVol = Math.pow(val, 2) / 1.5;
+    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2) / 1.5, 0, 0.005);
 }
