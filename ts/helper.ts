@@ -57,3 +57,7 @@ function insertInto(addr: number, byte: number, i: number, j1: number, j2: numbe
 function deepCopyObj(obj: object): object {
     return JSON.parse(JSON.stringify(obj));
 }
+
+function updateVol(val: number) {
+    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.1);
+}

@@ -27,121 +27,124 @@ class APU {
         return byte;
     }
     notifyWrite(addr, data) {
-        if (addr == 0x4000) {
-            //Pulse 1 Duty/Volume
-            APU.pulse1.setDuty((data & 0xC0) >> 6);
-            APU.pulse1.haltLength = (data & 0x20) != 0;
-            APU.pulse1.constantVol = (data & 0x10) != 0;
-            APU.pulse1.v = data & 0xF;
-        }
-        else if (addr == 0x4001) {
-            //Pulse 1 APU Sweep
-            APU.pulse1.sweepEnabled = (data & 0x80) != 0;
-            APU.pulse1.sweepNeg = (data & 8) != 0;
-            APU.pulse1.sweepPeriod = ((data & 0x70) >> 4) + 1;
-            APU.pulse1.sweepShift = data & 7;
-            APU.pulse1.sweepReload = true;
-        }
-        else if (addr == 0x4002) {
-            //Pulse 1 Period Low
-            let period = APU.pulse1.period & 0x700;
-            APU.pulse1.setPeriod(period | data);
-        }
-        else if (addr == 0x4003) {
-            //Pulse 1 Length/Period High
-            let period = APU.pulse1.period & 0xFF;
-            APU.pulse1.setPeriod(((data & 7) << 8) | period);
-            if (APU.pulse1.enable)
-                APU.pulse1.length = lengthTable[(data & 0xF8) >> 3] + 1;
-            APU.pulse1.envStart = true;
-        }
-        else if (addr == 0x4004) {
-            //Pulse 2 Duty/Volume
-            APU.pulse2.setDuty((data & 0xC0) >> 6);
-            APU.pulse2.haltLength = (data & 0x20) != 0;
-            APU.pulse2.constantVol = (data & 0x10) != 0;
-            APU.pulse2.v = data & 0xF;
-        }
-        else if (addr == 0x4005) {
-            //Pulse 2 APU Sweep
-            APU.pulse2.sweepEnabled = (data & 0x80) != 0;
-            APU.pulse2.sweepNeg = (data & 8) != 0;
-            APU.pulse2.sweepPeriod = ((data & 0x70) >> 4) + 1;
-            APU.pulse2.sweepShift = data & 7;
-            APU.pulse2.sweepReload = true;
-        }
-        else if (addr == 0x4006) {
-            //Pulse 2 Period Low
-            let period = APU.pulse2.period & 0x700;
-            APU.pulse2.setPeriod(period | data);
-        }
-        else if (addr == 0x4007) {
-            //Pulse 2 Length/Period High
-            let period = APU.pulse2.period & 0xFF;
-            APU.pulse2.setPeriod(((data & 7) << 8) | period);
-            if (APU.pulse2.enable)
-                APU.pulse2.length = lengthTable[(data & 0xF8) >> 3] + 1;
-            APU.pulse2.envStart = true;
-        }
-        else if (addr == 0x4008) {
-            //Triangle Linear Counter
-            APU.triangle.haltLength = (data & 0x80) != 0;
-            APU.triangle.reloadVal = data & 0x7F;
-        }
-        else if (addr == 0x400A) {
-            //Triangle Period Low
-            let period = APU.triangle.period & 0x700;
-            APU.triangle.setPeriod(period | data);
-        }
-        else if (addr == 0x400B) {
-            //Triangle Length/Period High
-            let period = APU.triangle.period & 0xFF;
-            APU.triangle.setPeriod(((data & 7) << 8) | period);
-            if (APU.triangle.enable)
-                APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
-            APU.triangle.linearReload = true;
-        }
-        else if (addr == 0x400C) {
-            //Noise Volume/Envelope
-            APU.noise.haltLength = (data & 0x20) != 0;
-            APU.noise.constantVol = (data & 0x10) != 0;
-            APU.noise.v = data & 0xF;
-        }
-        else if (addr == 0x400E) {
-            //Noise Period
-            APU.noise.setPeriod(noiseTable[(data & 0xF)]);
-        }
-        else if (addr == 0x400F) {
-            //Noise Length
-            if (APU.noise.enable)
-                APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
-            APU.noise.envStart = true;
-        }
-        else if (addr == 0x4015) {
-            //Status
-            APU.triangle.enable = (data & 4) != 0;
-            if (!APU.triangle.enable)
-                APU.triangle.length = 0;
-            APU.noise.enable = (data & 8) != 0;
-            if (!APU.noise.enable)
-                APU.noise.length = 0;
-            APU.pulse2.enable = (data & 2) != 0;
-            if (!APU.pulse2.enable)
-                APU.pulse2.length = 0;
-            APU.pulse1.enable = (data & 1) != 0;
-            if (!APU.pulse1.enable)
-                APU.pulse1.length = 0;
-        }
-        else if (addr == 0x4017) {
-            //Frame Counter
-            this.is4Step = (data & 0x80) == 0;
-            if (!this.is4Step) {
-                this.clockQuarter();
-                this.clockHalf();
-            }
-            this.irqEnabled = (data & 0x40) == 0;
-            if (!this.irqEnabled)
-                this.nes.cpu.apuIRQ = false;
+        let period;
+        switch (addr) {
+            case 0x4000:
+                //Pulse 1 Duty/Volume
+                APU.pulse1.setDuty((data & 0xC0) >> 6);
+                APU.pulse1.haltLength = (data & 0x20) != 0;
+                APU.pulse1.constantVol = (data & 0x10) != 0;
+                APU.pulse1.v = data & 0xF;
+                break;
+            case 0x4001:
+                //Pulse 1 APU Sweep
+                APU.pulse1.sweepEnabled = (data & 0x80) != 0;
+                APU.pulse1.sweepNeg = (data & 8) != 0;
+                APU.pulse1.sweepPeriod = ((data & 0x70) >> 4) + 1;
+                APU.pulse1.sweepShift = data & 7;
+                APU.pulse1.sweepReload = true;
+                break;
+            case 0x4002:
+                //Pulse 1 Period Low
+                period = APU.pulse1.period & 0x700;
+                APU.pulse1.setPeriod(period | data);
+                break;
+            case 0x4003:
+                //Pulse 1 Length/Period High
+                period = APU.pulse1.period & 0xFF;
+                APU.pulse1.setPeriod(((data & 7) << 8) | period);
+                if (APU.pulse1.enable)
+                    APU.pulse1.length = lengthTable[(data & 0xF8) >> 3] + 1;
+                APU.pulse1.envStart = true;
+                break;
+            case 0x4004:
+                //Pulse 2 Duty/Volume
+                APU.pulse2.setDuty((data & 0xC0) >> 6);
+                APU.pulse2.haltLength = (data & 0x20) != 0;
+                APU.pulse2.constantVol = (data & 0x10) != 0;
+                APU.pulse2.v = data & 0xF;
+                break;
+            case 0x4005:
+                //Pulse 2 APU Sweep
+                APU.pulse2.sweepEnabled = (data & 0x80) != 0;
+                APU.pulse2.sweepNeg = (data & 8) != 0;
+                APU.pulse2.sweepPeriod = ((data & 0x70) >> 4) + 1;
+                APU.pulse2.sweepShift = data & 7;
+                APU.pulse2.sweepReload = true;
+                break;
+            case 0x4006:
+                //Pulse 2 Period Low
+                period = APU.pulse2.period & 0x700;
+                APU.pulse2.setPeriod(period | data);
+                break;
+            case 0x4007:
+                //Pulse 2 Length/Period High
+                period = APU.pulse2.period & 0xFF;
+                APU.pulse2.setPeriod(((data & 7) << 8) | period);
+                if (APU.pulse2.enable)
+                    APU.pulse2.length = lengthTable[(data & 0xF8) >> 3] + 1;
+                APU.pulse2.envStart = true;
+                break;
+            case 0x4008:
+                //Triangle Linear Counter
+                APU.triangle.haltLength = (data & 0x80) != 0;
+                APU.triangle.reloadVal = data & 0x7F;
+                break;
+            case 0x400A:
+                //Triangle Period Low
+                period = APU.triangle.period & 0x700;
+                APU.triangle.setPeriod(period | data);
+                break;
+            case 0x400B:
+                //Triangle Length/Period High
+                period = APU.triangle.period & 0xFF;
+                APU.triangle.setPeriod(((data & 7) << 8) | period);
+                if (APU.triangle.enable)
+                    APU.triangle.length = lengthTable[(data & 0xF8) >> 3];
+                APU.triangle.linearReload = true;
+                break;
+            case 0x400C:
+                //Noise Volume/Envelope
+                APU.noise.haltLength = (data & 0x20) != 0;
+                APU.noise.constantVol = (data & 0x10) != 0;
+                APU.noise.v = data & 0xF;
+                break;
+            case 0x400E:
+                //Noise Period
+                APU.noise.setPeriod(noiseTable[(data & 0xF)]);
+                break;
+            case 0x400F:
+                //Noise Length
+                if (APU.noise.enable)
+                    APU.noise.length = lengthTable[(data & 0xF8) >> 3] + 1;
+                APU.noise.envStart = true;
+                break;
+            case 0x4015:
+                //Status
+                APU.triangle.enable = (data & 4) != 0;
+                if (!APU.triangle.enable)
+                    APU.triangle.length = 0;
+                APU.noise.enable = (data & 8) != 0;
+                if (!APU.noise.enable)
+                    APU.noise.length = 0;
+                APU.pulse2.enable = (data & 2) != 0;
+                if (!APU.pulse2.enable)
+                    APU.pulse2.length = 0;
+                APU.pulse1.enable = (data & 1) != 0;
+                if (!APU.pulse1.enable)
+                    APU.pulse1.length = 0;
+                break;
+            case 0x4017:
+                //Frame Counter
+                this.is4Step = (data & 0x80) == 0;
+                if (!this.is4Step) {
+                    this.clockQuarter();
+                    this.clockHalf();
+                }
+                this.irqEnabled = (data & 0x40) == 0;
+                if (!this.irqEnabled)
+                    this.nes.cpu.apuIRQ = false;
+                break;
         }
     }
     //Each call is 1/2 APU cycle
@@ -3338,6 +3341,9 @@ function insertInto(addr, byte, i, j1, j2) {
 }
 function deepCopyObj(obj) {
     return JSON.parse(JSON.stringify(obj));
+}
+function updateVol(val) {
+    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.1);
 }
 class Input {
     constructor() {
