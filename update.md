@@ -1,5 +1,11 @@
 # Updates
 
+## 10/8
+
+### Audio now working on all games!
+
+The Audio Processing Unit (APU) has been implemented, and a volume slider introduced.  Simply load up your favorite game and listen to those sweet 8-bit sounds flowing out your speakers.
+
 ## 10/3
 
 #### Bug Fixes
