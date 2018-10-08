@@ -246,7 +246,7 @@ $(document).ready(function() {
         if (document.hidden) {
             APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
         } else {
-            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
+            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.5);
         }
     });
 

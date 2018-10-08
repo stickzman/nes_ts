@@ -9,6 +9,7 @@ class APU {
     public static triangle: TriangleChannel;
     public static noise: NoiseChannel;
     public static masterGain: GainNode;
+    public static masterVol: number = 1;
 
     constructor(nes: NES) {
         this.nes = nes;

@@ -204,6 +204,7 @@ class APU {
         APU.pulse2.clockSweep();
     }
 }
+APU.masterVol = 1;
 // CHANNEL CLASSES BELOW
 class AudioChannel {
     constructor(gain) {
@@ -3343,6 +3344,7 @@ function deepCopyObj(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
 function updateVol(val) {
+    APU.masterVol = Math.pow(val, 2);
     APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.1);
 }
 class Input {
@@ -5266,7 +5268,7 @@ $(document).ready(function () {
             APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
         }
         else {
-            APU.masterGain.gain.setTargetAtTime(1, 0, 0.5);
+            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.5);
         }
     });
     //Set up relevant button listeners
