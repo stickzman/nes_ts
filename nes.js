@@ -3342,8 +3342,8 @@ function deepCopyObj(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
 function updateVol(val) {
-    APU.masterVol = Math.pow(val, 2) / 1.5;
-    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2) / 1.5, 0, 0.005);
+    APU.masterVol = Math.pow(val, 2) * 0.8;
+    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2) * 0.8, 0, 0.005);
 }
 class Input {
     constructor() {
@@ -5249,7 +5249,7 @@ $(document).ready(function () {
     o.connect(g);
     g.connect(APU.masterGain);
     APU.noise = new NoiseChannel(o, g);
-    updateVol(0.75); //Set initial volume to 75%
+    updateVol(0.5); //Set initial volume to 50%
     //Create canvas
     PPU.canvas = $("#screen")[0];
     PPU.updateScale(2);
