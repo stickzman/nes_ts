@@ -3342,8 +3342,8 @@ function deepCopyObj(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
 function updateVol(val) {
-    APU.masterVol = Math.pow(val, 2) * 0.8;
-    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2) * 0.8, 0, 0.005);
+    APU.masterVol = Math.pow(val, 2);
+    APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.001);
 }
 class Input {
     constructor() {
