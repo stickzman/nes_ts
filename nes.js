@@ -243,22 +243,9 @@ class PulseChannel extends AudioChannel {
         this.periodToFreq = 111860.8;
     }
     setPeriod(val) {
-        if (val < 8) {
-            //If the period is too low, silence the channel
-            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
-            this.period = val;
-            return;
-        }
-        else if (this.period < 8) {
-            //Restore the channel if it was silenced
-            if (this.constantVol) {
-                this.gain.gain.setTargetAtTime(this.v / 15, 0, this.smoothing);
-            }
-            else {
-                this.gain.gain.setTargetAtTime(this.decayCount / 15, 0, this.smoothing);
-            }
-        }
         this.period = val;
+        if (val < 8)
+            return;
         this.osc.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
     setDuty(val) {
@@ -310,7 +297,7 @@ class PulseChannel extends AudioChannel {
         }
     }
     step() {
-        if (this.enable && this.length != 0 && !this.sweepMute) {
+        if (this.enable && this.length != 0 && !this.sweepMute && this.period >= 8) {
             //Should produce sound
             if (this.constantVol) {
                 if (this.currV != this.v) {
@@ -358,17 +345,9 @@ class TriangleChannel extends AudioChannel {
         this.periodToFreq = 55930.4;
     }
     setPeriod(val) {
-        if (val < 2) {
-            //If the period is too low, silence the channel
-            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
-            this.period = val;
-            return;
-        }
-        else if (this.period < 2 && this.targetVol == 1) {
-            //Restore the channel if it was silenced
-            this.gain.gain.setTargetAtTime(1, 0, this.smoothing);
-        }
         this.period = val;
+        if (val < 2)
+            return;
         this.osc.frequency.value = (this.periodToFreq + this.period) / this.period;
     }
     clockLinear() {
@@ -390,7 +369,7 @@ class TriangleChannel extends AudioChannel {
     }
     step() {
         //Turn triangle volume on and off
-        if (this.enable && this.length != 0 && this.linearCount != 0) {
+        if (this.enable && this.length != 0 && this.linearCount != 0 && this.period >= 2) {
             //Should be on
             if (this.getGain() != 1) {
                 this.setGain(1);
@@ -428,21 +407,6 @@ class NoiseChannel extends AudioChannel {
         this.smoothing = 0.001;
     }
     setPeriod(val) {
-        if (val < 8) {
-            //If the period is too low, silence the channel
-            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
-            this.period = val;
-            return;
-        }
-        else if (this.period < 8) {
-            //Restore the channel if it was silenced
-            if (this.constantVol) {
-                this.gain.gain.setTargetAtTime(this.v / 15, 0, this.smoothing);
-            }
-            else {
-                this.gain.gain.setTargetAtTime(this.decayCount / 15, 0, this.smoothing);
-            }
-        }
         this.period = val;
     }
     clockEnv() {
@@ -466,7 +430,7 @@ class NoiseChannel extends AudioChannel {
         }
     }
     step() {
-        if (this.enable && this.length != 0) {
+        if (this.enable && this.length != 0 && this.period >= 8) {
             //Should produce sound
             if (this.constantVol) {
                 if (this.currV != this.v) {
