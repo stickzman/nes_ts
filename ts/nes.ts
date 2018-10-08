@@ -228,7 +228,7 @@ $(document).ready(function() {
     o.connect(g);
     g.connect(APU.masterGain);
     APU.noise = new NoiseChannel(o, g);
-    updateVol(0.5); //Set initial volume to 50%
+    updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
 
     //Create canvas
     PPU.canvas = (<HTMLCanvasElement>$("#screen")[0]);
