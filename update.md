@@ -1,5 +1,15 @@
 # Updates
 
+## 10/9
+
+### Introducing Save States
+
+A single-slot save state manager has been implemented!
+
+After loading up a game, you can hit the "Save State" button at any time and the emulator will take a snapshot of the game at that moment. You can then jump back to that moment at any point by pressing "Load State" at the bottom of your screen.
+
+Each game only gets _one_ save slot, so anytime you save your state it overwrites your previous save. Save states are stored in memory, so next time you boot up your browser, your save game will be waiting for you.
+
 ## 10/8
 
 ### Audio now working on all games!
