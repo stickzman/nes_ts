@@ -17,13 +17,13 @@ class APU {
     }
 
     public reset() {
+        //Reset channel registers
+        APU.pulse1 = new PulseChannel(APU.pulse1.osc, APU.pulse1.gain);
+        APU.pulse2 = new PulseChannel(APU.pulse2.osc, APU.pulse2.gain, false);
+        APU.triangle = new TriangleChannel(APU.triangle.osc, APU.triangle.gain);
+        APU.noise = new NoiseChannel(APU.noise.osc, APU.noise.gain);
         //Silence channels
         this.notifyWrite(0x4015, 0);
-        //Reset triangle registers
-        APU.triangle.reset()
-        APU.noise.reset();
-        APU.pulse1.reset();
-        APU.pulse2.reset();
     }
 
     public getState(): object {
@@ -285,8 +285,6 @@ abstract class AudioChannel {
     }
 
     abstract step(): void;
-
-    abstract reset(): void;
 }
 
 class PulseChannel extends AudioChannel {
@@ -396,21 +394,6 @@ class PulseChannel extends AudioChannel {
           this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
       }
     }
-
-    public reset() {
-        this.length = 0;
-        this.period = 0;
-        this.haltLength = false;
-        this.osc.frequency.value = 0;
-        this.gain.gain.value = 0;
-        this.targetVol = 0;
-        this.envStart = false;
-        this.constantVol = false;
-        this.v = 0;
-        this.currV = 0;
-        this.divider = 0;
-        this.decayCount = 0;
-    }
 }
 
 class TriangleChannel extends AudioChannel {
@@ -470,18 +453,6 @@ class TriangleChannel extends AudioChannel {
           //Should be off
           this.setGain(0);
       }
-    }
-
-    public reset() {
-        this.length = 0;
-        this.period = 0;
-        this.haltLength = false;
-        this.osc.frequency.value = 0;
-        this.gain.gain.value = 0;
-        this.targetVol = 0;
-        this.linearCount = 0;
-        this.reloadVal = 0;
-        this.linearReload = false;
     }
 }
 
@@ -552,20 +523,6 @@ class NoiseChannel extends AudioChannel {
           //Should be quiet
           this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
       }
-    }
-
-    public reset() {
-        this.length = 0;
-        this.period = 0;
-        this.haltLength = false;
-        this.gain.gain.value = 0;
-        this.targetVol = 0;
-        this.envStart = false;
-        this.constantVol = false;
-        this.v = 0;
-        this.currV = 0;
-        this.divider = 0;
-        this.decayCount = 0;
     }
 }
 
