@@ -59,7 +59,6 @@ class PPU {
     public static scale: number = 2;
     public static canvas: HTMLCanvasElement;
 
-
     constructor(private nes: NES) {
         this.mem = new Uint8Array(0x4000);
         this.oam = new Uint8Array(0x100);
@@ -129,6 +128,47 @@ class PPU {
         this.nes.write(this.PPUSCROLL, 0);
         this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
+    }
+
+    public getState(): object {
+      let obj = {};
+      let ignoreList = ["nes", "PPUCTRL", "PPUMASK", "PPUSTATUS", "OAMADDR",
+                        "OAMDATA", "PPUSCROLL", "PPUADDR", "PPUDATA", "OAMDMA"];
+      let keys = Object.keys(this);
+      for (let i = 0; i < keys.length; i++) {
+        if (ignoreList.includes(keys[i])) continue;
+        if (keys[i] == "mem" || keys[i] == "oam") {
+          obj[keys[i]] = this[keys[i]].toString();
+        } else {
+          obj[keys[i]] = this[keys[i]];
+        }
+      }
+      return obj;
+    }
+
+    public loadState(state: object) {
+      let keys = Object.keys(state);
+      for (let i = 0; i < keys.length; i++) {
+        if (keys[i] == "mem") {
+          //Parse memory str
+          let arr = state[keys[i]].split(",");
+          let buff = new Uint8Array(this.mem.length);
+          for (let i = 0; i < buff.length; i++) {
+              buff[i] = parseInt(arr[i]);
+          }
+          this.mem.set(buff);
+        } else if (keys[i] == "oam") {
+          //Parse oam str
+          let arr = state[keys[i]].split(",");
+          let buff = new Uint8Array(this.oam.length);
+          for (let i = 0; i < buff.length; i++) {
+              buff[i] = parseInt(arr[i]);
+          }
+          this.oam.set(buff);
+        } else {
+          this[keys[i]] = state[keys[i]];
+        }
+      }
     }
 
     public cycle() {

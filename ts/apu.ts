@@ -26,6 +26,48 @@ class APU {
         APU.pulse2.reset();
     }
 
+    public getState(): object {
+      let obj = {};
+      let ignoreList = ["nes"];
+      let keys = Object.keys(this);
+      for (let i = 0; i < keys.length; i++) {
+        if (ignoreList.includes(keys[i])) continue;
+        obj[keys[i]] = this[keys[i]];
+      }
+      //Static variables
+      obj["static"] = {};
+      keys = Object.keys(APU);
+      ignoreList = ["osc", "gain", "smoothing", "periodToFreq", "isP1"];
+      for (let i = 0; i < keys.length; i++) {
+        if (keys[i] == "masterGain" || keys[i] == "masterVol") continue;
+        let subObj = APU[keys[i]];
+        let subKeys = Object.keys(subObj);
+        obj["static"][keys[i]] = {};
+        for (let j = 0; j < subKeys.length; j++) {
+          if (ignoreList.includes(subKeys[j])) continue;
+          obj["static"][keys[i]][subKeys[j]] = subObj[subKeys[j]];
+        }
+      }
+      return obj;
+    }
+
+    public loadState(state: object) {
+      //Static variables
+      let keys = Object.keys(state["static"]);
+      for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let sKeys = Object.keys(state["static"][key]);
+        for (let j = 0; j < sKeys.length; j++) {
+          APU[key][sKeys[j]] = state["static"][key][sKeys[j]];
+        }
+      }
+      keys = Object.keys(state);
+      for (let i = 0; i < keys.length; i++) {
+        if (keys[i] == "static") continue;
+        this[keys[i]] = state[keys[i]];
+      }
+    }
+
     public read4015(): number {
         //Status
         let byte = 0;

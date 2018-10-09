@@ -15,6 +15,50 @@ class APU {
         APU.pulse1.reset();
         APU.pulse2.reset();
     }
+    getState() {
+        let obj = {};
+        let ignoreList = ["nes"];
+        let keys = Object.keys(this);
+        for (let i = 0; i < keys.length; i++) {
+            if (ignoreList.includes(keys[i]))
+                continue;
+            obj[keys[i]] = this[keys[i]];
+        }
+        //Static variables
+        obj["static"] = {};
+        keys = Object.keys(APU);
+        ignoreList = ["osc", "gain", "smoothing", "periodToFreq", "isP1"];
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i] == "masterGain" || keys[i] == "masterVol")
+                continue;
+            let subObj = APU[keys[i]];
+            let subKeys = Object.keys(subObj);
+            obj["static"][keys[i]] = {};
+            for (let j = 0; j < subKeys.length; j++) {
+                if (ignoreList.includes(subKeys[j]))
+                    continue;
+                obj["static"][keys[i]][subKeys[j]] = subObj[subKeys[j]];
+            }
+        }
+        return obj;
+    }
+    loadState(state) {
+        //Static variables
+        let keys = Object.keys(state["static"]);
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            let sKeys = Object.keys(state["static"][key]);
+            for (let j = 0; j < sKeys.length; j++) {
+                APU[key][sKeys[j]] = state["static"][key][sKeys[j]];
+            }
+        }
+        keys = Object.keys(state);
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i] == "static")
+                continue;
+            this[keys[i]] = state[keys[i]];
+        }
+    }
     read4015() {
         //Status
         let byte = 0;
@@ -514,7 +558,6 @@ class CPU {
         this.mmc3IRQ = false; //Interrupt Request signal line for MMC3
         this.apuIRQ = false; //Interrupt Request for APU frame counter
         this.NMI = false; //Non-Maskable Interrupt signal line
-        this.cycleCount = 0;
         this.PC = 0; //Program Counter
         this.flags = {
             carry: false,
@@ -546,6 +589,23 @@ class CPU {
         this.nes.write(0x4015, 0);
         this.PC = this.getResetVector();
     }
+    getState() {
+        let obj = {};
+        let ignoreList = ["RES_VECT_LOC", "INT_VECT_LOC", "NMI_VECT_LOC", "nes", "debug", "detectTraps"];
+        let keys = Object.keys(this);
+        for (let i = 0; i < keys.length; i++) {
+            if (ignoreList.includes(keys[i]))
+                continue;
+            obj[keys[i]] = this[keys[i]];
+        }
+        return obj;
+    }
+    loadState(state) {
+        let keys = Object.keys(state);
+        for (let i = 0; i < keys.length; i++) {
+            this[keys[i]] = state[keys[i]];
+        }
+    }
     step() {
         //Check interrupt lines
         if (this.NMI) {
@@ -574,7 +634,6 @@ class CPU {
         if (this.PC > 0xFFFF) {
             this.PC -= 0x10000;
         }
-        this.cycleCount += op.cycles;
         return op.cycles;
     }
     requestNMInterrupt() {
@@ -4185,6 +4244,49 @@ class PPU {
         this.nes.write(this.PPUDATA, 0);
         this.oddFrame = false;
     }
+    getState() {
+        let obj = {};
+        let ignoreList = ["nes", "PPUCTRL", "PPUMASK", "PPUSTATUS", "OAMADDR",
+            "OAMDATA", "PPUSCROLL", "PPUADDR", "PPUDATA", "OAMDMA"];
+        let keys = Object.keys(this);
+        for (let i = 0; i < keys.length; i++) {
+            if (ignoreList.includes(keys[i]))
+                continue;
+            if (keys[i] == "mem" || keys[i] == "oam") {
+                obj[keys[i]] = this[keys[i]].toString();
+            }
+            else {
+                obj[keys[i]] = this[keys[i]];
+            }
+        }
+        return obj;
+    }
+    loadState(state) {
+        let keys = Object.keys(state);
+        for (let i = 0; i < keys.length; i++) {
+            if (keys[i] == "mem") {
+                //Parse memory str
+                let arr = state[keys[i]].split(",");
+                let buff = new Uint8Array(this.mem.length);
+                for (let i = 0; i < buff.length; i++) {
+                    buff[i] = parseInt(arr[i]);
+                }
+                this.mem.set(buff);
+            }
+            else if (keys[i] == "oam") {
+                //Parse oam str
+                let arr = state[keys[i]].split(",");
+                let buff = new Uint8Array(this.oam.length);
+                for (let i = 0; i < buff.length; i++) {
+                    buff[i] = parseInt(arr[i]);
+                }
+                this.oam.set(buff);
+            }
+            else {
+                this[keys[i]] = state[keys[i]];
+            }
+        }
+    }
     cycle() {
         if (this.oddFrame && this.scanline == 0 && this.dot == 0) {
             this.dot++;
@@ -5039,6 +5141,28 @@ class NES {
         this.cpu.reset();
         this.apu.reset();
         this.step();
+    }
+    getState() {
+        let obj = {};
+        obj["mainMem"] = this.mainMemory.toString();
+        obj["ppu"] = this.ppu.getState();
+        obj["cpu"] = this.cpu.getState();
+        obj["apu"] = this.apu.getState();
+        return JSON.stringify(obj);
+    }
+    loadState(stateStr) {
+        let state = JSON.parse(stateStr);
+        //Parse mainMemory str
+        let arr = state["mainMem"].split(",");
+        let buff = new Uint8Array(this.mainMemory.length);
+        for (let i = 0; i < buff.length; i++) {
+            buff[i] = parseInt(arr[i]);
+        }
+        this.mainMemory.set(buff);
+        //Load component states
+        this.ppu.loadState(state["ppu"]);
+        this.cpu.loadState(state["cpu"]);
+        this.apu.loadState(state["apu"]);
     }
     step() {
         this.drawFrame = false;

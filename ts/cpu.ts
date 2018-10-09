@@ -10,7 +10,6 @@ class CPU {
     public mmc3IRQ: boolean = false; //Interrupt Request signal line for MMC3
     public apuIRQ: boolean = false; //Interrupt Request for APU frame counter
     private NMI: boolean = false; //Non-Maskable Interrupt signal line
-    public cycleCount: number = 0;
 
     private ACC: number;//Accumulator
     private X: number;  //Register X
@@ -54,6 +53,24 @@ class CPU {
         this.PC = this.getResetVector();
     }
 
+    public getState(): object {
+      let obj = {};
+      let ignoreList = ["RES_VECT_LOC", "INT_VECT_LOC", "NMI_VECT_LOC", "nes", "debug", "detectTraps"];
+      let keys = Object.keys(this);
+      for (let i = 0; i < keys.length; i++) {
+        if (ignoreList.includes(keys[i])) continue;
+        obj[keys[i]] = this[keys[i]];
+      }
+      return obj;
+    }
+
+    public loadState(state: object) {
+      let keys = Object.keys(state);
+      for (let i = 0; i < keys.length; i++) {
+        this[keys[i]] = state[keys[i]];
+      }
+    }
+
     public step() {
         //Check interrupt lines
         if (this.NMI) {
@@ -66,7 +83,7 @@ class CPU {
         let opCode = this.nes.read(this.PC); //Fetch
 
 
-        let op = opTable[opCode];       //Decode
+        let op = opTable[opCode];            //Decode
 
         if (op === undefined) {
             let e = new Error(`Encountered unknown opCode: [0x${
@@ -81,7 +98,7 @@ class CPU {
                 this.PC.toString(16).padStart(4, "0").toUpperCase()}...`);
         }
 
-        op.execute.bind(this)();        //Execute
+        op.execute.bind(this)();              //Execute
 
         if (this.debug) {
             this.displayState();
@@ -91,7 +108,6 @@ class CPU {
         this.PC += op.bytes;
         if (this.PC > 0xFFFF) { this.PC -= 0x10000; }
 
-        this.cycleCount += op.cycles;
         return op.cycles;
     }
 

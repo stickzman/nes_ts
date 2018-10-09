@@ -54,6 +54,30 @@ class NES {
         this.step();
     }
 
+    public getState(): string {
+      let obj = {};
+      obj["mainMem"] = this.mainMemory.toString();
+      obj["ppu"] = this.ppu.getState();
+      obj["cpu"] = this.cpu.getState();
+      obj["apu"] = this.apu.getState();
+      return JSON.stringify(obj);
+    }
+
+    public loadState(stateStr: string) {
+      let state = JSON.parse(stateStr);
+      //Parse mainMemory str
+      let arr = state["mainMem"].split(",");
+      let buff = new Uint8Array(this.mainMemory.length);
+      for (let i = 0; i < buff.length; i++) {
+          buff[i] = parseInt(arr[i]);
+      }
+      this.mainMemory.set(buff);
+      //Load component states
+      this.ppu.loadState(state["ppu"]);
+      this.cpu.loadState(state["cpu"]);
+      this.apu.loadState(state["apu"]);
+    }
+
     private step() {
         this.drawFrame = false;
         let error = false;
