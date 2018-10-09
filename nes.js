@@ -61,15 +61,15 @@ class APU {
         this.resetOscState();
     }
     resetOscState() {
+        APU.pulse1.setPeriod(APU.pulse1.period);
+        APU.pulse2.setPeriod(APU.pulse2.period);
+        APU.triangle.setPeriod(APU.triangle.period);
+        APU.noise.setPeriod(APU.noise.period);
         //Correct oscillators' volume
         APU.pulse1.forceCorrectGain();
         APU.pulse2.forceCorrectGain();
         APU.triangle.forceCorrectGain();
         APU.noise.forceCorrectGain();
-        APU.pulse1.setPeriod(APU.pulse1.period);
-        APU.pulse2.setPeriod(APU.pulse2.period);
-        APU.triangle.setPeriod(APU.triangle.period);
-        APU.noise.setPeriod(APU.noise.period);
     }
     read4015() {
         //Status

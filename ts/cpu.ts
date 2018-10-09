@@ -54,21 +54,21 @@ class CPU {
     }
 
     public getState(): object {
-      let obj = {};
-      let ignoreList = ["RES_VECT_LOC", "INT_VECT_LOC", "NMI_VECT_LOC", "nes", "debug", "detectTraps"];
-      let keys = Object.keys(this);
-      for (let i = 0; i < keys.length; i++) {
-        if (ignoreList.includes(keys[i])) continue;
-        obj[keys[i]] = this[keys[i]];
-      }
-      return obj;
+        let obj = {};
+        let ignoreList = ["RES_VECT_LOC", "INT_VECT_LOC", "NMI_VECT_LOC", "nes", "debug", "detectTraps"];
+        let keys = Object.keys(this);
+        for (let i = 0; i < keys.length; i++) {
+            if (ignoreList.includes(keys[i])) continue;
+            obj[keys[i]] = this[keys[i]];
+        }
+        return obj;
     }
 
     public loadState(state: object) {
-      let keys = Object.keys(state);
-      for (let i = 0; i < keys.length; i++) {
-        this[keys[i]] = state[keys[i]];
-      }
+        let keys = Object.keys(state);
+        for (let i = 0; i < keys.length; i++) {
+            this[keys[i]] = state[keys[i]];
+        }
     }
 
     public step() {

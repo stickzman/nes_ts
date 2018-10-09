@@ -78,12 +78,12 @@ class NES {
     }
 
     public getState(): object {
-      return {
-          mainMem: this.mainMemory.toString(),
-          ppu: this.ppu.getState(),
-          cpu: this.cpu.getState(),
-          apu: this.apu.getState()
-      };
+        return {
+            mainMem: this.mainMemory.toString(),
+            ppu: this.ppu.getState(),
+            cpu: this.cpu.getState(),
+            apu: this.apu.getState()
+        };
     }
 
     public loadState() {
@@ -98,7 +98,7 @@ class NES {
         let arr = this.state["mainMem"].split(",");
         let buff = new Uint8Array(this.mainMemory.length);
         for (let i = 0; i < buff.length; i++) {
-          buff[i] = parseInt(arr[i]);
+            buff[i] = parseInt(arr[i]);
         }
         this.mainMemory.set(buff);
         //Load component states
