@@ -3,6 +3,7 @@
 /// <reference path="input.ts" />
 class NES {
     private readonly MEM_SIZE = 0x10000;
+    public static saveWarn: boolean;
 
     public print: boolean = false;
     public input: Input;
@@ -61,6 +62,12 @@ class NES {
     }
 
     public saveState() {
+        if (NES.saveWarn && this.state !== null) {
+            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            let cont = confirm("Are you sure?\nSaving now will replace your previous save data.")
+            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
+            if (!cont) return;
+        }
         this.state = this.getState();
         $("#loadState").prop("disabled", false);
     }
@@ -81,6 +88,12 @@ class NES {
 
     public loadState() {
         if (this.state === null) return;
+        if (NES.saveWarn) {
+            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            let cont = confirm("Are you sure?\nLoading previous save data will erase your current progress.")
+            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
+            if (!cont) return;
+        }
         //Parse mainMemory str
         let arr = this.state["mainMem"].split(",");
         let buff = new Uint8Array(this.mainMemory.length);
@@ -231,6 +244,7 @@ window.onbeforeunload = function () {
     }
     sessionStorage.setItem("volume", $("#volume").val().toString());
     sessionStorage.setItem("scale", PPU.scale.toString());
+    localStorage.setItem("saveWarn", (NES.saveWarn) ? "1" : "0");
 }
 
 var noiseGain;
@@ -243,6 +257,10 @@ $(document).ready(function() {
     if (buff[4] === 0x0A && buff[5] === 0x0B && buff[6] === 0x0C && buff[7] === 0x0D) {
         PPU.isLittleEndian = false;
     }
+
+    //Set the save state warning indicator
+    NES.saveWarn = (localStorage.getItem("saveWarn") == "0") ? false : true;
+    $("#warningFlag").prop("checked", NES.saveWarn);
 
     //Set up APU/Web Audio API
     let a = new AudioContext();

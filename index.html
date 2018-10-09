@@ -78,6 +78,10 @@
                             onclick="nes.saveState();">Save State</button>
             </div>
         </div>
+        <div style="clear: both;">
+            <input checked type="checkbox" id="warningFlag" onclick="NES.saveWarn = this.checked;">
+            <label for="warningFlag">Enable save state warnings</label>
+        </div>
         <br>
         <div id="debugDisplay">
             <div>
