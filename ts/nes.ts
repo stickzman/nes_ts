@@ -12,6 +12,7 @@ class NES {
     public apu: APU;
     public mainMemory: Uint8Array;
     public drawFrame: boolean = false;
+    public state: object;
     public lastAnimFrame;
 
     constructor(romData: Uint8Array, input: Input) {
@@ -31,6 +32,11 @@ class NES {
             //Load battery-backed RAM
             this.mainMemory.set(buff, 0x6000);
         }
+
+        //Get save state for this game
+        this.state = JSON.parse(localStorage.getItem("save_"+this.rom.id));
+        $("#saveState").prop("disabled", false);
+        $("#loadState").prop("disabled", this.state === null);
 
         //Set up input listeners
         this.input = input;
@@ -54,28 +60,38 @@ class NES {
         this.step();
     }
 
-    public getState(): string {
-      let obj = {};
-      obj["mainMem"] = this.mainMemory.toString();
-      obj["ppu"] = this.ppu.getState();
-      obj["cpu"] = this.cpu.getState();
-      obj["apu"] = this.apu.getState();
-      return JSON.stringify(obj);
+    public saveState() {
+        this.state = this.getState();
+        $("#loadState").prop("disabled", false);
     }
 
-    public loadState(stateStr: string) {
-      let state = JSON.parse(stateStr);
-      //Parse mainMemory str
-      let arr = state["mainMem"].split(",");
-      let buff = new Uint8Array(this.mainMemory.length);
-      for (let i = 0; i < buff.length; i++) {
+    public storeState() {
+        if (this.state == null) return;
+        localStorage.setItem("save_"+this.rom.id, JSON.stringify(this.state));
+    }
+
+    public getState(): object {
+      return {
+          mainMem: this.mainMemory.toString(),
+          ppu: this.ppu.getState(),
+          cpu: this.cpu.getState(),
+          apu: this.apu.getState()
+      };
+    }
+
+    public loadState() {
+        if (this.state === null) return;
+        //Parse mainMemory str
+        let arr = this.state["mainMem"].split(",");
+        let buff = new Uint8Array(this.mainMemory.length);
+        for (let i = 0; i < buff.length; i++) {
           buff[i] = parseInt(arr[i]);
-      }
-      this.mainMemory.set(buff);
-      //Load component states
-      this.ppu.loadState(state["ppu"]);
-      this.cpu.loadState(state["cpu"]);
-      this.apu.loadState(state["apu"]);
+        }
+        this.mainMemory.set(buff);
+        //Load component states
+        this.ppu.loadState(this.state["ppu"]);
+        this.cpu.loadState(this.state["cpu"]);
+        this.apu.loadState(this.state["apu"]);
     }
 
     private step() {
@@ -211,6 +227,7 @@ let input = new Input();
 window.onbeforeunload = function () {
     if (nes !== undefined) {
         saveRAM();
+        nes.storeState();
     }
     sessionStorage.setItem("volume", $("#volume").val().toString());
     sessionStorage.setItem("scale", PPU.scale.toString());
@@ -332,6 +349,7 @@ function init(file) {
     if (nes !== undefined) {
         window.cancelAnimationFrame(nes.lastAnimFrame);
         saveRAM();
+        nes.storeState();
     } else {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy

@@ -72,6 +72,10 @@
                     Volume:<input type="range" min="0" max=".50" value=".25" step=".01" id="volume" style="margin-left: 10px; width:180px;" oninput="updateVol(this.value);">
                 </div>
                 <button style="float: right" id="reset-btn">Reset</button>
+                <button disabled style="float: right; margin-right: 15px;" id="loadState"
+                            onclick="nes.loadState();">Load State</button>
+                <button disabled style="float: right" id="saveState"
+                            onclick="nes.saveState();">Save State</button>
             </div>
         </div>
         <br>
