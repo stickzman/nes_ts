@@ -66,6 +66,20 @@ class APU {
         if (keys[i] == "static") continue;
         this[keys[i]] = state[keys[i]];
       }
+      this.resetOscState();
+    }
+
+    private resetOscState() {
+      //Correct oscillators' volume
+      APU.pulse1.forceCorrectGain();
+      APU.pulse2.forceCorrectGain();
+      APU.triangle.forceCorrectGain();
+      APU.noise.forceCorrectGain();
+      
+      APU.pulse1.setPeriod(APU.pulse1.period);
+      APU.pulse2.setPeriod(APU.pulse2.period);
+      APU.triangle.setPeriod(APU.triangle.period);
+      APU.noise.setPeriod(APU.noise.period);
     }
 
     public read4015(): number {
@@ -373,6 +387,16 @@ class PulseChannel extends AudioChannel {
         }
     }
 
+    public forceCorrectGain() {
+      if (this.enable && this.length != 0 && !this.sweepMute && this.period >= 8) {
+          //Should produce sound
+          this.gain.gain.setTargetAtTime(this.currV/15, 0, this.smoothing);
+      } else {
+          //Should be quiet
+          this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
+      }
+    }
+
     public reset() {
         this.length = 0;
         this.period = 0;
@@ -436,6 +460,16 @@ class TriangleChannel extends AudioChannel {
                 this.setGain(0);
             }
         }
+    }
+
+    public forceCorrectGain() {
+      if (this.enable && this.length != 0 && this.linearCount != 0 && this.period >= 2) {
+          //Should be on
+          this.setGain(1);
+      } else {
+          //Should be off
+          this.setGain(0);
+      }
     }
 
     public reset() {
@@ -508,6 +542,16 @@ class NoiseChannel extends AudioChannel {
                 this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
             }
         }
+    }
+
+    public forceCorrectGain() {
+        if (this.enable && this.length != 0 && this.period >= 8) {
+          //Should produce sound
+          this.gain.gain.setTargetAtTime(this.currV/15, 0, this.smoothing);
+      } else {
+          //Should be quiet
+          this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
+      }
     }
 
     public reset() {

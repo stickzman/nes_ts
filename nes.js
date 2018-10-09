@@ -58,6 +58,18 @@ class APU {
                 continue;
             this[keys[i]] = state[keys[i]];
         }
+        this.resetOscState();
+    }
+    resetOscState() {
+        //Correct oscillators' volume
+        APU.pulse1.forceCorrectGain();
+        APU.pulse2.forceCorrectGain();
+        APU.triangle.forceCorrectGain();
+        APU.noise.forceCorrectGain();
+        APU.pulse1.setPeriod(APU.pulse1.period);
+        APU.pulse2.setPeriod(APU.pulse2.period);
+        APU.triangle.setPeriod(APU.triangle.period);
+        APU.noise.setPeriod(APU.noise.period);
     }
     read4015() {
         //Status
@@ -364,6 +376,16 @@ class PulseChannel extends AudioChannel {
             }
         }
     }
+    forceCorrectGain() {
+        if (this.enable && this.length != 0 && !this.sweepMute && this.period >= 8) {
+            //Should produce sound
+            this.gain.gain.setTargetAtTime(this.currV / 15, 0, this.smoothing);
+        }
+        else {
+            //Should be quiet
+            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
+        }
+    }
     reset() {
         this.length = 0;
         this.period = 0;
@@ -424,6 +446,16 @@ class TriangleChannel extends AudioChannel {
             if (this.getGain() != 0) {
                 this.setGain(0);
             }
+        }
+    }
+    forceCorrectGain() {
+        if (this.enable && this.length != 0 && this.linearCount != 0 && this.period >= 2) {
+            //Should be on
+            this.setGain(1);
+        }
+        else {
+            //Should be off
+            this.setGain(0);
         }
     }
     reset() {
@@ -495,6 +527,16 @@ class NoiseChannel extends AudioChannel {
                 this.currV = 0;
                 this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
             }
+        }
+    }
+    forceCorrectGain() {
+        if (this.enable && this.length != 0 && this.period >= 8) {
+            //Should produce sound
+            this.gain.gain.setTargetAtTime(this.currV / 15, 0, this.smoothing);
+        }
+        else {
+            //Should be quiet
+            this.gain.gain.setTargetAtTime(0, 0, this.smoothing);
         }
     }
     reset() {
