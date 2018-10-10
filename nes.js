@@ -3372,6 +3372,7 @@ function updateVol(val) {
     APU.masterVol = Math.pow(val, 2);
     APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.001);
 }
+//Returns if browser is compatible or not
 function checkComp() {
     let e = false;
     if (!Modernizr.canvas) {
@@ -3402,6 +3403,11 @@ function checkComp() {
         e = true;
         console.log("Session Storage not supported.");
     }
+    if (e) {
+        $("#errorOverlay").css("display", "block");
+        $("body").css("overflow", "hidden");
+    }
+    return !e;
 }
 class Input {
     constructor() {
@@ -5367,7 +5373,8 @@ window.onbeforeunload = function () {
 };
 var noiseGain;
 $(document).ready(function () {
-    checkComp();
+    if (!checkComp())
+        return;
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
     let view32 = new Uint32Array(buff);

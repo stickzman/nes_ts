@@ -65,7 +65,8 @@ function updateVol(val: number) {
     APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.001);
 }
 
-function checkComp() {
+//Returns if browser is compatible or not
+function checkComp(): boolean {
     let e = false;
     if (!Modernizr.canvas) {
         e = true;
@@ -95,4 +96,9 @@ function checkComp() {
         e = true;
         console.log("Session Storage not supported.");
     }
+    if (e) {
+        $("#errorOverlay").css("display", "block");
+        $("body").css("overflow", "hidden");
+    }
+    return !e;
 }
