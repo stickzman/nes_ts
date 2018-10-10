@@ -68,6 +68,12 @@ function updateVol(val: number) {
 //Returns if browser is compatible or not
 function checkComp(): boolean {
     let e = false;
+    if (navigator.appVersion.includes("Edge")) {
+        //Disable audio on Edge (cuz it sounds wonky)
+        APU.masterVol = 0;
+        APU.masterGain.gain.value = 0;
+        $("volDiv").css("display", "none");
+    }
     if (!Modernizr.canvas) {
         e = true;
         console.log("Canvas not supported.");
