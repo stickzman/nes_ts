@@ -1,5 +1,7 @@
 declare function md5(input: string): string;
 
+declare var Modernizr: any;
+
 interface oamEntry {
     x: number,
     patData: number[],
@@ -61,4 +63,36 @@ function deepCopyObj(obj: object): object {
 function updateVol(val: number) {
     APU.masterVol = Math.pow(val, 2);
     APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.001);
+}
+
+function checkComp() {
+    let e = false;
+    if (!Modernizr.canvas) {
+        e = true;
+        console.log("Canvas not supported.");
+    }
+    if (!Modernizr.json) {
+        e = true;
+        console.log("JSON not supported.");
+    }
+    if (!Modernizr.requestanimationframe) {
+        e = true;
+        console.log("requestAnimationFrame not supported.");
+    }
+    if (!Modernizr.typedarrays) {
+        e = true;
+        console.log("Typed Arrays not supported.");
+    }
+    if (!Modernizr.webaudio) {
+        e = true;
+        console.log("Web Audio API not supported.");
+    }
+    if (!Modernizr.localstorage) {
+        e = true;
+        console.log("Local Storage not supported.");
+    }
+    if (!Modernizr.sessionstorage) {
+        e = true;
+        console.log("Session Storage not supported.");
+    }
 }

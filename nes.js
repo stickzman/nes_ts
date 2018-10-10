@@ -3372,6 +3372,37 @@ function updateVol(val) {
     APU.masterVol = Math.pow(val, 2);
     APU.masterGain.gain.setTargetAtTime(Math.pow(val, 2), 0, 0.001);
 }
+function checkComp() {
+    let e = false;
+    if (!Modernizr.canvas) {
+        e = true;
+        console.log("Canvas not supported.");
+    }
+    if (!Modernizr.json) {
+        e = true;
+        console.log("JSON not supported.");
+    }
+    if (!Modernizr.requestanimationframe) {
+        e = true;
+        console.log("requestAnimationFrame not supported.");
+    }
+    if (!Modernizr.typedarrays) {
+        e = true;
+        console.log("Typed Arrays not supported.");
+    }
+    if (!Modernizr.webaudio) {
+        e = true;
+        console.log("Web Audio API not supported.");
+    }
+    if (!Modernizr.localstorage) {
+        e = true;
+        console.log("Local Storage not supported.");
+    }
+    if (!Modernizr.sessionstorage) {
+        e = true;
+        console.log("Session Storage not supported.");
+    }
+}
 class Input {
     constructor() {
         this.defaultBind = {
@@ -5336,6 +5367,7 @@ window.onbeforeunload = function () {
 };
 var noiseGain;
 $(document).ready(function () {
+    checkComp();
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
     let view32 = new Uint32Array(buff);

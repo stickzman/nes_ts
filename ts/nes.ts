@@ -249,6 +249,8 @@ window.onbeforeunload = function () {
 
 var noiseGain;
 $(document).ready(function() {
+    checkComp();
+
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
     let view32 = new Uint32Array(buff);
