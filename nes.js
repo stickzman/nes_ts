@@ -3403,6 +3403,10 @@ function checkComp() {
         e = true;
         console.log("Session Storage not supported.");
     }
+    if (navigator.appVersion.includes("Edge")) {
+        e = true;
+        console.log("Microsoft Edge not supported.");
+    }
     if (e) {
         $("#errorOverlay").css("display", "block");
         $("body").css("overflow", "hidden");
@@ -5390,12 +5394,6 @@ $(document).ready(function () {
     let a = new AudioContext();
     APU.masterGain = a.createGain();
     APU.masterGain.connect(a.destination);
-    if (navigator.appVersion.includes("Edge")) {
-        //Disable audio on Edge (cuz it sounds wonky)
-        APU.masterVol = 0;
-        APU.masterGain.gain.value = 0;
-        $("#volDiv").css("display", "none");
-    }
     let osc = a.createOscillator();
     osc.type = "triangle";
     let g = a.createGain();

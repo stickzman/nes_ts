@@ -96,6 +96,10 @@ function checkComp(): boolean {
         e = true;
         console.log("Session Storage not supported.");
     }
+    if (navigator.appVersion.includes("Edge")) {
+        e = true;
+        console.log("Microsoft Edge not supported.");
+    }
     if (e) {
         $("#errorOverlay").css("display", "block");
         $("body").css("overflow", "hidden");
