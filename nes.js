@@ -5519,7 +5519,8 @@ function checkFullscreen(fullscreenElem) {
     else {
         //Entering fullscreen, adjust scale and store old value
         scale = PPU.scale;
-        PPU.updateScale(Math.floor($(window).height() / 240));
+        let s = Math.min($(window).width() / 256, $(window).height() / 240);
+        PPU.updateScale(Math.floor(s));
     }
 }
 function init(file) {
