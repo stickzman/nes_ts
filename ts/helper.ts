@@ -2,6 +2,15 @@ declare function md5(input: string): string;
 
 declare var Modernizr: any;
 
+interface HTMLElement {
+    mozRequestFullScreen(): void;
+}
+
+interface Document {
+    onmozfullscreenchange(): void;
+    mozFullScreenElement(): void;
+}
+
 interface oamEntry {
     x: number,
     patData: number[],

@@ -234,8 +234,9 @@ class NES {
 
 
 //Initialize NES
-let nes;
-let input = new Input();
+let nes: NES;
+let scale: number;
+let input: Input = new Input();
 
 window.onbeforeunload = function () {
     if (nes !== undefined) {
@@ -341,6 +342,31 @@ $(document).ready(function() {
         }
     });
 
+    //Set up fullscreen listener
+    $("#screen").dblclick(function () {
+        if (this.webkitRequestFullscreen) {
+            this.webkitRequestFullscreen();
+        } else if (this.requestFullscreen) {
+            this.requestFullscreen();
+        } else if (this.mozRequestFullScreen) {
+            this.mozRequestFullScreen();
+        }
+    });
+
+    if (document.onwebkitfullscreenchange !== undefined) {
+        document.onwebkitfullscreenchange =  function () {
+            checkFullscreen(document.webkitFullscreenElement);
+        };
+    } else if (document.onfullscreenchange !== undefined) {
+        document.onfullscreenchange = function () {
+            checkFullscreen(document.fullscreenElement);
+        };
+    } else if (document.onmozfullscreenchange !== undefined) {
+        document.onmozfullscreenchange = function () {
+            checkFullscreen(document.mozFullScreenElement);
+        };
+    }
+
     //Build the button mapping control table
     input.buildControlTable($("#p1Controls"));
     input.buildControlTable($("#p2Controls"), false);
@@ -360,6 +386,17 @@ function saveRAM() {
 function fileDropHandler(e) {
     e.preventDefault();
     init(e.dataTransfer.files[0]);
+}
+
+function checkFullscreen(fullscreenElem) {
+    if (fullscreenElem === null) {
+        //Exiting fullscreen, return to normal scale
+        PPU.updateScale(scale);
+    } else {
+        //Entering fullscreen, adjust scale and store old value
+        scale = PPU.scale;
+        PPU.updateScale(Math.floor($(window).height()/240));
+    }
 }
 
 function init(file) {
