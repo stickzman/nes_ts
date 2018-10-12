@@ -1,5 +1,11 @@
 # Updates
 
+## 10/12
+
+### Fullscreen mode added
+
+The ability to run the emulator in fullscreen has been added! Simply double-click the game screen to enter fullscreen mode, and press the Escape key to exit.
+
 ## 10/9
 
 ### Introducing Save States
