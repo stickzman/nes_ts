@@ -118,8 +118,9 @@ function checkComp(): boolean {
         console.log("Microsoft Edge not supported.");
     }
     if (e) {
-        $("#errorOverlay").css("display", "block");
         $("body").css("overflow", "hidden");
+    } else {
+        $("#errorOverlay").css("display", "none");
     }
     return !e;
 }

@@ -1,5 +1,8 @@
+<!DOCTYPE html>
+<html>
 <head>
     <meta charset="utf-8"/>
+    <title>NES TS</title>
     <style>
         #main {
             margin: 0 auto;
@@ -40,12 +43,15 @@
         span {
             font-size: 75%;
         }
-
     </style>
+    <script src="jquery-3.3.1.min.js"></script>
+    <script src="require/md5.js"></script>
+    <script src="require/modernizr.js"></script>
+    <script src="nes.js"></script>
 </head>
 
 <body>
-    <div id="errorOverlay" style="width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); position: fixed; top: 0px; display: none;">
+    <div id="errorOverlay" style="width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); position: fixed; top: 0px;">
         <div style="margin: 350px auto; text-align: center;">Your browser version is not supported.<br>Consider updating or downloading <a href="https://www.google.com/chrome/">Google Chrome</a>.</div>
     </div>
     <div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
@@ -104,7 +110,6 @@
             P2 Controls (Click to update):
             <div id="p2Controls"></div>
         </div>
-        <script src="jquery-3.3.1.min.js"></script>
         <script>
             //Check cookie and decide whether or not to show update notification
             if (localStorage.getItem("update") == null) {
@@ -147,8 +152,6 @@
                 }
             })
         </script>
-        <script src="require/md5.js"></script>
-        <script src="require/modernizr.js"></script>
-        <script src="nes.js"></script>
     </div>
 </body>
+</html>
