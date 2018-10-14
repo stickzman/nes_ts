@@ -3324,7 +3324,6 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
-var AudioContext = window.AudioContext || window.webkitAudioContext;
 AudioContext.prototype.createNoiseSource = function () {
     let bufferSize = 2 * this.sampleRate;
     let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
@@ -5158,7 +5157,8 @@ class NES {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
-        this.apu = new APU(this);
+        if (audioEnabled)
+            this.apu = new APU(this);
         this.rom = new iNESFile(romData, this);
         if (this.rom.batteryBacked && localStorage.getItem(this.rom.id) !== null) {
             //Parse memory str
@@ -5189,14 +5189,17 @@ class NES {
         window.cancelAnimationFrame(this.lastAnimFrame);
         this.ppu.reset();
         this.cpu.reset();
-        this.apu.reset();
+        if (audioEnabled)
+            this.apu.reset();
         this.step();
     }
     saveState() {
         if (NES.saveWarn && this.state !== null) {
-            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            if (audioEnabled)
+                APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
             let cont = confirm("Are you sure?\nSaving now will replace your previous save data.");
-            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
+            if (audioEnabled)
+                APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
             if (!cont)
                 return;
         }
@@ -5213,16 +5216,18 @@ class NES {
             mainMem: this.mainMemory.toString(),
             ppu: this.ppu.getState(),
             cpu: this.cpu.getState(),
-            apu: this.apu.getState()
+            apu: (audioEnabled) ? this.apu.getState() : ""
         };
     }
     loadState() {
         if (this.state === null)
             return;
         if (NES.saveWarn) {
-            APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
+            if (audioEnabled)
+                APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
             let cont = confirm("Are you sure?\nLoading previous save data will erase your current progress.");
-            APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
+            if (audioEnabled)
+                APU.masterGain.gain.setTargetAtTime(APU.masterVol, 0, 0.05);
             if (!cont)
                 return;
         }
@@ -5236,7 +5241,8 @@ class NES {
         //Load component states
         this.ppu.loadState(this.state["ppu"]);
         this.cpu.loadState(this.state["cpu"]);
-        this.apu.loadState(this.state["apu"]);
+        if (audioEnabled)
+            this.apu.loadState(this.state["apu"]);
     }
     step() {
         this.drawFrame = false;
@@ -5283,7 +5289,7 @@ class NES {
         else if (addr == 0x4016 || addr == 0x4017) {
             return this.input.read(addr);
         }
-        else if (addr == 0x4015) {
+        else if (addr == 0x4015 && audioEnabled) {
             return this.apu.read4015();
         }
         return this.mainMemory[addr];
@@ -5306,7 +5312,7 @@ class NES {
             }
             this.ppu.writeReg(0x2000 + (addr % 8), data);
         }
-        else if (addr >= 0x4000 && addr <= 0x4013) {
+        else if (addr >= 0x4000 && addr <= 0x4013 && audioEnabled) {
             //APU registers
             this.apu.notifyWrite(addr, data);
         }
@@ -5314,7 +5320,7 @@ class NES {
             //OAM DMA
             this.ppu.writeReg(addr, data);
         }
-        else if (addr == 0x4015) {
+        else if (addr == 0x4015 && audioEnabled) {
             //APU Status
             this.apu.notifyWrite(addr, data);
         }
@@ -5322,7 +5328,7 @@ class NES {
             //Input register
             this.input.setStrobe((data & 1) != 0);
         }
-        else if (addr == 0x4017) {
+        else if (addr == 0x4017 && audioEnabled) {
             //APU Frame Counter
             this.apu.notifyWrite(addr, data);
         }
@@ -5367,6 +5373,7 @@ class NES {
 //Initialize NES
 let nes;
 var scale;
+var audioEnabled;
 let input = new Input();
 window.onbeforeunload = function () {
     if (nes !== undefined) {
@@ -5393,32 +5400,35 @@ $(document).ready(function () {
     NES.saveWarn = (localStorage.getItem("saveWarn") == "0") ? false : true;
     $("#warningFlag").prop("checked", NES.saveWarn);
     //Set up APU/Web Audio API
-    let a = new AudioContext();
-    APU.masterGain = a.createGain();
-    APU.masterGain.connect(a.destination);
-    let osc = a.createOscillator();
-    osc.type = "triangle";
-    let g = a.createGain();
-    osc.connect(g);
-    g.connect(APU.masterGain);
-    APU.triangle = new TriangleChannel(osc, g);
-    osc = a.createOscillator();
-    osc.type = "square";
-    g = a.createGain();
-    osc.connect(g);
-    g.connect(APU.masterGain);
-    APU.pulse1 = new PulseChannel(osc, g);
-    osc = a.createOscillator();
-    osc.type = "square";
-    g = a.createGain();
-    osc.connect(g);
-    g.connect(APU.masterGain);
-    APU.pulse2 = new PulseChannel(osc, g, false);
-    let o = a.createNoiseSource();
-    g = a.createGain();
-    o.connect(g);
-    g.connect(APU.masterGain);
-    APU.noise = new NoiseChannel(o, g);
+    audioEnabled = window.AudioContext !== undefined;
+    if (audioEnabled) {
+        let a = new AudioContext();
+        APU.masterGain = a.createGain();
+        APU.masterGain.connect(a.destination);
+        let osc = a.createOscillator();
+        osc.type = "triangle";
+        let g = a.createGain();
+        osc.connect(g);
+        g.connect(APU.masterGain);
+        APU.triangle = new TriangleChannel(osc, g);
+        osc = a.createOscillator();
+        osc.type = "square";
+        g = a.createGain();
+        osc.connect(g);
+        g.connect(APU.masterGain);
+        APU.pulse1 = new PulseChannel(osc, g);
+        osc = a.createOscillator();
+        osc.type = "square";
+        g = a.createGain();
+        osc.connect(g);
+        g.connect(APU.masterGain);
+        APU.pulse2 = new PulseChannel(osc, g, false);
+        let o = a.createNoiseSource();
+        g = a.createGain();
+        o.connect(g);
+        g.connect(APU.masterGain);
+        APU.noise = new NoiseChannel(o, g);
+    }
     //Check for existing volume settings
     if (sessionStorage.getItem("volume") === null) {
         updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
@@ -5449,6 +5459,8 @@ $(document).ready(function () {
     });
     //Mute audio when webpage is hidden
     $(document).on('visibilitychange', function () {
+        if (!audioEnabled)
+            return;
         if (document.hidden) {
             APU.masterGain.gain.setTargetAtTime(0, 0, 0.05);
         }
@@ -5533,7 +5545,7 @@ function init(file) {
         saveRAM();
         nes.storeState();
     }
-    else {
+    else if (audioEnabled) {
         //Start the oscillators after the user chooses a file
         //Complies with Chrome's upcoming Web Audio API autostart policy
         APU.noise.osc.start(0);

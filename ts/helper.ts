@@ -1,8 +1,10 @@
 declare function md5(input: string): string;
 
-var AudioContext = window.AudioContext || window.webkitAudioContext;
-
 declare var Modernizr: any;
+
+interface Window {
+    AudioContext: AudioContext
+}
 
 interface HTMLElement {
     mozRequestFullScreen(): void;
