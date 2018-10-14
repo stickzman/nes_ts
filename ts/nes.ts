@@ -235,7 +235,7 @@ class NES {
 
 //Initialize NES
 let nes: NES;
-let scale: number;
+var scale: number;
 let input: Input = new Input();
 
 window.onbeforeunload = function () {
