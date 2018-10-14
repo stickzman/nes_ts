@@ -308,8 +308,8 @@ $(document).ready(function() {
     if (sessionStorage.getItem("scale") == null) {
         PPU.updateScale(2);
     } else {
-        let scale = parseInt(sessionStorage.getItem("scale"));
-        PPU.updateScale(scale);
+        let s = parseInt(sessionStorage.getItem("scale"));
+        PPU.updateScale(s);
         $("#scale").val(PPU.scale);
     }
 

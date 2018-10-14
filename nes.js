@@ -5365,7 +5365,7 @@ class NES {
 }
 //Initialize NES
 let nes;
-let scale;
+var scale;
 let input = new Input();
 window.onbeforeunload = function () {
     if (nes !== undefined) {
@@ -5434,8 +5434,8 @@ $(document).ready(function () {
         PPU.updateScale(2);
     }
     else {
-        let scale = parseInt(sessionStorage.getItem("scale"));
-        PPU.updateScale(scale);
+        let s = parseInt(sessionStorage.getItem("scale"));
+        PPU.updateScale(s);
         $("#scale").val(PPU.scale);
     }
     $("#scale").change(function () {
