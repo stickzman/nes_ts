@@ -3324,18 +3324,20 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
-AudioContext.prototype.createNoiseSource = function () {
-    let bufferSize = 2 * this.sampleRate;
-    let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
-    let output = buffer.getChannelData(0);
-    for (var i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-    }
-    let node = this.createBufferSource();
-    node.buffer = buffer;
-    node.loop = true;
-    return node;
-};
+if (window.AudioContext !== undefined) {
+    AudioContext.prototype.createNoiseSource = function () {
+        let bufferSize = 2 * this.sampleRate;
+        let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
+        let output = buffer.getChannelData(0);
+        for (var i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+        let node = this.createBufferSource();
+        node.buffer = buffer;
+        node.loop = true;
+        return node;
+    };
+}
 function combineHex(hiByte, lowByte) {
     return (hiByte << 8) | (lowByte);
 }

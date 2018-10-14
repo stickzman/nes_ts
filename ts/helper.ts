@@ -27,17 +27,19 @@ interface AudioContext {
     createNoiseSource(): AudioBufferSourceNode;
 }
 
-AudioContext.prototype.createNoiseSource = function () {
-    let bufferSize = 2 * this.sampleRate;
-    let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
-    let output = buffer.getChannelData(0);
-    for (var i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
+if (window.AudioContext !== undefined) {
+    AudioContext.prototype.createNoiseSource = function () {
+        let bufferSize = 2 * this.sampleRate;
+        let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
+        let output = buffer.getChannelData(0);
+        for (var i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+        let node = this.createBufferSource();
+        node.buffer = buffer;
+        node.loop = true;
+        return node;
     }
-    let node = this.createBufferSource();
-    node.buffer = buffer;
-    node.loop = true;
-    return node;
 }
 
 function combineHex(hiByte: number, lowByte: number): number {
