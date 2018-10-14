@@ -3324,6 +3324,7 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
+audioEnabled = window.AudioContext !== undefined;
 if (window.AudioContext !== undefined) {
     AudioContext.prototype.createNoiseSource = function () {
         let bufferSize = 2 * this.sampleRate;
@@ -3406,7 +3407,7 @@ function checkComp() {
         console.log("Session Storage not supported.");
     }
     if (navigator.appVersion.includes("Edge")) {
-        //e = true;
+        audioEnabled = false;
         console.log("Microsoft Edge not supported.");
     }
     if (e) {
@@ -5404,7 +5405,6 @@ $(document).ready(function () {
     NES.saveWarn = (localStorage.getItem("saveWarn") == "0") ? false : true;
     $("#warningFlag").prop("checked", NES.saveWarn);
     //Set up APU/Web Audio API
-    audioEnabled = window.AudioContext !== undefined;
     if (audioEnabled) {
         let a = new AudioContext();
         APU.masterGain = a.createGain();

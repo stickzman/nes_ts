@@ -269,7 +269,6 @@ $(document).ready(function() {
     $("#warningFlag").prop("checked", NES.saveWarn);
 
     //Set up APU/Web Audio API
-    audioEnabled = window.AudioContext !== undefined;
     if (audioEnabled) {
         let a = new AudioContext();
         APU.masterGain = a.createGain();

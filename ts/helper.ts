@@ -2,6 +2,8 @@ declare function md5(input: string): string;
 
 declare var Modernizr: any;
 
+audioEnabled = window.AudioContext !== undefined;
+
 interface Window {
     AudioContext: AudioContext;
 }
@@ -112,7 +114,7 @@ function checkComp(): boolean {
         console.log("Session Storage not supported.");
     }
     if (navigator.appVersion.includes("Edge")) {
-        //e = true;
+        audioEnabled = false;
         console.log("Microsoft Edge not supported.");
     }
     if (e) {
