@@ -116,8 +116,10 @@ class NES {
                 for (let j = 0; j < cpuCycles * 3; j++) {
                     this.ppu.cycle();
                 }
-                for (let i = 0; i < cpuCycles; i++) {
-                    this.apu.step();
+                if (audioEnabled) {
+                    for (let i = 0; i < cpuCycles; i++) {
+                        this.apu.step();
+                    }
                 }
             } catch (e) {
                 if (e.name == "Unexpected OpCode") {
@@ -298,12 +300,14 @@ $(document).ready(function() {
     }
 
     //Check for existing volume settings
-    if (sessionStorage.getItem("volume") === null) {
-        updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
-    } else {
-        let vol = parseFloat(sessionStorage.getItem("volume"));
-        $("#volume").val(vol);
-        updateVol(vol);
+    if (audioEnabled) {
+        if (sessionStorage.getItem("volume") === null) {
+            updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+        } else {
+            let vol = parseFloat(sessionStorage.getItem("volume"));
+            $("#volume").val(vol);
+            updateVol(vol);
+        }
     }
 
     //Create canvas

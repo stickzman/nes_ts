@@ -2,11 +2,8 @@ declare function md5(input: string): string;
 
 declare var Modernizr: any;
 
-var AudioContext = window.AudioContext || window.webkitAudioContext;
-
 interface Window {
     AudioContext: AudioContext;
-    webkitAudioContext: AudioContext
 }
 
 interface HTMLElement {

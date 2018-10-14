@@ -3324,7 +3324,6 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
-var AudioContext = window.AudioContext || window.webkitAudioContext;
 if (window.AudioContext !== undefined) {
     AudioContext.prototype.createNoiseSource = function () {
         let bufferSize = 2 * this.sampleRate;
@@ -5256,8 +5255,10 @@ class NES {
                 for (let j = 0; j < cpuCycles * 3; j++) {
                     this.ppu.cycle();
                 }
-                for (let i = 0; i < cpuCycles; i++) {
-                    this.apu.step();
+                if (audioEnabled) {
+                    for (let i = 0; i < cpuCycles; i++) {
+                        this.apu.step();
+                    }
                 }
             }
             catch (e) {
@@ -5433,13 +5434,15 @@ $(document).ready(function () {
         APU.noise = new NoiseChannel(o, g);
     }
     //Check for existing volume settings
-    if (sessionStorage.getItem("volume") === null) {
-        updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
-    }
-    else {
-        let vol = parseFloat(sessionStorage.getItem("volume"));
-        $("#volume").val(vol);
-        updateVol(vol);
+    if (audioEnabled) {
+        if (sessionStorage.getItem("volume") === null) {
+            updateVol(0.25); //Set initial volume to 25% (50% of the UI's max)
+        }
+        else {
+            let vol = parseFloat(sessionStorage.getItem("volume"));
+            $("#volume").val(vol);
+            updateVol(vol);
+        }
     }
     //Create canvas
     PPU.canvas = $("#screen")[0];
