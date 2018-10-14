@@ -3406,7 +3406,7 @@ function checkComp() {
         console.log("Session Storage not supported.");
     }
     if (navigator.appVersion.includes("Edge")) {
-        e = true;
+        //e = true;
         console.log("Microsoft Edge not supported.");
     }
     if (e) {
