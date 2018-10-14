@@ -3324,6 +3324,7 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
+var AudioContext = window.AudioContext || window.webkitAudioContext;
 AudioContext.prototype.createNoiseSource = function () {
     let bufferSize = 2 * this.sampleRate;
     let buffer = this.createBuffer(1, bufferSize, this.sampleRate);
