@@ -57,6 +57,9 @@
     <div id="main" ondrop="fileDropHandler(event);" ondragover="event.preventDefault();">
         <h1 class="title" style="margin-bottom:-15px">NES T<span>ype</span>S<span>cript</span></h1>
         <h4>by Dan Ahl</h4>
+        <div id="audioWarning" style="background-color: lightyellow; display: inline-block; padding: 6px; margin-bottom: 5px; display: none;">
+            Audio is not supported on your browser. Consider downloading <a href="https://www.google.com/chrome/">Google Chrome</a>.
+        </div>
         <div>
             <a href="https://stickzman.github.io/nes_ts/update.html" target="_blank" class="notification">See what's new<sup class="notification"></sup>
             </a>
@@ -77,7 +80,7 @@
             </div>
             <canvas id="screen"></canvas>
             <div id="bottomBar">
-                <div style="float: left; display: flex;">
+                <div id="volumeDiv" style="float: left; display: flex;">
                     Volume:<input type="range" min="0" max=".50" value=".25" step=".01" id="volume" style="margin-left: 10px; width:180px;" oninput="updateVol(this.value);">
                 </div>
                 <button style="float: right" id="reset-btn">Reset</button>

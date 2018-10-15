@@ -295,6 +295,9 @@ $(document).ready(function() {
         o.connect(g);
         g.connect(APU.masterGain);
         APU.noise = new NoiseChannel(o, g);
+    } else {
+        $("#audioWarning").css("display", "inline-block");
+        $("#volumeDiv").css("display", "none");
     }
 
     //Check for existing volume settings
