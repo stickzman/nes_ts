@@ -238,7 +238,6 @@ class NES {
 //Initialize NES
 let nes: NES;
 var scale: number;
-var audioEnabled: boolean;
 let input: Input = new Input();
 
 window.onbeforeunload = function () {
@@ -251,9 +250,9 @@ window.onbeforeunload = function () {
     localStorage.setItem("saveWarn", (NES.saveWarn) ? "1" : "0");
 }
 
-var noiseGain;
+var compPass = checkComp();
 $(document).ready(function() {
-    if (!checkComp()) return;
+    if (!compPass) return;
 
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);

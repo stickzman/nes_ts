@@ -3324,7 +3324,7 @@ opTable[0xCB] = {
         this.X = res;
     }
 };
-audioEnabled = window.AudioContext !== undefined;
+var audioEnabled = window.AudioContext !== undefined;
 if (window.AudioContext !== undefined) {
     AudioContext.prototype.createNoiseSource = function () {
         let bufferSize = 2 * this.sampleRate;
@@ -3414,7 +3414,7 @@ function checkComp() {
         $("body").css("overflow", "hidden");
     }
     else {
-        $("#errorOverlay").css("display", "none");
+        $("head > style").append("#errorOverlay { display: none; } ");
     }
     return !e;
 }
@@ -5380,7 +5380,6 @@ class NES {
 //Initialize NES
 let nes;
 var scale;
-var audioEnabled;
 let input = new Input();
 window.onbeforeunload = function () {
     if (nes !== undefined) {
@@ -5391,9 +5390,9 @@ window.onbeforeunload = function () {
     sessionStorage.setItem("scale", PPU.scale.toString());
     localStorage.setItem("saveWarn", (NES.saveWarn) ? "1" : "0");
 };
-var noiseGain;
+var compPass = checkComp();
 $(document).ready(function () {
-    if (!checkComp())
+    if (!compPass)
         return;
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);

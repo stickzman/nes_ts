@@ -2,7 +2,7 @@ declare function md5(input: string): string;
 
 declare var Modernizr: any;
 
-audioEnabled = window.AudioContext !== undefined;
+var audioEnabled = window.AudioContext !== undefined;
 
 interface Window {
     AudioContext: AudioContext;
@@ -120,7 +120,7 @@ function checkComp(): boolean {
     if (e) {
         $("body").css("overflow", "hidden");
     } else {
-        $("#errorOverlay").css("display", "none");
+        $("head > style").append("#errorOverlay { display: none; } ");
     }
     return !e;
 }
