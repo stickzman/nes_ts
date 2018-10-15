@@ -102,7 +102,7 @@ function checkComp(): boolean {
         console.log("Typed Arrays not supported.");
     }
     if (!Modernizr.webaudio) {
-        e = true;
+        audioEnabled = false;
         console.log("Web Audio API not supported.");
     }
     if (!Modernizr.localstorage) {
