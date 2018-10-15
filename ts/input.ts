@@ -3,7 +3,7 @@ class Input {
         p1: {
             a:      {code: 75, name: "K"},
             b:      {code: 74, name: "J"},
-            select: {code: 17, name: "Control"},
+            select: {code: 18, name: "Alt"},
             start:  {code: 13, name: "Enter"},
             up:     {code: 87, name: "W"},
             down:   {code: 83, name: "S"},
@@ -13,7 +13,7 @@ class Input {
         p2: {
             a:      {code: 78, name: "N"},
             b:      {code: 77, name: "M"},
-            select: {code: 17, name: "Control"},
+            select: {code: 18, name: "Alt"},
             start:  {code: 13, name: "Enter"},
             up:     {code: 38, name: "ArrowUp"},
             down:   {code: 40, name: "ArrowDown"},
