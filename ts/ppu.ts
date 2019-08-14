@@ -415,7 +415,7 @@ class PPU {
         }
     }
 
-    public getSpritePix(bkgIsVis) {
+    public getSpritePix(bkgIsVis: boolean) {
         if (!this.showSprites || (!this.showLeftSprite && this.dot < 8)) return null;
         let entry: oamEntry;
         let pix: number;

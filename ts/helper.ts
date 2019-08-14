@@ -2,7 +2,12 @@ declare function md5(input: string): string;
 
 declare var Modernizr: any;
 
-var audioEnabled = window.AudioContext !== undefined;
+declare var $: any;
+
+interface Document {
+    onwebkitfullscreenchange: any,
+    webkitFullscreenElement: Element
+}
 
 interface Window {
     AudioContext: AudioContext;
@@ -14,7 +19,7 @@ interface HTMLElement {
 
 interface Document {
     onmozfullscreenchange(): void;
-    mozFullScreenElement(): void;
+    mozFullScreenElement: Element;
 }
 
 interface oamEntry {
@@ -28,6 +33,8 @@ interface oamEntry {
 interface AudioContext {
     createNoiseSource(): AudioBufferSourceNode;
 }
+
+var audioEnabled = window.AudioContext !== undefined;
 
 if (window.AudioContext !== undefined) {
     AudioContext.prototype.createNoiseSource = function () {

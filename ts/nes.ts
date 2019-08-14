@@ -136,6 +136,7 @@ class NES {
         if (error || this.print) {
             this.displayMem();
             this.displayPPUMem();
+            this.displayOAMMem();
             $("#debugDisplay").show();
             this.print = false;
         } else {
@@ -229,7 +230,7 @@ class NES {
         for (let i = 0; i < this.ppu.oam.length; i++) {
             str += this.ppu.oam[i].toString(16).padStart(2, "0").toUpperCase();
         }
-        $("#ppuMem").html(str);
+        $("#oamMem").html(str);
     }
 }
 
@@ -398,7 +399,7 @@ function fileDropHandler(e) {
     init(e.dataTransfer.files[0]);
 }
 
-function checkFullscreen(fullscreenElem) {
+function checkFullscreen(fullscreenElem: Element) {
     if (fullscreenElem === null) {
         //Exiting fullscreen, return to normal scale
         PPU.updateScale(scale);
@@ -410,7 +411,7 @@ function checkFullscreen(fullscreenElem) {
     }
 }
 
-function init(file) {
+function init(file: Blob) {
     if (!file) {
         return;
     }
@@ -427,8 +428,8 @@ function init(file) {
         APU.pulse2.osc.start(0);
     }
     let reader = new FileReader();
-    reader.onload = function(e) {
-        nes = new NES(new Uint8Array(e.target.result), input);
+    reader.onload = function() {
+        nes = new NES(new Uint8Array(reader.result as ArrayBuffer), input);
         nes.boot();
     }
     reader.readAsArrayBuffer(file);
