@@ -15,6 +15,7 @@ class NES {
     public drawFrame: boolean = false;
     public state: object;
     public lastAnimFrame;
+    public lastFrameStart = 0;
 
     constructor(romData: Uint8Array, input: Input) {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
@@ -108,6 +109,10 @@ class NES {
     }
 
     private step() {
+        // Limit framerate to 60 fps
+        while (performance.now() - this.lastFrameStart < 16) { }
+        this.lastFrameStart = performance.now()
+
         this.drawFrame = false;
         let error = false;
         while (!this.drawFrame) {

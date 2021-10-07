@@ -5159,6 +5159,7 @@ class NES {
         this.MEM_SIZE = 0x10000;
         this.print = false;
         this.drawFrame = false;
+        this.lastFrameStart = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
@@ -5250,6 +5251,9 @@ class NES {
             this.apu.loadState(this.state["apu"]);
     }
     step() {
+        // Limit framerate to 60 fps
+        while (performance.now() - this.lastFrameStart < 16) { }
+        this.lastFrameStart = performance.now();
         this.drawFrame = false;
         let error = false;
         while (!this.drawFrame) {
