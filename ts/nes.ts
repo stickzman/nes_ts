@@ -4,6 +4,7 @@
 class NES {
     private readonly MEM_SIZE = 0x10000;
     public static saveWarn: boolean;
+    public static limitFPS = false;
 
     public print: boolean = false;
     public input: Input;
@@ -109,9 +110,11 @@ class NES {
     }
 
     private step() {
-        // Limit framerate to 60 fps
-        while (performance.now() - this.lastFrameStart < 16) { }
-        this.lastFrameStart = performance.now()
+        if (NES.limitFPS) {
+            // Limit framerate to 60 fps
+            while (performance.now() - this.lastFrameStart < 16.6) { }
+            this.lastFrameStart = performance.now()
+        }
 
         this.drawFrame = false;
         let error = false;
@@ -245,6 +248,33 @@ let nes: NES;
 var scale: number;
 let input: Input = new Input();
 
+//Check refresh rate of monitor, limit fps if applicable
+function checkRefreshRate() {
+    const numFrames = 15 // First 5 frames are dropped
+    let i = numFrames
+    let time = performance.now()
+    let timeDeltas = []
+
+    window.requestAnimationFrame(check)
+    function check() {
+        i--
+        if (i > numFrames - 5) {
+            // Ignore first 5 frames to let framerate settle out
+            time = performance.now()
+            window.requestAnimationFrame(check)
+        } else if (i >= 0) {
+            let t = performance.now()
+            timeDeltas.push(t - time)
+            time = t
+            window.requestAnimationFrame(check)
+        } else {
+            const ms = timeDeltas.reduce((sum, a) => sum + a, 0)/timeDeltas.length
+            if (ms < 15.5) NES.limitFPS = true // Limit framerate if over 64fps
+        }
+    }
+
+}
+
 window.onbeforeunload = function () {
     if (nes !== undefined) {
         saveRAM();
@@ -258,6 +288,8 @@ window.onbeforeunload = function () {
 var compPass = checkComp();
 $(document).ready(function() {
     if (!compPass) return;
+
+    checkRefreshRate();
 
     //Check little/big endianness of Uint32
     let buff = new ArrayBuffer(8);
