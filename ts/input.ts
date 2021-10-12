@@ -166,7 +166,7 @@ class Input {
         localStorage.setItem("bindings", JSON.stringify(this.bindings));
     }
 
-    public buildControlTable(div: JQuery, p1: boolean = true) {
+    public buildControlTable(div, p1: boolean = true) {
         let pStr = (p1) ? "p1" : "p2";
         let bind = this.bindings[pStr];
         let table = $(document.createElement("table"));

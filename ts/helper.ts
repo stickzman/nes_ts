@@ -1,3 +1,5 @@
+declare var $: any;
+
 declare function md5(input: string): string;
 
 declare var Modernizr: any;
@@ -14,7 +16,9 @@ interface HTMLElement {
 
 interface Document {
     onmozfullscreenchange(): void;
-    mozFullScreenElement(): void;
+    onwebkitfullscreenchange(): void;
+    mozFullScreenElement: any;
+    webkitFullscreenElement: any;
 }
 
 interface oamEntry {
