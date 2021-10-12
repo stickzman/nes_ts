@@ -4254,6 +4254,11 @@ class PPU {
         PPU.pixBuff32 = new Uint32Array(buff);
     }
     setPixel(r, g, b) {
+<<<<<<< HEAD
+=======
+        if (this.nes.skipFrame)
+            return;
+>>>>>>> master
         if (this.maxGreen || this.maxBlue) {
             r -= 25;
         }
@@ -4274,6 +4279,11 @@ class PPU {
         }
     }
     paintFrame() {
+<<<<<<< HEAD
+=======
+        if (this.nes.skipFrame)
+            return;
+>>>>>>> master
         PPU.imageData.data.set(PPU.pixBuff8);
         PPU.ctx.putImageData(PPU.imageData, 0, 0);
     }
@@ -4404,6 +4414,11 @@ class PPU {
         }
     }
     visibleCycle() {
+<<<<<<< HEAD
+=======
+        if (this.nes.recklessFrameSkip && this.nes.skipFrame)
+            return;
+>>>>>>> master
         if (!this.showBkg && !this.showSprites) {
             if (this.dot < 256) {
                 this.render();
@@ -5160,6 +5175,12 @@ class NES {
         this.print = false;
         this.drawFrame = false;
         this.lastFrameStart = 0;
+<<<<<<< HEAD
+=======
+        this.recklessFrameSkip = false; // Greatly increased frameskip perf, may cause bugs
+        this.maxSkippedFrames = 0; // 0 = No frame skip
+        this._framesSkipped = 0;
+>>>>>>> master
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
         this.cpu = new CPU(this);
@@ -5183,6 +5204,12 @@ class NES {
         //Set up input listeners
         this.input = input;
     }
+<<<<<<< HEAD
+=======
+    get skipFrame() {
+        return (this._framesSkipped < this.maxSkippedFrames);
+    }
+>>>>>>> master
     boot() {
         if (this.rom.mapper == undefined)
             return;
@@ -5251,7 +5278,15 @@ class NES {
             this.apu.loadState(this.state["apu"]);
     }
     step() {
+<<<<<<< HEAD
         if (NES.limitFPS) {
+=======
+        if (this.maxSkippedFrames > 0) {
+            // Increase frame skip counter
+            this.incFrameSkip();
+        }
+        else if (NES.limitFPS) {
+>>>>>>> master
             // Limit framerate to 60 fps
             while (performance.now() - this.lastFrameStart < 16.6) { }
             this.lastFrameStart = performance.now();
@@ -5290,6 +5325,13 @@ class NES {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
     }
+<<<<<<< HEAD
+=======
+    incFrameSkip() {
+        if (this._framesSkipped++ >= this.maxSkippedFrames)
+            this._framesSkipped = 0;
+    }
+>>>>>>> master
     printDebug() {
         this.print = true;
     }

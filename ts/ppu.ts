@@ -86,6 +86,7 @@ class PPU {
     }
 
     private setPixel (r: number, g: number, b: number) {
+        if (this.nes.skipFrame) return;
         if (this.maxGreen || this.maxBlue) {
             r -= 25;
         }
@@ -107,6 +108,7 @@ class PPU {
     }
 
     public paintFrame () {
+        if (this.nes.skipFrame) return;
         PPU.imageData.data.set(PPU.pixBuff8);
         PPU.ctx.putImageData(PPU.imageData, 0, 0);
     }
@@ -239,6 +241,7 @@ class PPU {
     }
 
     public visibleCycle() {
+        if (this.nes.recklessFrameSkip && this.nes.skipFrame) return
         if (!this.showBkg && !this.showSprites) {
             if (this.dot < 256) {
                 this.render();
