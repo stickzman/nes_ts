@@ -18,7 +18,6 @@ class NES {
     public lastAnimFrame;
     public lastFrameStart = 0;
 
-    public recklessFrameSkip = false; // Greatly increased frameskip perf, may cause bugs
     public maxSkippedFrames = 0; // 0 = No frame skip
     private _framesSkipped = 0;
 
@@ -119,13 +118,15 @@ class NES {
     }
 
     private step() {
-        if (this.maxSkippedFrames > 0) {
-            // Increase frame skip counter
-            this.incFrameSkip();
-        } else if (NES.limitFPS) {
+        if (NES.limitFPS) {
             // Limit framerate to 60 fps
             while (performance.now() - this.lastFrameStart < 16.6) { }
             this.lastFrameStart = performance.now();
+        }
+
+        if (this.maxSkippedFrames > 0) {
+            // Increase frame skip counter
+            this.incFrameSkip();
         }
 
         this.drawFrame = false;

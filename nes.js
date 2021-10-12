@@ -4408,8 +4408,13 @@ class PPU {
         }
     }
     visibleCycle() {
-        if (this.nes.recklessFrameSkip && this.nes.skipFrame)
+        if (this.nes.skipFrame) {
+            if (this.dot === 257) {
+                // Set Sprite 0 flag to avoid slowdown on discarded frames
+                this.setSprite0();
+            }
             return;
+        }
         if (!this.showBkg && !this.showSprites) {
             if (this.dot < 256) {
                 this.render();
@@ -5166,7 +5171,6 @@ class NES {
         this.print = false;
         this.drawFrame = false;
         this.lastFrameStart = 0;
-        this.recklessFrameSkip = false; // Greatly increased frameskip perf, may cause bugs
         this.maxSkippedFrames = 0; // 0 = No frame skip
         this._framesSkipped = 0;
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
@@ -5263,14 +5267,14 @@ class NES {
             this.apu.loadState(this.state["apu"]);
     }
     step() {
-        if (this.maxSkippedFrames > 0) {
-            // Increase frame skip counter
-            this.incFrameSkip();
-        }
-        else if (NES.limitFPS) {
+        if (NES.limitFPS) {
             // Limit framerate to 60 fps
             while (performance.now() - this.lastFrameStart < 16.6) { }
             this.lastFrameStart = performance.now();
+        }
+        if (this.maxSkippedFrames > 0) {
+            // Increase frame skip counter
+            this.incFrameSkip();
         }
         this.drawFrame = false;
         let error = false;
