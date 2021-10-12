@@ -242,7 +242,7 @@ class PPU {
 
     public visibleCycle() {
         if (this.nes.skipFrame) {
-            if (this.dot === 257) {
+            if (this.scanline == 0 && this.dot === 257) {
                 // Set Sprite 0 flag to avoid slowdown on discarded frames
                 this.setSprite0();
             }
