@@ -18,6 +18,11 @@ class NES {
     public lastAnimFrame;
     public lastFrameStart = 0;
 
+    public recklessFrameSkip = false; // Greatly increased frameskip perf, may cause bugs
+    public maxSkippedFrames = 0; // 0 = No frame skip
+    private _framesSkipped = 0;
+
+
     constructor(romData: Uint8Array, input: Input) {
         this.mainMemory = new Uint8Array(this.MEM_SIZE);
         this.ppu = new PPU(this);
@@ -43,6 +48,10 @@ class NES {
 
         //Set up input listeners
         this.input = input;
+    }
+
+    public get skipFrame() {
+        return (this._framesSkipped < this.maxSkippedFrames);
     }
 
     public boot() {
@@ -110,10 +119,13 @@ class NES {
     }
 
     private step() {
-        if (NES.limitFPS) {
+        if (this.maxSkippedFrames > 0) {
+            // Increase frame skip counter
+            this.incFrameSkip();
+        } else if (NES.limitFPS) {
             // Limit framerate to 60 fps
             while (performance.now() - this.lastFrameStart < 16.6) { }
-            this.lastFrameStart = performance.now()
+            this.lastFrameStart = performance.now();
         }
 
         this.drawFrame = false;
@@ -149,6 +161,10 @@ class NES {
         } else {
             this.lastAnimFrame = window.requestAnimationFrame(this.step.bind(this));
         }
+    }
+
+    private incFrameSkip() {
+        if (this._framesSkipped++ >= this.maxSkippedFrames) this._framesSkipped = 0;
     }
 
     public printDebug() {
