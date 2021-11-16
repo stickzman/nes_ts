@@ -145,12 +145,12 @@ $(document).ready(function() {
     });
 
     //Set up relevant button listeners
-    $(document).on("keydown", function (e) {
+    $(document).on("keydown", function (e: KeyboardEvent) {
         if (input.setBtn(e.keyCode, true)) {
             e.preventDefault();
         }
     });
-    $(document).on("keyup", function (e) {
+    $(document).on("keyup", function (e: KeyboardEvent) {
         if (input.setBtn(e.keyCode, false)) {
             e.preventDefault();
         }
@@ -197,12 +197,12 @@ function saveRAM() {
     localStorage.setItem(nes.rom.id, nes.mainMemory.slice(0x6000, 0x8000).toString());
 }
 
-function fileDropHandler(e) {
+function fileDropHandler(e: DragEvent) {
     e.preventDefault();
     init(e.dataTransfer.files[0]);
 }
 
-function checkFullscreen(fullscreenElem) {
+function checkFullscreen(fullscreenElem: Element) {
     if (fullscreenElem === null) {
         //Exiting fullscreen, return to normal scale
         PPU.updateScale(scale);
@@ -214,7 +214,7 @@ function checkFullscreen(fullscreenElem) {
     }
 }
 
-function init(file) {
+function init(file: File) {
     if (!file) {
         return;
     }

@@ -1813,7 +1813,7 @@ opTable[0x6C] = {
     cycles: 5,
     execute: function() {
         let indAddr = this.next2Bytes();
-        let addr;
+        let addr: number;
         if ((indAddr & 0xFF) == 0xFF) {
             addr = combineHex(this.nes.read(indAddr-0xFF), this.nes.read(indAddr));
         } else {

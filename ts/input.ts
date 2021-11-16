@@ -166,7 +166,7 @@ class Input {
         localStorage.setItem("bindings", JSON.stringify(this.bindings));
     }
 
-    public buildControlTable(div, p1: boolean = true) {
+    public buildControlTable(div: HTMLElement, p1: boolean = true) {
         let pStr = (p1) ? "p1" : "p2";
         let bind = this.bindings[pStr];
         let table = $(document.createElement("table"));
@@ -176,7 +176,7 @@ class Input {
             btn.html(bind[keys[i]].name);
             btn.on("click", function() {
                 btn.html("Press any key...");
-                $(document).one("keydown", function(e) {
+                $(document).one("keydown", function(e: KeyboardEvent) {
                     if (e.keyCode == 27) {
                         //If user hits "Escape" key, cancel button change
                         btn.html(bind[keys[i]].name);
