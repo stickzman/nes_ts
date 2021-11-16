@@ -117,10 +117,6 @@ function checkComp(): boolean {
         e = true;
         console.log("Session Storage not supported.");
     }
-    if (navigator.appVersion.includes("Edge")) {
-        audioEnabled = false;
-        console.log("Microsoft Edge not supported.");
-    }
     if (e) {
         $("body").css("overflow", "hidden");
     } else {

@@ -18,7 +18,7 @@ class NES {
     public mainMemory: Uint8Array;
     public drawFrame: boolean = false;
     public state: object;
-    public lastAnimFrame;
+    public lastAnimFrame: number;
     public lastFrameStart = 0;
 
 

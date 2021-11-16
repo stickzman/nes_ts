@@ -342,7 +342,7 @@ class MMC3 extends Mapper {
                 this.pgrSwap = pgrSwap;
             } else {
                 //0x8001
-                let chrAddr;
+                let chrAddr: number;
                 switch (this.bankSelect) {
                     case 0:
                         if (this.chrRom.length == 0) break;
